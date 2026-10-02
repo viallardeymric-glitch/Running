@@ -2,7 +2,8 @@
 <html lang="fr" class="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<!-- Zoom désactivé et écran figé : l’app ne bouge plus sous le doigt (complété en JS pour Safari, qui ignore user-scalable) -->
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="dark">          <!-- évite l'assombrissement forcé de Samsung Internet et de Chrome -->
 <meta name="format-detection" content="telephone=no"> <!-- les temps et allures ne deviennent pas des numéros de téléphone -->
 <title>RDD, Runner du dimanche</title>
@@ -14,7 +15,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RDD">
 <meta name="theme-color" content="#10142B">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23FF7C70'/%3E%3Cstop offset='.55' stop-color='%23FF9D66'/%3E%3Cstop offset='1' stop-color='%23FFC98A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='180' rx='40' fill='%2310142B'/%3E%3Cg transform='rotate%28-6 90 92%29'%3E%3Crect x='26' y='44' width='128' height='96' rx='12' fill='%23F7F3EA'/%3E%3Cpath d='M26 56a12 12 0 0 1 12-12h104a12 12 0 0 1 12 12v10H26z' fill='url%28%23b%29'/%3E%3Ccircle cx='40' cy='82' r='4.5' fill='%2310142B'/%3E%3Ccircle cx='140' cy='82' r='4.5' fill='%2310142B'/%3E%3Ctext x='90' y='126' text-anchor='middle' font-family='Impact,Arial Narrow,Arial,sans-serif' font-weight='900' font-size='46' fill='%23151A36'%3ERDD%3C/text%3E%3C/g%3E%3C/svg%3E">
+<!-- Installation : fichiers du site (manifest.webmanifest, sw.js, icônes). S’ils manquent, RDD génère un repli. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23FF7C70'/%3E%3Cstop offset='.55' stop-color='%23FF9D66'/%3E%3Cstop offset='1' stop-color='%23FFC98A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='180' height='180' rx='40' fill='%2310142B'/%3E%3Cg transform='rotate%28-6 90 92%29'%3E%3Crect x='26' y='44' width='128' height='96' rx='12' fill='%23F7F3EA'/%3E%3Cpath d='M26 56a12 12 0 0 1 12-12h104a12 12 0 0 1 12 12v10H26z' fill='url%28%23b%29'/%3E%3Ccircle cx='40' cy='82' r='4.5' fill='%2310142B'/%3E%3Ccircle cx='140' cy='82' r='4.5' fill='%2310142B'/%3E%3Ctext x='90' y='126' text-anchor='middle' font-family='Impact,Arial Narrow,Arial,sans-serif' font-weight='900' font-size='46' fill='%23151A36'%3ERDD%3C/text%3E%3C/g%3E%3C/svg%3E">
 
 <!-- ===== Dépendances CDN ===== -->
@@ -28,8 +31,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 
 <script>
-/* Configuration Tailwind : palette « petit matin du dimanche » */
-tailwind.config = {
+/* Configuration Tailwind : palette « petit matin du dimanche » (protégée si le CDN est injoignable) */
+if (window.tailwind) tailwind.config = {
   darkMode: 'class',
   theme: {
     extend: {
@@ -95,7 +98,6 @@ tailwind.config = {
   .gouttieres-barre{ padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
   .hauteur-modale{ max-height:88vh; max-height:88dvh; }            /* dvh : la barre d'adresse mobile n'écrase plus la fenêtre */
   body.clavier nav{ display:none; }                                 /* clavier ouvert : la barre d'onglets s'efface */
-  body.clavier #zoneSaisieChat{ bottom:8px !important; }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
     .verre, .verre-fort{ background:rgba(26,31,61,.97); }           /* navigateurs sans flou : fond opaque lisible */
   }
@@ -212,6 +214,43 @@ tailwind.config = {
   .saisie span:nth-child(2){ animation-delay:.15s; } .saisie span:nth-child(3){ animation-delay:.3s; }
   @keyframes saisie{ 0%,80%,100%{ opacity:.3; transform:none; } 40%{ opacity:1; transform:translateY(-3px); } }
   .bulle-coach ul{ margin-top:.35rem; }
+
+  /* ---------- Écran figé : ni zoom ni déplacement accidentel ---------- */
+  html, body{ overscroll-behavior:none; overflow-x:clip; }          /* ni rebond, ni « tirer pour rafraîchir », ni dérive latérale */
+  @supports not (overflow-x: clip){ body{ overflow-x:hidden; } }
+  *{ touch-action:manipulation; }                                     /* pas de zoom au double appui */
+  img, svg, canvas, a{ -webkit-user-drag:none; }
+  header, nav, button, .tapable, .bulle-flottante{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+  body.ecran-fige{ position:fixed; left:0; right:0; width:100%; overflow:hidden; }   /* fenêtre ouverte : le fond ne bouge plus */
+  .voile{ touch-action:none; }                                        /* voile derrière une fenêtre : aucun geste ne passe */
+
+  /* ---------- Bulle du coach : sur tous les écrans ---------- */
+  .bulle-flottante{
+    position:fixed; z-index:41; width:58px; height:58px; border-radius:50%;
+    right:max(16px, calc(env(safe-area-inset-right, 0px) + 12px));
+    bottom:calc(var(--barre) + var(--safe-bot) + 16px);
+    display:grid; place-items:center; color:#23120A; font-size:23px;
+    background:linear-gradient(135deg,#FFC98A 0%,#FF9D66 50%,#FF7C70 100%);
+    box-shadow:0 14px 30px -10px rgba(255,124,112,.8), 0 0 0 1px rgba(255,255,255,.2) inset;
+    transition:transform .22s cubic-bezier(.22,1,.36,1), opacity .2s ease;
+  }
+  @media (min-width:700px){ .bulle-flottante{ right:calc(50% - 320px + 16px); } }   /* tablette : la bulle reste dans la colonne */
+  .bulle-flottante.cachee, body.clavier .bulle-flottante{ opacity:0; transform:scale(.6); pointer-events:none; }
+  .pastille-bulle{ position:absolute; top:-3px; right:-3px; min-width:20px; height:20px; padding:0 5px; border-radius:99px;
+    background:#FF5F8F; color:#fff; font:700 11px/20px -apple-system,BlinkMacSystemFont,sans-serif; text-align:center; box-shadow:0 0 0 2px #10142B; }
+  .bulle-sautille{ animation:sautille .7s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes sautille{ 0%{ transform:scale(1);} 35%{ transform:scale(1.15);} 100%{ transform:scale(1);} }
+  .astuce-bulle{ position:fixed; z-index:41; max-width:210px; padding:9px 12px; border-radius:14px;
+    right:calc(max(16px, calc(env(safe-area-inset-right, 0px) + 12px)) + 68px); bottom:calc(var(--barre) + var(--safe-bot) + 24px);
+    background:#F7F3EA; color:#151A36; font-size:12.5px; font-weight:600; line-height:1.3; box-shadow:0 14px 28px -12px rgba(0,0,0,.85); }
+  @media (min-width:700px){ .astuce-bulle{ right:calc(50% - 320px + 84px); } }
+  /* Panneau : il suit le clavier (iPhone) et garde la saisie visible */
+  .feuille-coach{ bottom:var(--clavier, 0px);
+    height:min(88vh, calc(var(--hauteur-visible, 100vh) - var(--safe-top) - 12px));
+    height:min(88dvh, calc(var(--hauteur-visible, 100dvh) - var(--safe-top) - 12px)); }
+  body.clavier .pied-coach{ padding-bottom:10px !important; }
+  .puce-coach{ display:inline-flex; align-items:center; gap:4px; max-width:100%; height:24px; padding:0 9px; border-radius:99px;
+    font-size:11px; background:#262C57; color:#9DA5CA; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 </style>
 </head>
 <body class="font-corps antialiased">
@@ -300,6 +339,7 @@ tailwind.config = {
   </div>
 
   <!-- Premiers pas (nouvel utilisateur) -->
+  <div id="banniereInstallation" class="hidden mb-4"></div>
   <div id="premiersPas"></div>
 
   <!-- Séance du jour -->
@@ -353,37 +393,6 @@ tailwind.config = {
 </section>
 
 <!-- ------------------------------------------------------------------ -->
-<!-- VUE 2 — COACH IA                                                    -->
-<!-- ------------------------------------------------------------------ -->
-<section id="vue-coach" class="vue">
-  <div class="rounded-xl2 verre p-4 mb-3">
-    <div class="flex items-start gap-3">
-      <div class="w-10 h-10 rounded-full bg-ocre/15 border border-ocre/40 grid place-items-center shrink-0">
-        <i class="fa-solid fa-mountain-sun text-ocre text-[15px]"></i>
-      </div>
-      <div class="min-w-0">
-        <div class="titre text-[18px]">Ton coach</div>
-        <div id="briefingCoach" class="text-[12.5px] text-brume mt-0.5 leading-relaxed">Analyse ton historique, ta course cible et ta charge pour répondre avec tes vrais chiffres.</div>
-      </div>
-    </div>
-  </div>
-
-  <div id="filChat" class="space-y-3 mb-3 min-h-[40vh]"></div>
-
-  <div class="scroll-x flex gap-2 mb-3 pb-1" id="suggestionsChat"></div>
-
-  <div id="zoneSaisieChat" class="sticky z-30" style="bottom:calc(var(--barre) + var(--safe-bot) + 8px)">
-    <div class="verre rounded-2xl p-2 flex items-end gap-2">
-      <textarea id="saisieChat" rows="1" placeholder="Pose ta question au coach…"
-        class="flex-1 bg-transparent resize-none outline-none px-2 py-2 text-[15px] placeholder:text-brume/70 max-h-32"></textarea>
-      <button data-act="envoyerChat" class="tapable w-10 h-10 rounded-xl bg-ocre text-[#23120A] grid place-items-center shrink-0">
-        <i class="fa-solid fa-arrow-up text-[15px]"></i>
-      </button>
-    </div>
-  </div>
-</section>
-
-<!-- ------------------------------------------------------------------ -->
 <!-- VUE 3 — PLAN D'ENTRAÎNEMENT                                         -->
 <!-- ------------------------------------------------------------------ -->
 <section id="vue-plan" class="vue">
@@ -422,7 +431,7 @@ tailwind.config = {
     <div>
       <label class="text-[12px] text-brume block mb-1.5">Nom de la course</label>
       <input id="objNom" type="text" placeholder="Trail des Crêtes"
-        class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+        class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
     </div>
 
     <div>
@@ -441,12 +450,12 @@ tailwind.config = {
       <div>
         <label class="text-[12px] text-brume block mb-1.5">Distance (km)</label>
         <input id="objKm" type="text" inputmode="decimal" autocomplete="off" placeholder="21,1"
-          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       </div>
       <div>
         <label class="text-[12px] text-brume block mb-1.5">Dénivelé positif (m)</label>
         <input id="objDplus" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="800"
-          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       </div>
     </div>
 
@@ -454,19 +463,19 @@ tailwind.config = {
       <div>
         <label class="text-[12px] text-brume block mb-1.5">Date</label>
         <input id="objDate" type="date"
-          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       </div>
       <div>
         <label class="text-[12px] text-brume block mb-1.5">Heure de départ</label>
         <input id="objHeure" type="time" value="09:00"
-          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+          class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       </div>
     </div>
 
     <div>
       <label class="text-[12px] text-brume block mb-1.5">Temps visé (facultatif, hh:mm:ss)</label>
       <input id="objTemps" type="text" autocomplete="off" placeholder="2:15:00"
-        class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+        class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
     </div>
 
     <div id="blocTechnicite">
@@ -578,11 +587,11 @@ tailwind.config = {
     <div class="grid grid-cols-2 gap-3">
       <div>
         <label class="text-[12px] text-brume block mb-1.5">Prénom</label>
-        <input id="regPrenom" type="text" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+        <input id="regPrenom" type="text" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       </div>
       <div>
         <label class="text-[12px] text-brume block mb-1.5">Poids (kg)</label>
-        <input id="regPoids" type="text" inputmode="decimal" placeholder="70" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+        <input id="regPoids" type="text" inputmode="decimal" placeholder="70" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       </div>
     </div>
     <div>
@@ -595,7 +604,7 @@ tailwind.config = {
     </div>
     <div>
       <label class="text-[12px] text-brume block mb-1.5">Heure habituelle des séances</label>
-      <input id="regHeure" type="time" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]">
+      <input id="regHeure" type="time" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
     </div>
     <button data-act="enregistrerReglages" class="tapable w-full h-11 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14px]">Enregistrer</button>
   </div>
@@ -625,10 +634,10 @@ tailwind.config = {
         <label for="cleGemini" class="text-[12px] text-brume">Clé API Google AI Studio</label>
         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="text-[12px] text-ocre">Obtenir une clé</a>
       </div>
-      <input id="cleGemini" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza…" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[14px]">
+      <input id="cleGemini" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza…" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       <label for="modeleGemini" class="text-[12px] text-brume block pt-1">Modèle</label>
-      <select id="modeleGemini" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[14px]"></select>
-      <input id="modeleGeminiLibre" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="identifiant, par exemple gemini-3.6-flash" class="hidden w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[14px]">
+      <select id="modeleGemini" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]"></select>
+      <input id="modeleGeminiLibre" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="identifiant, par exemple gemini-3.6-flash" class="hidden w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       <div class="grid grid-cols-2 gap-2 pt-1">
         <button data-act="testerGemini" class="tapable h-11 rounded-2xl verre text-[13.5px]"><i class="fa-solid fa-plug-circle-check mr-1.5"></i>Tester</button>
         <button data-act="oublierCleGemini" class="tapable h-11 rounded-2xl verre text-[13.5px] text-braise"><i class="fa-solid fa-key mr-1.5"></i>Oublier la clé</button>
@@ -636,14 +645,14 @@ tailwind.config = {
     </div>
     <div id="blocClaude" class="hidden mt-3 space-y-2">
       <label for="cleIA" class="text-[12px] text-brume block">Clé API Anthropic</label>
-      <input id="cleIA" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[14px]">
+      <input id="cleIA" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       <label for="modeleIA" class="text-[12px] text-brume block pt-1">Modèle</label>
-      <select id="modeleIA" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[14px]"></select>
+      <select id="modeleIA" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]"></select>
       <button data-act="testerIA" class="tapable w-full h-11 rounded-2xl verre text-[14px] mt-1"><i class="fa-solid fa-plug-circle-check mr-2"></i>Tester la connexion</button>
     </div>
     <div id="blocRelais" class="hidden mt-3">
       <label for="regEndpointIA" class="text-[12px] text-brume block mb-1.5">Adresse du relais</label>
-      <input id="regEndpointIA" type="url" placeholder="https://mon-relais.exemple/api/coach" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[14px]">
+      <input id="regEndpointIA" type="url" placeholder="https://mon-relais.exemple/api/coach" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
     </div>
   </div>
 
@@ -674,15 +683,10 @@ tailwind.config = {
 
 <!-- ============================ BARRE D'ONGLETS ============================ -->
 <nav class="fixed bottom-0 inset-x-0 z-40 gouttieres-barre" style="padding-bottom:calc(var(--safe-bot) + 8px)">
-  <div class="barre-onglets verre-fort grid grid-cols-5 h-[calc(var(--barre)-8px)] rounded-[24px] border border-brume/15 max-w-[640px] mx-auto">
+  <div class="barre-onglets verre-fort grid grid-cols-4 h-[calc(var(--barre)-8px)] rounded-[24px] border border-brume/15 max-w-[640px] mx-auto">
     <button data-act="allerA" data-arg="dashboard" data-onglet="dashboard" class="onglet actif tapable flex flex-col items-center justify-center gap-[3px]">
       <i class="fa-solid fa-house text-[19px]"></i>
       <span class="text-[10px] font-medium">Accueil</span>
-      <span class="pastille w-1 h-1 rounded-full bg-ocre"></span>
-    </button>
-    <button data-act="allerA" data-arg="coach" data-onglet="coach" class="onglet tapable flex flex-col items-center justify-center gap-[3px]">
-      <i class="fa-solid fa-comment-dots text-[19px]"></i>
-      <span class="text-[10px] font-medium">Coach</span>
       <span class="pastille w-1 h-1 rounded-full bg-ocre"></span>
     </button>
     <button data-act="allerA" data-arg="plan" data-onglet="plan" class="onglet tapable flex flex-col items-center justify-center gap-[3px]">
@@ -702,6 +706,42 @@ tailwind.config = {
     </button>
   </div>
 </nav>
+
+<!-- ============================ BULLE DU COACH ============================ -->
+<!-- Accessible sur tous les écrans : le coach lit ce qui est affiché au moment où on l'ouvre. -->
+<button id="bulleCoach" data-act="ouvrirCoach" aria-label="Ouvrir le coach" class="bulle-flottante tapable hidden">
+  <i class="fa-solid fa-comment-dots"></i>
+  <span id="pastilleCoach" class="pastille-bulle hidden">0</span>
+</button>
+<div id="astuceBulle" class="astuce-bulle hidden" role="status">Ton coach est ici, sur tous les écrans. Il voit ce que tu regardes.</div>
+
+<div id="panneauCoach" class="fixed inset-0 z-[55] hidden" role="dialog" aria-modal="true" aria-label="Coach">
+  <div class="voile absolute inset-0 bg-black/55 backdrop-blur-sm" data-act="fermerCoach"></div>
+  <div class="feuille-coach absolute inset-x-0 mx-auto w-full max-w-[640px] verre-fort rounded-t-xl3 flex flex-col modale-entre">
+    <div class="shrink-0 gouttieres pt-2.5 pb-2.5 border-b border-brume/10">
+      <div class="w-10 h-1 rounded-full bg-brume/40 mx-auto mb-2.5"></div>
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-full bg-ocre grid place-items-center shrink-0"><i class="fa-solid fa-person-running text-[#23120A] text-[16px]"></i></div>
+        <div class="min-w-0 flex-1">
+          <div class="titre text-[20px] leading-none">Ton coach</div>
+          <div id="enteteCoach" class="flex items-center gap-1.5 mt-1.5 min-w-0"></div>
+        </div>
+        <button data-act="fermerCoach" aria-label="Fermer le coach" class="tapable w-9 h-9 rounded-full verre grid place-items-center shrink-0"><i class="fa-solid fa-xmark text-[15px]"></i></button>
+      </div>
+    </div>
+    <div id="filChat" class="flex-1 min-h-0 overflow-y-auto overscroll-contain gouttieres py-3 space-y-3"></div>
+    <div class="pied-coach shrink-0 gouttieres pt-1" style="padding-bottom:calc(var(--safe-bot) + 10px)">
+      <div class="scroll-x flex gap-2 mb-2 pb-1" id="suggestionsChat"></div>
+      <div id="zoneSaisieChat" class="verre rounded-2xl p-2 flex items-end gap-2">
+        <textarea id="saisieChat" rows="1" placeholder="Pose ta question au coach…" enterkeyhint="send"
+          class="flex-1 bg-transparent resize-none outline-none px-2 py-2 text-[16px] placeholder:text-brume/70 max-h-32"></textarea>
+        <button data-act="envoyerChat" aria-label="Envoyer" class="tapable w-10 h-10 rounded-xl bg-ocre text-[#23120A] grid place-items-center shrink-0">
+          <i class="fa-solid fa-arrow-up text-[15px]"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ============================ ÉCRAN DES PROFILS ============================ -->
 <div id="ecranProfils" class="fixed inset-0 z-[45] hidden overflow-y-auto ecran-profils">
@@ -727,11 +767,14 @@ tailwind.config = {
 
 <!-- ============================ MODALE & TOASTS ============================ -->
 <div id="fondModale" class="fixed inset-0 z-50 hidden">
-  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" data-act="fermerModale"></div>
+  <div class="voile absolute inset-0 bg-black/60 backdrop-blur-sm" data-act="fermerModale"></div>
   <div class="absolute inset-x-0 bottom-0 mx-auto w-full max-w-[640px] hauteur-modale overflow-y-auto overscroll-contain verre-fort rounded-t-xl3 modale-entre"
        style="padding-bottom:calc(var(--safe-bot) + 18px)">
-    <div class="sticky top-0 pt-3 pb-2 flex justify-center verre-fort">
+    <div class="sticky top-0 z-10 h-11 flex items-center justify-center verre-fort">
       <div class="w-10 h-1 rounded-full bg-brume/40"></div>
+      <!-- Le coach, à propos de cette fenêtre -->
+      <button id="btnCoachModale" data-act="ouvrirCoach" aria-label="Demander au coach à propos de cette fenêtre"
+        class="tapable absolute right-3 top-1.5 h-8 px-3 rounded-full bg-ocre/15 border border-ocre/30 text-ocre text-[12px] font-semibold"><i class="fa-solid fa-comment-dots mr-1.5"></i>Coach</button>
     </div>
     <div id="corpsModale" class="gouttieres pb-4"></div>
   </div>
@@ -871,19 +914,53 @@ function toast(message, variante = 'info') {
   }, 3400);
 }
 
-function ouvrirModale(htmlContenu) {
+/* Fenêtre (feuille du bas). Le contexte (séance, sortie…) permet au coach de savoir ce qu'elle montre. */
+let contexteFenetre = null, contexteFenetreSuivante = null;
+function ouvrirModale(htmlContenu, contexte = null) {
+  contexteFenetre = contexte || contexteFenetreSuivante;
+  contexteFenetreSuivante = null;
   $('#corpsModale').innerHTML = htmlContenu;
+  $('#btnCoachModale').classList.toggle('hidden', !!(contexteFenetre && contexteFenetre.sansCoach) || !sessionOuverte);
   $('#fondModale').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-  empilerHistorique();                     // le bouton Retour d'Android refermera cette fenêtre
+  if (!COUCHES.modale) {
+    COUCHES.modale = true;
+    empilerHistorique();                   // le bouton Retour d'Android refermera cette fenêtre
+    figerFond();
+  }
+  majBulleCoach();
 }
 /** Ferme la fenêtre ; viaHistorique vaut true quand c'est le bouton Retour qui la ferme. */
 function fermerModale(viaHistorique) {
-  const etaitOuverte = !$('#fondModale').classList.contains('hidden');
   $('#fondModale').classList.add('hidden');
-  const ecran = $('#ecranProfils');
-  if (!ecran || ecran.classList.contains('hidden')) document.body.style.overflow = '';
-  if (etaitOuverte && viaHistorique !== true) depilerHistorique();
+  contexteFenetre = null;
+  if (!COUCHES.modale) return;
+  COUCHES.modale = false;
+  libererFond();
+  if (viaHistorique !== true) depilerHistorique(1);
+  majBulleCoach();
+}
+/** Referme d'un coup le coach, la fenêtre et l'écran des profils (une seule remontée d'historique). */
+function fermerToutesLesFenetres() {
+  let n = 0;
+  if (COUCHES.coach) { fermerCoach(true); n++; }
+  if (COUCHES.modale) { fermerModale(true); n++; }
+  if (COUCHES.profils) { if (COUCHES.profilsHisto) n++; masquerEcranProfils(true); }
+  depilerHistorique(n);
+}
+
+/* Écran figé derrière les fenêtres : le fond ne défile plus (Safari ignore overflow:hidden au doigt). */
+let verrousFond = 0, defilementFige = 0;
+function figerFond() {
+  if (verrousFond++ > 0) return;
+  defilementFige = window.scrollY || window.pageYOffset || 0;
+  document.body.style.top = -defilementFige + 'px';
+  document.body.classList.add('ecran-fige');
+}
+function libererFond() {
+  if (verrousFond === 0 || --verrousFond > 0) return;
+  document.body.classList.remove('ecran-fige');
+  document.body.style.top = '';
+  window.scrollTo(0, defilementFige);
 }
 
 /** Téléchargement d'un contenu texte sous forme de fichier. */
@@ -947,34 +1024,48 @@ function plateforme() {
   return { ios, android, samsung: /SamsungBrowser/i.test(ua), mobile: ios || android, installee };
 }
 
-/* Bouton Retour d'Android (et geste retour d'iOS) : ferme la fenêtre ouverte au lieu de quitter l'app.
-   Chaque fenêtre ajoute une entrée d'historique ; la fermer par l'app la retire. */
-const HISTO = { empile: false, retourEnCours: false, empilerApres: false };
+/* Bouton Retour d'Android (et geste retour d'iOS) : referme la couche du dessus (coach, fenêtre, écran des
+   profils) au lieu de quitter l'app. Chaque couche ouverte pose une entrée d'historique ; la fermer par l'app la retire. */
+const COUCHES = { modale: false, coach: false, profils: false, profilsHisto: false };
+const HISTO = { entrees: 0, retours: 0, enAttente: 0 };
 function empilerHistorique() {
-  if (HISTO.retourEnCours) { HISTO.empilerApres = true; return; }
-  if (HISTO.empile) return;
-  try { history.pushState({ rdd: 'fenetre' }, ''); HISTO.empile = true; } catch (e) { /* historique indisponible */ }
+  if (HISTO.retours > 0) { HISTO.enAttente++; return; }          // un retour est en cours : l'entrée sera posée après
+  try { history.pushState({ rdd: 'fenetre' }, ''); HISTO.entrees++; } catch (e) { /* historique indisponible */ }
 }
-function depilerHistorique() {
-  HISTO.empilerApres = false;
-  if (!HISTO.empile || HISTO.retourEnCours) return;
-  HISTO.empile = false;
-  HISTO.retourEnCours = true;
-  history.back();
+function depilerHistorique(n = 1) {
+  while (n > 0 && HISTO.enAttente > 0) { HISTO.enAttente--; n--; }  // entrée pas encore posée : rien à retirer
+  n = Math.min(n, HISTO.entrees);
+  if (n <= 0) return;
+  HISTO.entrees -= n;
+  HISTO.retours++;
+  history.go(-n);
   // Garde-fou : si le navigateur n'émet pas « popstate », on ne reste pas bloqué.
-  setTimeout(() => { if (HISTO.retourEnCours) finRetourHistorique(); }, 900);
+  setTimeout(() => { if (HISTO.retours > 0) { HISTO.retours = 0; poserEntreesEnAttente(); } }, 900);
 }
-function finRetourHistorique() {
-  HISTO.retourEnCours = false;
-  if (HISTO.empilerApres) { HISTO.empilerApres = false; empilerHistorique(); }
+function poserEntreesEnAttente() {
+  const n = HISTO.enAttente;
+  HISTO.enAttente = 0;
+  for (let i = 0; i < n; i++) empilerHistorique();
 }
 window.addEventListener('popstate', () => {
-  if (HISTO.retourEnCours) { finRetourHistorique(); return; }       // retour demandé par l'app elle-même
-  if (!HISTO.empile) return;
-  HISTO.empile = false;                                                // bouton Retour : on ferme la fenêtre du dessus
-  if (!$('#fondModale').classList.contains('hidden')) fermerModale(true);
-  else if (sessionOuverte && !$('#ecranProfils').classList.contains('hidden')) masquerEcranProfils(true);
+  if (HISTO.retours > 0) { HISTO.retours--; if (!HISTO.retours) poserEntreesEnAttente(); return; }   // retour demandé par l'app
+  if (HISTO.entrees <= 0) return;
+  HISTO.entrees--;
+  if (COUCHES.coach) fermerCoach(true);                              // bouton Retour : la couche du dessus se ferme
+  else if (COUCHES.modale) fermerModale(true);
+  else if (COUCHES.profils && sessionOuverte) masquerEcranProfils(true);
 });
+
+/* Zoom désactivé : pincement (Safari ignore user-scalable=no), Ctrl + molette et Ctrl +/− sur ordinateur. */
+function bloquerZoom() {
+  const empecher = e => { if (e.cancelable) e.preventDefault(); };
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, empecher, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) empecher(e); }, { passive: false });
+  document.addEventListener('wheel', e => { if (e.ctrlKey) empecher(e); }, { passive: false });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0'].includes(e.key)) e.preventDefault();
+  });
+}
 
 /* Clavier virtuel : la barre d'onglets s'efface et la zone de saisie du coach reste visible. */
 function surveillerClavier() {
@@ -985,7 +1076,16 @@ function surveillerClavier() {
   const vv = window.visualViewport;
   if (!vv) return;
   let hauteurMax = vv.height;
+  // Hauteur réellement visible et partie masquée par le clavier : le panneau du coach s'y cale (iPhone).
+  const racine = document.documentElement;
+  const suivre = () => {
+    racine.style.setProperty('--hauteur-visible', Math.round(vv.height) + 'px');
+    racine.style.setProperty('--clavier', Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) + 'px');
+  };
+  suivre();
+  vv.addEventListener('scroll', suivre);
   vv.addEventListener('resize', () => {
+    suivre();
     hauteurMax = Math.max(hauteurMax, vv.height);
     if (vv.height > hauteurMax * 0.88) document.body.classList.remove('clavier');   // clavier refermé (bouton Retour d'Android)
   });
@@ -996,24 +1096,70 @@ function surveillerClavier() {
 let invitationInstallation = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); invitationInstallation = e; majCarteInstallation(); });
 window.addEventListener('appinstalled', () => { invitationInstallation = null; majCarteInstallation(); toast('RDD est installée sur ton écran d’accueil.', 'succes'); });
+/** Marche à suivre adaptée au navigateur (null si l'app est déjà installée ou hors site web). */
+function consigneInstallation() {
+  const p = plateforme();
+  if (p.installee || !/^https?:$/.test(location.protocol)) return null;
+  if (invitationInstallation) return 'Ajoute RDD à ton écran d’accueil : plein écran, icône dédiée, comme une vraie application.';
+  if (p.ios) return 'Dans Safari : bouton Partager, puis « Sur l’écran d’accueil ». Tes données y sont conservées durablement.';
+  if (p.samsung) return 'Samsung Internet : touche l’icône d’installation dans la barre d’adresse, ou le menu ≡ en bas, puis « Ajouter la page à » et « Écran d’accueil ».';
+  if (p.android) return 'Chrome : menu ⋮, puis « Installer l’application » (ou « Ajouter à l’écran d’accueil »).';
+  return null;
+}
 function majCarteInstallation() {
   const carte = $('#carteInstallation');
   if (!carte) return;
-  const p = plateforme();
-  let texte = '';
-  if (!p.installee && location.protocol === 'https:') {
-    if (invitationInstallation) texte = 'Ajoute l’app à ton écran d’accueil : plein écran, comme une vraie application.';
-    else if (p.ios) texte = 'Dans Safari : bouton Partager, puis « Sur l’écran d’accueil ». Tes données y sont conservées durablement.';
-    else if (p.android) texte = 'Menu ⋮ du navigateur, puis « Installer l’application » ou « Ajouter à l’écran d’accueil ».';
-  }
+  const texte = consigneInstallation() || '';
   carte.classList.toggle('hidden', !texte);
   $('#texteInstallation').textContent = texte;
   $('#btnInstaller').classList.toggle('hidden', !invitationInstallation);
+  majInvitationInstallation();
+}
+/** Bandeau discret sur l'accueil (téléphone, app pas encore installée), que l'on peut masquer. */
+function majInvitationInstallation() {
+  const zone = $('#banniereInstallation');
+  if (!zone) return;
+  const texte = consigneInstallation();
+  const montrer = !!texte && sessionOuverte && (plateforme().mobile || !!invitationInstallation) && !APPAREIL.installationMasquee;
+  zone.classList.toggle('hidden', !montrer);
+  if (!montrer) { zone.innerHTML = ''; return; }
+  zone.innerHTML = `<div class="rounded-xl2 verre p-3.5 flex items-center gap-3">
+      <span class="avatar-dossard shrink-0" style="width:40px; height:34px; font-size:13px">RDD</span>
+      <div class="flex-1 min-w-0"><div class="titre text-[16px] leading-tight">Installer RDD</div>
+        <div class="text-[12px] text-brume leading-snug mt-0.5">${esc(texte)}</div></div>
+      <div class="flex flex-col items-end gap-1.5 shrink-0">
+        ${invitationInstallation ? '<button data-act="installerApp" class="tapable h-9 px-3.5 rounded-xl bg-ocre text-[#23120A] text-[13px] font-semibold">Installer</button>' : ''}
+        <button data-act="masquerInstallation" aria-label="Masquer" class="tapable w-8 h-8 rounded-full grid place-items-center text-brume"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>`;
+}
+
+/* Fichiers du site (manifest.webmanifest, sw.js, icônes) : présents, ils rendent RDD installable comme une
+   vraie app sur Android et Samsung (Samsung Internet exige un service worker) et utilisable hors ligne.
+   Absents (fichier HTML seul), RDD génère un manifeste et des icônes de repli. */
+const SITE = { verifie: false, fichiersPwa: false };
+async function preparerInstallation() {
+  if (/^https?:$/.test(location.protocol)) {
+    try {
+      const rep = await fetch(new URL('manifest.webmanifest', location.href), { cache: 'no-cache' });
+      const m = rep.ok ? await rep.json() : null;
+      SITE.fichiersPwa = !!(m && m.name && Array.isArray(m.icons) && m.icons.length);
+    } catch (e) { SITE.fichiersPwa = false; }
+    if (SITE.fichiersPwa && 'serviceWorker' in navigator) {
+      try { await navigator.serviceWorker.register('sw.js', { scope: './', updateViaCache: 'none' }); }
+      catch (e) { console.warn('Service worker non enregistré :', e); }
+    }
+  }
+  SITE.verifie = true;
+  if (!SITE.fichiersPwa) {
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(genererIcone); else genererIcone();
+  }
+  majCarteInstallation();
 }
 
 /** Manifeste d'application (Android) généré à la volée : nom, couleurs, icônes. */
 function installerManifeste(icone192, icone512, iconeMasquable) {
-  if (!/^https?:$/.test(location.protocol)) return;
+  if (!/^https?:$/.test(location.protocol)) { const l = document.querySelector('link[rel="manifest"]'); if (l) l.remove(); return; }
   try {
     const manifeste = {
       id: location.pathname, name: 'RDD, Runner du dimanche', short_name: 'RDD', lang: 'fr',
@@ -1042,6 +1188,7 @@ function demanderStockagePersistant() {
 function preparerPlateforme() {
   if (history.state && history.state.rdd) { try { history.replaceState(null, ''); } catch (e) { /* rien */ } }
   surveillerClavier();
+  bloquerZoom();
   demanderStockagePersistant();
   const p = plateforme();
   document.documentElement.classList.toggle('ios', p.ios);
@@ -1183,7 +1330,9 @@ function chargerIndex() {
   INDEX.liste = (Array.isArray(INDEX.liste) ? INDEX.liste : []).filter(p => p && typeof p.id === 'string' && p.id && typeof p.prenom === 'string');
   if (!INDEX.liste.some(p => p.id === INDEX.actif)) INDEX.actif = null;
   const app = lireJson(CLE_APPAREIL) || {};
-  APPAREIL = { ia: Object.assign({ mode: 'local', cle: '', modele: MODELES_IA[0].id, endpoint: '', cleGemini: '', modeleGemini: MODELES_GEMINI[0].id }, app.ia || {}) };
+  APPAREIL = Object.assign({}, app && typeof app === 'object' ? app : {}, {
+    ia: Object.assign({ mode: 'local', cle: '', modele: MODELES_IA[0].id, endpoint: '', cleGemini: '', modeleGemini: MODELES_GEMINI[0].id }, app.ia || {})
+  });
   if (!['local', 'gemini', 'claude', 'relais'].includes(APPAREIL.ia.mode)) APPAREIL.ia.mode = 'local';
   if (!INDEX.liste.length) {
     const ancien = lireJson(ANCIENNE_CLE);
@@ -2346,6 +2495,7 @@ async function activitesDepuisFichier(f, bilan) {
 
 let derniereProgression = 0;
 function afficherProgression(titre, detail) {
+  contexteFenetreSuivante = { sansCoach: true };
   ouvrirModale(`<div class="text-center py-3">
       <div class="w-14 h-14 rounded-2xl bg-azur/15 border border-azur/40 grid place-items-center mx-auto mb-3"><i class="fa-solid fa-file-import text-azur text-[22px]"></i></div>
       <h3 class="titre text-[22px]">${esc(titre)}</h3>
@@ -3647,6 +3797,7 @@ function texteMontre(s) {
 function ouvrirModaleMontre(id) {
   const s = trouverSeance(id);
   if (!s) return;
+  contexteFenetreSuivante = { type: 'seance', id };
   const w = seanceVersMontre(s);
   const puce = (st, couleur) => `
     <div class="flex items-center gap-3 py-2.5">
@@ -3981,9 +4132,12 @@ const INTENTIONS = [
   }
 ];
 
-function repondreLocal(question) {
+function repondreLocal(question, ecran = null) {
   const q = normaliser(question);
   const c = contexteCoach();
+  if (ecran) {                                   // « cette séance », « cet écran »… : réponse sur ce qui est affiché
+    try { const r = repondreSurEcran(q, ecran, c); if (r) return r; } catch (e) { console.error(e); }
+  }
   for (const intention of INTENTIONS) {
     if (intention.re.test(q)) {
       try {
@@ -3993,10 +4147,307 @@ function repondreLocal(question) {
     }
   }
   return {
-    html: 'Je n’ai pas bien saisi. Je peux t’aider sur ta séance du jour, tes allures, le réalisme de ton objectif, la stratégie en montée ou en descente, la nutrition, la fatigue ou une séance manquée.',
+    html: 'Je n’ai pas bien saisi. Je peux t’aider sur ce qui est affiché à l’écran, ta séance du jour, tes allures, le réalisme de ton objectif, la stratégie en montée ou en descente, la nutrition ou la fatigue.',
     actions: [{ label: 'Ma séance du jour', act: 'questionRapide', arg: 'Quelle est ma séance du jour ?' },
               { label: 'Mon objectif est-il réaliste ?', act: 'questionRapide', arg: 'Mon objectif est-il réaliste ?' }]
   };
+}
+
+/* ---------- Lecture de l'écran : ce que le coureur a sous les yeux ---------- */
+
+const LIBELLES_VUES = { dashboard: 'Accueil', plan: 'Plan', objectif: 'Course', profil: 'Profil' };
+const HORS_LECTURE = 'script,style,svg,canvas,noscript,[aria-hidden="true"],#btnCoachModale';
+const CHAMPS_PRIVES = /cle|secret|code|pin|token|pass|endpoint|relais/i;     // clés API et codes : jamais lus
+
+/** Zone réellement visible : sous l'en-tête et au-dessus de la barre d'onglets, ou dans la fenêtre ouverte. */
+function cadreVisible() {
+  if (COUCHES.modale) {
+    const r = $('#fondModale > div:last-child').getBoundingClientRect();
+    return { haut: Math.max(0, r.top), bas: Math.min(window.innerHeight, r.bottom) };
+  }
+  const entete = $('header'), barre = $('nav');
+  return {
+    haut: entete ? entete.getBoundingClientRect().bottom : 0,
+    bas: barre && getComputedStyle(barre).display !== 'none' ? barre.getBoundingClientRect().top : window.innerHeight
+  };
+}
+const visibleDans = (el, cadre) => {
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && r.bottom > cadre.haut + 4 && r.top < cadre.bas - 4;
+};
+function blocDe(el) {
+  for (let x = el; x; x = x.parentElement) if (!/^(inline|inline-block|contents)$/.test(getComputedStyle(x).display)) return x;
+  return null;
+}
+/** Texte visible à l'écran, bloc par bloc (les blocs repliés ou hors écran sont ignorés). */
+function texteVisible(racine, cadre, max = 2400) {
+  if (!racine) return '';
+  const lignes = [];
+  let blocPrecedent = null, total = 0;
+  const parcours = document.createTreeWalker(racine, NodeFilter.SHOW_TEXT);
+  for (let n = parcours.nextNode(); n && total < max; n = parcours.nextNode()) {
+    const t = n.nodeValue.replace(/\s+/g, ' ').trim();
+    if (!t) continue;
+    const el = n.parentElement;
+    if (!el || el.closest(HORS_LECTURE) || !visibleDans(el, cadre)) continue;
+    const st = getComputedStyle(el);
+    if (st.visibility === 'hidden' || parseFloat(st.opacity) === 0) continue;
+    const bloc = blocDe(el);
+    if (bloc === blocPrecedent && lignes.length) lignes[lignes.length - 1] += ' ' + t;
+    else lignes.push(t);
+    blocPrecedent = bloc;
+    total += t.length + 1;
+  }
+  return lignes.join('\n').slice(0, max);
+}
+/** Champs de formulaire visibles avec leur valeur (y compris une saisie pas encore enregistrée). */
+function champsVisibles(racine, cadre) {
+  if (!racine) return [];
+  return $$('input, select, textarea', racine).filter(el =>
+    el.id !== 'saisieChat' && !/^(password|hidden|file)$/i.test(el.type) &&
+    !CHAMPS_PRIVES.test((el.id || '') + ' ' + (el.name || '')) && visibleDans(el, cadre)
+  ).slice(0, 24).map(el => {
+    const libelle = (el.labels && el.labels[0] ? el.labels[0].textContent : (el.getAttribute('aria-label') || el.placeholder || el.id || ''))
+      .replace(/\s+/g, ' ').trim().slice(0, 60);
+    const valeur = el.type === 'checkbox' ? (el.checked ? 'oui' : 'non')
+                 : el.tagName === 'SELECT' ? ((el.options[el.selectedIndex] || {}).text || '') : el.value;
+    return { champ: libelle, valeur: String(valeur == null ? '' : valeur).slice(0, 80) };
+  }).filter(x => x.champ || x.valeur);
+}
+function resumeActiviteIA(a) {
+  const s = a.seanceId ? trouverSeance(a.seanceId) : null;
+  const eq = distanceEquivalente(a.distanceM, a.dplus || 0, a.dmoins);
+  return {
+    date: cleJour(a.date), nom: a.nom, type: a.type, km: Math.round(a.distanceM / 100) / 10, duree: formaterDuree(a.tempsS),
+    allure: formaterAllure(a.tempsS / (a.distanceM / 1000)) + '/km', allureRameneeAuPlat: formaterAllure(a.tempsS / (eq / 1000)) + '/km',
+    zone: zoneDeLAllure(a.tempsS / (eq / 1000)), dplus: a.dplus || 0, fcMoy: a.fcMoy || null, effortMax: !!a.effortMax,
+    seanceLiee: s ? s.titre : null
+  };
+}
+/** Zone d'entraînement dont l'allure de référence est la plus proche. */
+function zoneDeLAllure(allure) {
+  const z = metriques().zones;
+  let meilleure = null, ecart = Infinity;
+  Object.keys(z).forEach(k => { const d = Math.abs(z[k] - allure); if (d < ecart) { ecart = d; meilleure = k; } });
+  return meilleure ? LIBELLE_ZONE[meilleure] : null;
+}
+/** Montées marquantes du parcours (d'après la stratégie kilomètre par kilomètre). */
+function monteesParcours(st) {
+  const montees = [];
+  let cours = null;
+  ((st && st.kms) || []).forEach(k => {
+    if (k.dplus >= 25 && k.dplus > (k.dmoins || 0) * 1.5) {
+      if (!cours) cours = { deKm: Math.max(0, Math.ceil(k.km) - 1), aKm: k.km, dplus: 0 };
+      cours.aKm = k.km; cours.dplus += k.dplus;
+    } else if (cours) { montees.push(cours); cours = null; }
+  });
+  if (cours) montees.push(cours);
+  return montees.filter(m => m.dplus >= 40).sort((a, b) => b.dplus - a.dplus).slice(0, 4)
+    .map(m => ({ duKm: Math.round(m.deKm * 10) / 10, auKm: Math.round(m.aKm * 10) / 10, dplus: Math.round(m.dplus),
+                 penteMoyenne: Math.round(m.dplus / Math.max(0.1, m.aKm - m.deKm) / 10) + ' %' }))
+    .sort((a, b) => a.duKm - b.duKm);
+}
+/** Données utiles de l'écran : séance ou sortie ouverte, séances et sorties affichées, semaines dépliées, montées. */
+function donneesEcran(vue, ctx, racine, cadre, fenetreOuverte) {
+  const d = {};
+  if (ctx && ctx.type === 'seance') { const s = trouverSeance(ctx.id); if (s) d.seance = resumeSeanceIA(s); }
+  if (ctx && ctx.type === 'activite') { const a = ETAT.activites.find(x => x.id === ctx.id); if (a) d.sortie = resumeActiviteIA(a); }
+  if (fenetreOuverte || !racine) return d;
+  const seances = $$('[data-seance]', racine).filter(el => visibleDans(el, cadre)).map(el => trouverSeance(el.dataset.seance)).filter(Boolean);
+  if (seances.length) d.seancesAffichees = seances.slice(0, 8).map(resumeSeanceIA);
+  const sorties = $$('[data-act="ouvrirActivite"]', racine).filter(el => visibleDans(el, cadre))
+    .map(el => ETAT.activites.find(a => a.id === el.dataset.arg)).filter(Boolean);
+  if (sorties.length) d.sortiesAffichees = sorties.slice(0, 8).map(resumeActiviteIA);
+  if (vue === 'plan') d.semainesDepliees = $$('details[data-semaine]', racine).filter(el => el.open).map(el => +el.dataset.semaine);
+  if (vue === 'objectif') { const m = monteesParcours(calculerStrategie()); if (m.length) d.monteesPrincipales = m; }
+  return d;
+}
+/** Photographie de l'écran au moment où le coach est ouvert. */
+function capturerEcran() {
+  const vue = vueActive, fenetre = COUCHES.modale;
+  const racine = fenetre ? $('#corpsModale') : $('#vue-' + vue);
+  try {
+    const cadre = cadreVisible();
+    const titre = fenetre ? ((($('#corpsModale h3') || $('#corpsModale .titre') || {}).textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '';
+    return {
+      vue,
+      libelle: fenetre ? (titre || 'Fenêtre ouverte') : (LIBELLES_VUES[vue] || vue),
+      fenetre: fenetre ? { titre, type: (contexteFenetre && contexteFenetre.type) || null, id: (contexteFenetre && contexteFenetre.id) || null } : null,
+      texteVisible: texteVisible(racine, cadre),
+      champs: champsVisibles(racine, cadre),
+      donnees: donneesEcran(vue, fenetre ? contexteFenetre : null, racine, cadre, fenetre)
+    };
+  } catch (e) {
+    console.warn('Lecture de l’écran impossible :', e);
+    return { vue, libelle: LIBELLES_VUES[vue] || vue, fenetre: null, texteVisible: '', champs: [], donnees: {} };
+  }
+}
+/** Ce qui est transmis à l'IA (sans identifiant interne). */
+function ecranPourIA(e) {
+  if (!e) return null;
+  return { ecran: e.libelle, onglet: LIBELLES_VUES[e.vue] || e.vue, fenetreOuverte: e.fenetre ? (e.fenetre.titre || 'oui') : null,
+           texteVisible: e.texteVisible, champsVisibles: e.champs, donnees: e.donnees };
+}
+
+/* ---------- Réponses embarquées sur l'écran affiché ---------- */
+
+const RE_DEIXIS = /(cet ecran|l.?ecran|ce que je vois|ce qui est affiche|tableau de bord|cette page|\bici\b|analyse (ca|cela|ce|cet|cette|mon|ma|mes)\b|explique.?(moi )?(ca|cela|ce|cet|cette)\b|qu.?en penses.?tu|penses.?tu de (ca|cela|ce|cet|cette)\b|commente|resume.?(moi )?(ca|cela|ce|cet|cette)\b)/;
+const BUTS_SEANCE = {
+  ef: 'L’endurance fondamentale construit le moteur (capillaires, économie de course). Elle doit rester facile : tu peux parler en courant.',
+  recup: 'La récupération active fait circuler le sang sans ajouter de fatigue : très lent, très court, c’est une séance de soin.',
+  sl: 'La sortie longue habitue le corps à durer (réserves, tendons, mental). Allure facile et régulière ; teste ton ravitaillement.',
+  vma: 'Le fractionné VMA élève ton plafond aérobie : répétitions courtes et rapides, la récupération entre elles fait partie de la séance.',
+  seuil: 'Le seuil repousse le moment où les jambes saturent : effort soutenu mais contrôlé, sans finir à bloc.',
+  specifique: 'L’allure spécifique grave dans tes jambes le rythme visé le jour J.',
+  cotes: 'Les côtes renforcent cuisses et mollets et améliorent la foulée en montée, avec moins de chocs que la vitesse sur le plat.',
+  fartlek: 'Le fartlek alterne les rythmes au ressenti : de la vitesse sans la rigidité de la piste.',
+  deblocage: 'Le déblocage réveille les jambes avant une échéance : court, quelques accélérations, aucune fatigue.',
+  course: 'C’est le jour J : ta stratégie kilomètre par kilomètre est dans l’onglet Course.'
+};
+const fr1 = x => String(x).replace('.', ',');
+
+function repondreSurEcran(q, ecran, c) {
+  const f = ecran.fenetre;
+  if (f && f.type === 'seance') {
+    const s = trouverSeance(f.id);
+    if (s && /(adapt|raccourc|allege|modifi|rempla|decal|deplac|fatigu|pas le temps|moins de temps)/.test(q)) return adapterSeanceLocal(s, c);
+    if (s && (RE_DEIXIS.test(q) || /(cette seance|la seance|pourquoi|a quoi sert|quelle allure|allures?)/.test(q))) return expliquerSeanceLocal(s);
+  }
+  if (f && f.type === 'activite') {
+    const a = ETAT.activites.find(x => x.id === f.id);
+    if (a && (RE_DEIXIS.test(q) || /(cette sortie|la sortie|allure|rapide|lent|bonne|analyse)/.test(q))) return analyserSortieLocal(a, c);
+  }
+  if (!f && ecran.vue === 'plan' && /(cette semaine|ce plan|mon plan)/.test(q) && /(pense|analyse|explique|commente|avis|quoi)/.test(q)) return analysePlanLocal(c, ecran.donnees);
+  if (!RE_DEIXIS.test(q)) return null;
+  if (f) return { html: 'Tu regardes ' + b(esc(f.titre || 'une fenêtre de l’app')) + '. Pose-moi une question précise à son sujet : je te réponds avec tes chiffres.' };
+  if (ecran.vue === 'plan') return analysePlanLocal(c, ecran.donnees);
+  if (ecran.vue === 'objectif') return analyseCourseLocal(c, ecran.donnees);
+  if (ecran.vue === 'profil') return analyseProfilLocal(c);
+  return analyseAccueilLocal(c);
+}
+function expliquerSeanceLocal(s) {
+  const st = statutSeance(s);
+  let html = resumeSeanceHtml(s) + '<div class="mt-1.5">' + (BUTS_SEANCE[s.type] || '') + '</div>';
+  const actions = [];
+  if (st === 'fait') {
+    const cmp = comparerSeance(s);
+    if (cmp) html += '<div class="mt-1.5">Réalisée : ' + km1(cmp.realise.distanceM) + ' km en ' + formaterDuree(cmp.realise.dureeS) +
+                     ' (' + formaterAllure(cmp.realise.allure) + '/km). ' + esc(cmp.verdict.texte) + '.</div>';
+  } else if (st === 'manque') {
+    html += '<div class="mt-1.5">Elle n’a pas été faite : si c’était une séance clé, je peux la replacer dans les prochains jours.</div>';
+    actions.push({ label: 'Replacer la séance clé', act: 'ajusterPlan', arg: 'decaler' });
+  } else if (s.type !== 'course') actions.push({ label: 'Séance vers la montre', act: 'montreSeance', arg: s.id });
+  return { html, actions };
+}
+function adapterSeanceLocal(s, c) {
+  const m = mesurerSeance(s);
+  const intense = (INTENSITE_TYPE[s.type] || 0) >= 0.6;
+  const li = t => '<li class="ml-4 list-disc">' + t + '</li>';
+  return {
+    html: 'Pour adapter ' + b(esc(s.titre)) + ' :<ul class="mt-1.5 space-y-0.5">' +
+      li('Peu de temps : garde l’échauffement et le cœur de la séance, raccourcis le retour au calme' + (intense ? ' ou fais deux répétitions de moins' : '') + '.') +
+      li('Fatigué : transforme-la en footing de ' + Math.max(25, Math.round(m.dureeS / 60 * 0.6)) + ' min en endurance (' + formaterAllure(c.m.zones.ef) + '/km), ou prends un jour de repos.') +
+      li('Douleur : pas de séance aujourd’hui ; si elle persiste ou augmente, consulte un médecin ou un kiné.') + '</ul>',
+    actions: [{ label: 'Alléger les 7 prochains jours', act: 'ajusterPlan', arg: 'alleger' }]
+  };
+}
+function analyserSortieLocal(a, c) {
+  const eq = distanceEquivalente(a.distanceM, a.dplus || 0, a.dmoins);
+  const allurePlat = a.tempsS / (eq / 1000);
+  const zone = zoneDeLAllure(allurePlat);
+  const recentes = ETAT.activites.filter(x => x.id !== a.id).slice(0, 8);
+  const moyenne = recentes.length
+    ? recentes.reduce((t, x) => t + x.tempsS / (distanceEquivalente(x.distanceM, x.dplus || 0, x.dmoins) / 1000), 0) / recentes.length : null;
+  let html = b(esc(a.nom)) + ' : ' + km1(a.distanceM) + ' km en ' + formaterDuree(a.tempsS) + ' (' + formaterAllure(a.tempsS / (a.distanceM / 1000)) + '/km' +
+             (a.dplus ? ', ' + a.dplus + ' m D+' : '') + ').';
+  if (zone) html += '<br>Ramenée au plat, ton allure (' + formaterAllure(allurePlat) + '/km) correspond à la zone ' + b(zone) + '.';
+  if (moyenne) {
+    const d = allurePlat - moyenne;
+    html += ' C’est ' + (Math.abs(d) < 8 ? 'dans ta moyenne récente' : Math.round(Math.abs(d)) + ' s/km plus ' + (d < 0 ? 'rapide' : 'lent') + ' que ta moyenne récente') + '.';
+  }
+  if (a.fcMoy) html += ' Fréquence cardiaque moyenne : ' + a.fcMoy + ' bpm.';
+  const s = a.seanceId ? trouverSeance(a.seanceId) : null;
+  const cmp = s ? comparerSeance(s) : null;
+  if (cmp) html += '<br>Séance prévue : ' + esc(s.titre) + '. ' + esc(cmp.verdict.texte) + '.';
+  else if (allurePlat < c.m.zones.marathon) html += '<br>C’était soutenu : prévois du facile le lendemain.';
+  return { html };
+}
+function analyseAccueilLocal(c) {
+  const lignes = [];
+  if (c.o.distanceKm && c.o.date && c.jours != null && c.jours >= 0) {
+    let t = 'J-' + c.jours + ' avant ' + b(esc(c.o.nom || 'ta course'));
+    if (c.strat && !c.strat.niveauInconnu) t += ' : temps probable ' + b(formaterDuree(c.strat.tempsModele)) + (c.strat.verdict ? ' (' + esc(c.strat.verdict.texte) + ')' : '');
+    lignes.push(t + '.');
+  } else lignes.push('Pas encore de course cible : définis-la pour que je construise ton plan.');
+  const s = c.auj.find(x => x.statut !== 'fait') || c.prochaine;
+  if (s) lignes.push((c.auj.includes(s) ? 'Aujourd’hui' : 'Prochaine séance ' + JOURS_LONGS[depuisCleJour(s.date).getDay()]) + ' : ' + b(esc(s.titre)) + '.');
+  const f = c.forme;
+  if (ETAT.activites.length) lignes.push(f > 5 ? 'Forme : tu es frais, c’est le bon moment pour une séance de qualité.'
+    : f > -10 ? 'Forme : charge équilibrée, continue ainsi.'
+    : f > -25 ? 'Forme : tu es en charge, c’est normal en préparation ; soigne le sommeil.'
+    : 'Forme : la fatigue est élevée, garde les prochains jours faciles.');
+  if (c.respect.echues) lignes.push('Plan suivi : ' + c.respect.faites + ' séance' + (c.respect.faites > 1 ? 's' : '') + ' sur ' + c.respect.echues + '.');
+  const der = ETAT.activites[0];
+  if (der) lignes.push('Dernière sortie : ' + km1(der.distanceM) + ' km en ' + formaterDuree(der.tempsS) + ', ' + dateCourte(new Date(der.date)) + '.');
+  return { html: lignes.join('<br>'), actions: s && s.type !== 'course' ? [{ label: 'Séance vers la montre', act: 'montreSeance', arg: s.id }] : [] };
+}
+function analysePlanLocal(c, donnees) {
+  if (!ETAT.plan) return { html: 'Pas encore de plan : génère-le, il sera calé sur ton niveau et ta course.', actions: [{ label: 'Générer le plan', act: 'genererPlan' }] };
+  const nums = (donnees && donnees.semainesDepliees) || [];
+  const w = ETAT.plan.semaines.find(x => nums.includes(x.numero)) || c.semaine || ETAT.plan.semaines[0];
+  const km = w.seances.reduce((t, x) => t + mesurerSeance(x).distanceM, 0);
+  const faites = w.seances.filter(x => statutSeance(x) === 'fait').length;
+  const cles = w.seances.filter(x => (INTENSITE_TYPE[x.type] || 0) >= 0.6 || x.type === 'sl');
+  const phase = normaliser(PHASES[w.phase].libelle);
+  let html = 'Semaine ' + w.numero + ' (' + PHASES[w.phase].libelle.toLowerCase() + (w.relache ? ', allégée' : '') + ') : ' + b(km1(km) + ' km') +
+             ' en ' + w.seances.length + ' séances, ' + faites + ' faite' + (faites > 1 ? 's' : '') + '.';
+  if (cles.length) html += '<br>Séances clés : ' + cles.map(x => b(esc(x.titre)) + ' (' + JOURS_LONGS[depuisCleJour(x.date).getDay()] + ')').join(', ') + '.';
+  html += '<br>' + (w.relache ? 'Semaine allégée : on assimile le travail des semaines précédentes, n’ajoute rien.'
+    : /affutage/.test(phase) ? 'Affûtage : le volume baisse, l’intensité reste. Tu dois arriver frais, pas rouillé.'
+    : /specifique/.test(phase) ? 'Phase spécifique : on se rapproche de l’allure et du terrain du jour J.'
+    : 'Phase de construction : le facile reste facile pour réussir les séances clés.');
+  const prochaine = w.seances.find(x => ['prevu', 'aujourdhui'].includes(statutSeance(x)) && x.type !== 'course');
+  return { html, actions: prochaine ? [{ label: 'Séance vers la montre', act: 'montreSeance', arg: prochaine.id }] : [] };
+}
+function analyseCourseLocal(c, donnees) {
+  const o = c.o, st = c.strat;
+  if (!o.distanceKm || !o.date) return { html: 'Définis ta course (distance, D+, date) : je calculerai ton temps probable et tes allures kilomètre par kilomètre.' };
+  const dplus = (o.gpx ? o.gpx.dplus : o.dplus) || 0;
+  let html = b(esc(o.nom || 'Ta course')) + ' : ' + fr1(o.distanceKm) + ' km' + (dplus ? ', ' + dplus + ' m D+' : '') + ', ' + dateLongue(depuisCleJour(o.date)) + '.';
+  if (st && !st.niveauInconnu) {
+    html += '<br>Temps probable ' + b(formaterDuree(st.tempsModele)) + ', allure moyenne ' + formaterAllure(st.allureMoy) + '/km.';
+    if (st.verdict) html += ' ' + esc(st.verdict.texte) + '.';
+  }
+  const montees = (donnees && donnees.monteesPrincipales) || monteesParcours(st);
+  if (montees.length) html += '<br>Montées principales : ' + montees.map(m => 'km ' + fr1(m.duKm) + ' à ' + fr1(m.auKm) + ' (' + m.dplus + ' m, ' + m.penteMoyenne + ')').join(', ') + '.';
+  html += '<br>' + (o.type === 'trail'
+    ? 'Pars sous tes sensations : les montées se gèrent au souffle (marche active au-delà de 12 à 15 %), et ce sont les descentes qui usent les cuisses.'
+    : 'Les deux premiers kilomètres un peu sous l’allure cible, puis de la régularité : un départ trop rapide se paie double sur la fin.');
+  return { html };
+}
+function analyseProfilLocal(c) {
+  if (c.m.parDefaut) return SANS_NIVEAU();
+  const z = c.m.zones;
+  return {
+    html: 'VMA ' + b(fKmh(c.m.vma)) + ', VO2max estimée ' + fr1(c.m.vo2max) + ' (fiabilité ' + c.fiab.niveau + ' : ' + esc(c.fiab.texte) + ').' +
+      '<br>Tes allures : endurance ' + formaterAllure(z.ef) + '/km, seuil ' + formaterAllure(z.seuil) + '/km, VMA ' + formaterAllure(z.vmaCourte) + '/km.' +
+      '<br>' + (c.fiab.niveau === 'faible' ? 'Pour fiabiliser : importe plus de sorties ou indique une course récente comme référence.'
+        : 'Pour progresser : de la régularité (' + ETAT.profil.seancesSemaine + ' séances par semaine), une séance de qualité par semaine, le reste facile.'),
+    actions: c.fiab.niveau === 'faible' ? [{ label: 'Ajouter une référence', act: 'saisirReference' }] : []
+  };
+}
+/** Questions proposées selon l'écran. */
+function suggestionsEcran(c, ecran) {
+  const l = [];
+  if (ecran) {
+    const f = ecran.fenetre;
+    if (f && f.type === 'seance') l.push('Explique-moi cette séance', 'Je peux adapter cette séance ?');
+    else if (f && f.type === 'activite') l.push('Analyse cette sortie', 'Était-ce la bonne allure ?');
+    else if (f) l.push('Explique-moi cet écran');
+    else l.push({ dashboard: 'Analyse mon tableau de bord', plan: 'Que penses-tu de cette semaine ?', objectif: 'Commente ma stratégie de course', profil: 'Explique mon niveau' }[ecran.vue] || 'Explique-moi cet écran');
+  }
+  suggestionsCoach(c).forEach(x => { if (!l.includes(x)) l.push(x); });
+  return l.slice(0, 8);
 }
 
 /* ---------- Cerveau du coach : Claude (clé personnelle), relais serveur ou moteur embarqué ---------- */
@@ -4029,6 +4480,16 @@ function texteBrut(html) {
   return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/** Une séance résumée pour l'IA. */
+function resumeSeanceIA(x) {
+  const m = mesurerSeance(x);
+  return {
+    date: x.date, jour: JOURS_LONGS[depuisCleJour(x.date).getDay()], titre: x.titre, type: (TYPES_SEANCE[x.type] || {}).libelle,
+    statut: statutSeance(x), distanceKm: Math.round(m.distanceM / 100) / 10, duree: dureeLisible(m.dureeS), deroule: lignesSeance(x),
+    realise: x.realise ? { km: Math.round(x.realise.distanceM / 100) / 10, duree: formaterDuree(x.realise.tempsS), ressenti: x.realise.rpe || null, notes: x.realise.notes || '' } : null
+  };
+}
+
 /** Dossier du coureur transmis à l'IA : uniquement des chiffres calculés par l'application. */
 function contexteIA() {
   const c = contexteCoach();
@@ -4036,14 +4497,7 @@ function contexteIA() {
   const a = x => formaterAllure(x) + '/km';
   const charge = serieCharge(42).slice(-1)[0] || {};
   const s = c.strat;
-  const resume = x => {
-    const m = mesurerSeance(x);
-    return {
-      date: x.date, jour: JOURS_LONGS[depuisCleJour(x.date).getDay()], titre: x.titre, type: (TYPES_SEANCE[x.type] || {}).libelle,
-      statut: statutSeance(x), distanceKm: Math.round(m.distanceM / 100) / 10, duree: dureeLisible(m.dureeS), deroule: lignesSeance(x),
-      realise: x.realise ? { km: Math.round(x.realise.distanceM / 100) / 10, duree: formaterDuree(x.realise.tempsS), ressenti: x.realise.rpe || null, notes: x.realise.notes || '' } : null
-    };
-  };
+  const resume = resumeSeanceIA;
   return {
     aujourdHui: dateLongue(new Date()),
     coureur: { prenom: c.prenom || null, seancesParSemaine: ETAT.profil.seancesSemaine, jours: joursLisibles(ETAT.profil.joursDispo), heureHabituelle: ETAT.profil.heureSeance },
@@ -4075,8 +4529,8 @@ function contexteIA() {
   };
 }
 
-/** Consignes données à Claude : rôle, règles de sécurité, actions possibles et dossard du coureur. */
-function promptSystemeCoach() {
+/** Consignes données à l'IA : rôle, règles de sécurité, actions possibles, dossier du coureur et écran affiché. */
+function promptSystemeCoach(ecran = null) {
   return [
     'Tu es le coach de RDD (« Runner du dimanche »), une application de course à pied et de trail.',
     'Tu parles en français à ' + (ETAT.profil.prenom || 'un coureur amateur') + ', tu le tutoies, avec un ton chaleureux, direct et motivant, jamais condescendant.',
@@ -4091,13 +4545,18 @@ function promptSystemeCoach() {
     '',
     'CONTEXTE (JSON) :',
     JSON.stringify(contexteIA())
-  ].join('\n');
+  ].concat(ecran ? [
+    '',
+    'ÉCRAN AFFICHÉ (ce que ' + (ETAT.profil.prenom || 'le coureur') + ' a sous les yeux au moment de la question, lu dans l’app) :',
+    JSON.stringify(ecranPourIA(ecran)),
+    'Si la question renvoie à ce qui est affiché (« ça », « ici », « cette séance », « cet écran », « qu’en penses-tu »), appuie-toi sur ÉCRAN AFFICHÉ et cite ses éléments. Sinon, réponds normalement sans commenter l’écran.'
+  ] : []).join('\n');
 }
 
 /** Fil de discussion au format de l'API : rôles alternés, premier message de l'utilisateur. */
 function historiqueIA() {
   const msgs = [];
-  ETAT.chat.slice(-12).forEach(m => {
+  ETAT.chat.filter(m => m.source !== 'annule' && m.source !== 'local-secours').slice(-12).forEach(m => {
     const role = m.role === 'moi' ? 'user' : 'assistant';
     const contenu = String(m.role === 'moi' ? (m.texte || texteBrut(m.html)) : texteBrut(m.html)).trim();
     if (!contenu) return;
@@ -4144,22 +4603,99 @@ function miseEnFormeIA(texte) {
 const pause = ms => new Promise(r => setTimeout(r, ms));
 
 /** fetch avec délai maximal ; les pannes réseau deviennent des erreurs qualifiées (code). */
-async function requeteAvecDelai(url, options, delaiMs) {
-  if (navigator.onLine === false) throw Object.assign(new Error('hors ligne'), { code: 'horsligne' });
+/* Patience face à l'affluence : aux heures de pointe, les serveurs d'IA peuvent mettre plus d'une minute à
+   répondre ou refuser un moment les requêtes (503, 429). RDD patiente, réessaie avec des pauses croissantes
+   et affiche où il en est ; le coureur peut annuler à tout moment. */
+const POLITIQUE_ATTENTE = {
+  premiereReponse: 90000,                       // délai maximal avant le début de la réponse
+  silence: 45000,                               // réponse en flux : délai maximal sans nouveau morceau
+  budget: 240000,                               // budget total, nouveaux essais compris (4 minutes)
+  pauses: [2000, 5000, 10000, 20000, 30000]     // attente avant chaque nouvel essai (+ un peu de hasard)
+};
+
+/** Minuterie de garde d'une requête : un délai dépassé ou une annulation l'interrompent. */
+function surveillance(signalExterne, delaiInitial) {
   const ctrl = new AbortController();
-  const minuterie = setTimeout(() => ctrl.abort(), delaiMs);
-  try {
-    return await fetch(url, Object.assign({}, options, { signal: ctrl.signal }));
-  } catch (e) {
-    const delai = e && e.name === 'AbortError';
-    throw Object.assign(new Error(delai ? 'délai dépassé' : 'réseau'), { code: delai ? 'delai' : 'reseau' });
-  } finally {
-    clearTimeout(minuterie);
+  let raison = null, minuterie = null;
+  const couper = r => { if (!raison) raison = r; ctrl.abort(); };
+  const annulation = () => couper('annule');
+  const armer = ms => { clearTimeout(minuterie); minuterie = setTimeout(() => couper('delai'), ms); };
+  if (signalExterne) {
+    if (signalExterne.aborted) annulation();
+    else signalExterne.addEventListener('abort', annulation, { once: true });
+  }
+  armer(delaiInitial);
+  return {
+    signal: ctrl.signal, armer, raison: () => raison,
+    fin: () => { clearTimeout(minuterie); if (signalExterne) signalExterne.removeEventListener('abort', annulation); }
+  };
+}
+/** Panne qualifiée : annulation, délai dépassé, hors ligne ou réseau. */
+function erreurRequete(garde) {
+  const r = garde.raison();
+  if (r === 'annule') return Object.assign(new Error('annulé'), { code: 'annule' });
+  if (r === 'delai') return Object.assign(new Error('délai dépassé'), { code: 'delai' });
+  if (navigator.onLine === false) return Object.assign(new Error('hors ligne'), { code: 'horsligne' });
+  return Object.assign(new Error('réseau'), { code: 'reseau' });
+}
+/** fetch avec délai maximal et annulation possible ; les pannes deviennent des erreurs qualifiées (code). */
+async function requeteAvecDelai(url, options, delaiMs, signalExterne = null) {
+  if (navigator.onLine === false) throw Object.assign(new Error('hors ligne'), { code: 'horsligne' });
+  const garde = surveillance(signalExterne, delaiMs);
+  try { return await fetch(url, Object.assign({}, options, { signal: garde.signal })); }
+  catch (e) { throw erreurRequete(garde); }
+  finally { garde.fin(); }
+}
+/** Pause interrompue par l'annulation du coureur. */
+function pauseAnnulable(ms, signal) {
+  return new Promise((ok, ko) => {
+    let t = null;
+    const annuler = () => { clearTimeout(t); ko(Object.assign(new Error('annulé'), { code: 'annule' })); };
+    if (signal && signal.aborted) { annuler(); return; }
+    t = setTimeout(() => { if (signal) signal.removeEventListener('abort', annuler); ok(); }, ms);
+    if (signal) signal.addEventListener('abort', annuler, { once: true });
+  });
+}
+/** Erreur passagère (affluence, délai, réseau instable) : attente avant le prochain essai ; null si l'erreur est définitive. */
+function pauseAvantNouvelEssai(e, essai) {
+  const alea = Math.round(Math.random() * 800);
+  const pause = POLITIQUE_ATTENTE.pauses[Math.min(essai - 1, POLITIQUE_ATTENTE.pauses.length - 1)] + alea;
+  if (e.code === 'delai' || e.code === 'reseau') return pause;
+  if ([500, 502, 503, 504, 529].includes(e.statut)) return pause;
+  if (e.statut === 429) {
+    if (e.quotaJour) return null;                                      // quota du jour épuisé : inutile d'insister
+    if (e.delai && e.delai <= 60) return e.delai * 1000 + alea;        // délai conseillé par le serveur
+    return Math.max(pause, 10000);
+  }
+  return null;
+}
+function causeAttente(e) {
+  if (e.statut === 429) return 'limite de requêtes atteinte';
+  if (e.code === 'delai') return 'pas de réponse';
+  if (e.code === 'reseau') return 'connexion instable';
+  return 'serveur saturé';
+}
+/** Appel avec patience : nouvel essai après une erreur passagère, dans la limite du budget d'attente. */
+async function avecPatience(appel, opts = {}) {
+  const debut = Date.now();
+  for (let essai = 1; ; essai++) {
+    try { return await appel(); }
+    catch (e) {
+      if (e.code === 'annule') throw e;
+      const pauseMs = pauseAvantNouvelEssai(e, essai);
+      if (pauseMs == null) throw e;
+      if (Date.now() - debut + pauseMs + 5000 > POLITIQUE_ATTENTE.budget) {
+        throw Object.assign(e, { affluence: true, attenteS: Math.round((Date.now() - debut) / 1000) });
+      }
+      if (opts.surEtat) opts.surEtat({ essai: essai + 1, prochainEssai: Date.now() + pauseMs, cause: causeAttente(e), texte: '' });
+      await pauseAnnulable(pauseMs, opts.signal);
+      if (opts.surEtat) opts.surEtat({ prochainEssai: 0 });
+    }
   }
 }
 
 /** Appel direct de l'API Claude depuis le navigateur, avec la clé personnelle de l'appareil. */
-async function appelerClaude(systeme, messages, maxTokens = 800) {
+async function appelerClaude(systeme, messages, maxTokens = 800, signal = null) {
   const rep = await requeteAvecDelai('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -4169,11 +4705,12 @@ async function appelerClaude(systeme, messages, maxTokens = 800) {
       'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({ model: APPAREIL.ia.modele || MODELES_IA[0].id, max_tokens: maxTokens, system: systeme, messages })
-  }, 45000);
+  }, POLITIQUE_ATTENTE.premiereReponse, signal);
   if (!rep.ok) {
     let detail = '';
     try { const j = await rep.json(); detail = (j.error && j.error.message) || ''; } catch (e) { /* corps illisible */ }
-    throw Object.assign(new Error(detail || 'statut ' + rep.status), { statut: rep.status, fournisseur: 'claude' });
+    const apres = parseInt(rep.headers.get('retry-after') || '', 10);       // délai conseillé (429, 529 : surcharge)
+    throw Object.assign(new Error(detail || 'statut ' + rep.status), { statut: rep.status, fournisseur: 'claude', delai: isFinite(apres) ? apres : null });
   }
   const data = await rep.json();
   return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
@@ -4191,75 +4728,128 @@ function reflexionGemini(modele) {
 async function erreurGemini(rep) {
   let corps = {};
   try { corps = await rep.json(); } catch (e) { /* corps illisible */ }
+  if (Array.isArray(corps)) corps = corps[0] || {};                    // le mode flux peut renvoyer l'erreur dans un tableau
   const err = (corps && corps.error) || {};
   const details = Array.isArray(err.details) ? err.details : [];
   const reessai = details.find(d => /RetryInfo/.test(d['@type'] || ''));
+  const quota = details.find(d => /QuotaFailure/.test(d['@type'] || ''));
   return Object.assign(new Error(err.message || 'statut ' + rep.status), {
     statut: rep.status, statutApi: err.status || '', fournisseur: 'gemini',
     raisons: details.map(d => d.reason).filter(Boolean),
-    delai: reessai ? parseInt(reessai.retryDelay, 10) || null : null
+    delai: reessai ? parseInt(reessai.retryDelay, 10) || null : null,
+    quotaJour: !!(quota && (quota.violations || []).some(v => /per ?day/i.test((v.quotaId || '') + ' ' + (v.quotaMetric || ''))))
   });
 }
 
 /** Un appel à generateContent (REST v1beta). La clé passe dans l'en-tête, jamais dans l'adresse. */
-async function appelerGemini(systeme, messages, modele, avecReflexion = true) {
+/**
+ * Un appel en flux (streamGenerateContent, SSE) : la réponse s'affiche au fur et à mesure.
+ * Le délai court jusqu'au premier morceau, puis entre deux morceaux : une longue réponse n'est jamais coupée.
+ * La clé passe dans l'en-tête, jamais dans l'adresse.
+ */
+async function appelerGeminiFlux(systeme, messages, modele, avecReflexion = true, opts = {}) {
+  if (navigator.onLine === false) throw Object.assign(new Error('hors ligne'), { code: 'horsligne', fournisseur: 'gemini' });
   const generationConfig = { maxOutputTokens: 4096 };            // la réflexion est comptée dans ce budget
   const reflexion = avecReflexion ? reflexionGemini(modele) : null;
   if (reflexion) generationConfig.thinkingConfig = reflexion;
-  const rep = await requeteAvecDelai(URL_GEMINI + 'models/' + encodeURIComponent(modele) + ':generateContent', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': APPAREIL.ia.cleGemini },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systeme }] },
-      contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content) }] })),
-      generationConfig
-    })
-  }, 45000);
-  if (!rep.ok) throw await erreurGemini(rep);
-  const data = await rep.json();
   const erreur = code => Object.assign(new Error(code), { code, fournisseur: 'gemini' });
-  if (data.promptFeedback && data.promptFeedback.blockReason) throw erreur('bloque');
-  const candidat = (data.candidates || [])[0];
-  if (!candidat) throw erreur('vide');
-  const texte = ((candidat.content && candidat.content.parts) || [])
-    .filter(part => typeof part.text === 'string' && !part.thought).map(part => part.text).join('').trim();
-  if (!texte) {
-    if (['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'RECITATION'].includes(candidat.finishReason)) throw erreur('bloque');
-    throw erreur(candidat.finishReason === 'MAX_TOKENS' ? 'tronque' : 'vide');
+  const garde = surveillance(opts.signal, POLITIQUE_ATTENTE.premiereReponse);
+  let texte = '', fin = '', bloque = false;
+  const traiter = brut => {
+    let data;
+    try { data = JSON.parse(brut); } catch (e) { return; }
+    if (!data || typeof data !== 'object') return;
+    if (data.error) throw Object.assign(new Error(data.error.message || 'erreur'), { statut: data.error.code, statutApi: data.error.status || '', fournisseur: 'gemini' });
+    if (data.promptFeedback && data.promptFeedback.blockReason) bloque = true;
+    const candidat = (data.candidates || [])[0];
+    if (!candidat) return;
+    const morceau = ((candidat.content && candidat.content.parts) || [])
+      .filter(part => typeof part.text === 'string' && !part.thought).map(part => part.text).join('');      // pensées écartées
+    if (morceau) { texte += morceau; if (opts.surMorceau) opts.surMorceau(texte); }
+    if (candidat.finishReason) fin = candidat.finishReason;
+  };
+  const donneesSse = bloc => bloc.split(/\r?\n/).filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).filter(d => d && d !== '[DONE]');
+  try {
+    let rep;
+    try {
+      rep = await fetch(URL_GEMINI + 'models/' + encodeURIComponent(modele) + ':streamGenerateContent?alt=sse', {
+        method: 'POST', signal: garde.signal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': APPAREIL.ia.cleGemini },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systeme }] },
+          contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content) }] })),
+          generationConfig
+        })
+      });
+    } catch (e) { throw Object.assign(erreurRequete(garde), { fournisseur: 'gemini' }); }
+    if (!rep.ok) throw await erreurGemini(rep);
+    if (rep.body && typeof rep.body.getReader === 'function') {
+      const lecteur = rep.body.getReader();
+      const decodeur = new TextDecoder();
+      let tampon = '';
+      for (;;) {
+        let lu;
+        try { lu = await lecteur.read(); }
+        catch (e) { throw Object.assign(erreurRequete(garde), { fournisseur: 'gemini', partiel: !!texte }); }
+        if (lu.value) { tampon += decodeur.decode(lu.value, { stream: true }); garde.armer(POLITIQUE_ATTENTE.silence); }
+        if (lu.done) tampon += decodeur.decode() + '\n\n';
+        let i;
+        while ((i = tampon.search(/\r?\n\r?\n/)) >= 0) {             // un événement SSE se termine par une ligne vide
+          const bloc = tampon.slice(0, i);
+          tampon = tampon.slice(i).replace(/^\r?\n\r?\n/, '');
+          donneesSse(bloc).forEach(traiter);
+        }
+        if (lu.done) break;
+      }
+    } else {                                                         // navigateur sans lecture en flux : réponse d'un bloc
+      let brut;
+      try { brut = await rep.text(); } catch (e) { throw Object.assign(erreurRequete(garde), { fournisseur: 'gemini' }); }
+      donneesSse(brut).forEach(traiter);
+    }
+  } finally { garde.fin(); }
+  if (bloque) throw erreur('bloque');
+  const propre = texte.trim();
+  if (!propre) {
+    if (['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'RECITATION'].includes(fin)) throw erreur('bloque');
+    throw erreur(fin === 'MAX_TOKENS' ? 'tronque' : 'vide');
   }
-  return { texte, tronque: candidat.finishReason === 'MAX_TOKENS' };
+  return { texte: propre, tronque: fin === 'MAX_TOKENS' };
 }
 
 /** Appel robuste : modèle retiré → alias à jour ; réflexion refusée → sans réflexion ; surcharge → un nouvel essai. */
-async function appelerGeminiRobuste(systeme, messages) {
+/**
+ * Appel robuste : modèle retiré → alias à jour ; réflexion refusée → sans réflexion ;
+ * affluence (503, 429, délai, réseau instable) → nouveaux essais patients dans le budget d'attente.
+ */
+async function appelerGeminiRobuste(systeme, messages, opts = {}) {
   let modele = APPAREIL.ia.modeleGemini || MODELES_GEMINI[0].id;
-  let avecReflexion = true, reessaiServeur = true;
-  for (let essai = 0; essai < 4; essai++) {
-    try {
-      return await appelerGemini(systeme, messages, modele, avecReflexion);
-    } catch (e) {
-      if (e.fournisseur !== 'gemini') throw e;
-      const modeleRetire = e.statut === 404 || (e.statut === 400 && /model/i.test(e.message) && /(no longer available|not found|not supported)/i.test(e.message));
-      if (modeleRetire && modele !== MODELE_GEMINI_SECOURS) {
-        const ancien = modele;
-        modele = MODELE_GEMINI_SECOURS;
-        APPAREIL.ia.modeleGemini = modele;
-        sauverAppareil();
-        toast('Le modèle ' + esc(ancien) + ' n’est plus disponible : RDD passe au dernier Gemini Flash.', 'info');
-        continue;
+  let avecReflexion = true;
+  return avecPatience(async () => {
+    for (;;) {
+      try {
+        return await appelerGeminiFlux(systeme, messages, modele, avecReflexion, opts);
+      } catch (e) {
+        if (e.fournisseur !== 'gemini') throw e;
+        const modeleRetire = e.statut === 404 || (e.statut === 400 && /model/i.test(e.message) && /(no longer available|not found|not supported)/i.test(e.message));
+        if (modeleRetire && modele !== MODELE_GEMINI_SECOURS) {
+          const ancien = modele;
+          modele = MODELE_GEMINI_SECOURS;
+          APPAREIL.ia.modeleGemini = modele;
+          sauverAppareil();
+          toast('Le modèle ' + esc(ancien) + ' n’est plus disponible : RDD passe au dernier Gemini Flash.', 'info');
+          continue;
+        }
+        if (e.statut === 400 && avecReflexion && /think/i.test(e.message)) { avecReflexion = false; continue; }
+        throw e;
       }
-      if (e.statut === 400 && avecReflexion && /think/i.test(e.message)) { avecReflexion = false; continue; }
-      if ([500, 502, 503, 504].includes(e.statut) && reessaiServeur) { reessaiServeur = false; await pause(1500); continue; }
-      throw e;
     }
-  }
-  throw Object.assign(new Error('indisponible'), { code: 'vide', fournisseur: 'gemini' });
+  }, opts);
 }
 
 /** Vérifie la clé et le modèle sans consommer de quota de génération. */
 async function testerConnexionGemini() {
   const modele = APPAREIL.ia.modeleGemini || MODELES_GEMINI[0].id;
-  const rep = await requeteAvecDelai(URL_GEMINI + 'models/' + encodeURIComponent(modele), { headers: { 'x-goog-api-key': APPAREIL.ia.cleGemini } }, 20000);
+  const rep = await requeteAvecDelai(URL_GEMINI + 'models/' + encodeURIComponent(modele), { headers: { 'x-goog-api-key': APPAREIL.ia.cleGemini } }, 30000);
   if (!rep.ok) throw await erreurGemini(rep);
   const info = await rep.json();
   return info.displayName || modele;
@@ -4269,7 +4859,9 @@ function messageErreurIA(e) {
   const gemini = !!e && e.fournisseur === 'gemini';
   const nom = gemini ? 'Gemini' : 'L’IA';
   if (!e) return nom + ' est injoignable.';
+  if (e.code === 'annule') return 'Question annulée.';
   if (e.code === 'horsligne') return 'Pas de connexion à Internet.';
+  if (e.affluence) return nom + ' est saturé en ce moment (forte affluence) : j’ai patienté ' + (e.attenteS || 0) + ' s sans réponse.';
   if (e.code === 'delai' || e.name === 'AbortError') return nom + ' met trop de temps à répondre.';
   if (e.code === 'reseau') return nom + ' est injoignable (réseau ou blocage du navigateur).';
   if (e.code === 'bloque') return 'Gemini a bloqué cette réponse (filtre de sécurité). Reformule ta question.';
@@ -4280,6 +4872,7 @@ function messageErreurIA(e) {
     if (/location is not supported/i.test(m)) return 'Gemini n’est pas disponible depuis ta région avec cette clé.';
     if (e.statut === 403) return 'Cette clé n’a pas accès à l’API Gemini (API désactivée ou clé restreinte).';
     if (e.statut === 404) return 'Modèle Gemini introuvable : choisis « Dernier Gemini Flash ».';
+    if (e.statut === 429 && e.quotaJour) return 'Quota quotidien de Gemini atteint : il se recharge demain (offre gratuite).';
     if (e.statut === 429) return 'Quota Gemini atteint' + (e.delai ? ' : réessaie dans ' + e.delai + ' s.' : ' pour le moment (l’offre gratuite est limitée).');
     if (e.statut >= 500) return 'Gemini est surchargé, réessaie dans un instant.';
     if (e.statut === 400) return 'Requête refusée par Gemini' + (m ? ' (' + esc(m.slice(0, 120)) + ').' : '.');
@@ -4292,77 +4885,121 @@ function messageErreurIA(e) {
   return nom + ' est injoignable (connexion ?).';
 }
 
-async function repondreGemini() {
-  const { texte, tronque } = await appelerGeminiRobuste(promptSystemeCoach(), historiqueIA());
+async function repondreGemini(ecran, opts = {}) {
+  const { texte, tronque } = await appelerGeminiRobuste(promptSystemeCoach(ecran), historiqueIA(), opts);
   return Object.assign(miseEnFormeIA(texte + (tronque ? ' […]' : '')), { source: 'gemini' });
 }
 
-async function repondreClaude() {
-  const texte = await appelerClaude(promptSystemeCoach(), historiqueIA(), 800);
-  if (!texte) throw new Error('réponse vide');
+async function repondreClaude(ecran, opts = {}) {
+  const texte = await avecPatience(() => appelerClaude(promptSystemeCoach(ecran), historiqueIA(), 800, opts.signal), opts);
+  if (!texte) throw Object.assign(new Error('réponse vide'), { code: 'vide', fournisseur: 'claude' });
   return Object.assign(miseEnFormeIA(texte), { source: 'claude' });
 }
 
-/** Relais serveur : POST { question, systeme, messages, contexte } → { reponse }. */
-async function repondreDistant(question) {
-  const rep = await requeteAvecDelai(APPAREIL.ia.endpoint, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, systeme: promptSystemeCoach(), messages: historiqueIA(), contexte: contexteIA() })
-  }, 30000);
-  if (!rep.ok) throw Object.assign(new Error('statut ' + rep.status), { statut: rep.status });
-  const brut = await rep.text();
-  let texte = brut;
-  try { const j = JSON.parse(brut); texte = j.reponse || j.answer || j.text || brut; } catch (e) { /* texte brut */ }
-  if (!String(texte || '').trim()) throw Object.assign(new Error('réponse vide'), { code: 'vide' });
-  return Object.assign(miseEnFormeIA(String(texte)), { source: 'relais' });
+/** Relais serveur : POST { question, systeme, messages, contexte, ecran } → { reponse }. */
+async function repondreDistant(question, ecran, opts = {}) {
+  const texte = await avecPatience(async () => {
+    const rep = await requeteAvecDelai(APPAREIL.ia.endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, systeme: promptSystemeCoach(ecran), messages: historiqueIA(), contexte: contexteIA(), ecran: ecranPourIA(ecran) })
+    }, 120000, opts.signal);
+    if (!rep.ok) throw Object.assign(new Error('statut ' + rep.status), { statut: rep.status });
+    const brut = await rep.text();
+    let t = brut;
+    try { const j = JSON.parse(brut); t = j.reponse || j.answer || j.text || brut; } catch (e) { /* texte brut */ }
+    if (!String(t || '').trim()) throw Object.assign(new Error('réponse vide'), { code: 'vide' });
+    return String(t);
+  }, opts);
+  return Object.assign(miseEnFormeIA(texte), { source: 'relais' });
 }
 
-async function repondreCoach(question) {
-  const ia = APPAREIL.ia;
-  const avertir = service => {
-    if (avertiSansCle) return;
-    avertiSansCle = true;
-    toast('Ajoute ta clé ' + service + ' dans Profil pour activer l’IA. Le coach embarqué répond en attendant.', 'info');
+/** Une erreur qui vaut la peine d'un nouvel essai plus tard (et pas une clé refusée ou un contenu bloqué). */
+function erreurReessayable(e) {
+  if (!e || e.code === 'bloque' || e.quotaJour) return false;
+  if ((e.raisons || []).includes('API_KEY_INVALID') || [400, 401, 403, 404].includes(e.statut)) return false;
+  return true;
+}
+function reponseAnnulee(question) {
+  return {
+    html: '<span class="text-brume">Question annulée.</span>', source: 'annule',
+    actions: [{ label: 'Réessayer', act: 'reposerQuestion', arg: question }, { label: 'Réponse rapide sans IA', act: 'reponseLocale', arg: question }]
   };
+}
+
+async function repondreCoach(question, ecran = null, opts = {}) {
+  const ia = APPAREIL.ia;
+  const nomIA = { gemini: 'Gemini', claude: 'Claude', relais: 'le modèle distant' }[ia.mode] || 'l’IA';
+  let note = '';
   try {
     if (ia.mode === 'gemini') {
-      if (ia.cleGemini) return await repondreGemini();
-      avertir('Google AI Studio');
+      if (ia.cleGemini) return await repondreGemini(ecran, opts);
+      note = 'Ajoute ta clé Google AI Studio (Profil, Cerveau du coach) pour activer Gemini. En attendant, le coach embarqué te répond :';
     } else if (ia.mode === 'claude') {
-      if (ia.cle) return await repondreClaude();
-      avertir('Anthropic');
+      if (ia.cle) return await repondreClaude(ecran, opts);
+      note = 'Ajoute ta clé Anthropic (Profil, Cerveau du coach) pour activer Claude. En attendant, le coach embarqué te répond :';
     } else if (ia.mode === 'relais' && ia.endpoint) {
-      return await repondreDistant(question);
+      return await repondreDistant(question, ecran, opts);
     }
   } catch (e) {
+    if (e && e.code === 'annule') return reponseAnnulee(question);
     console.warn(e);
-    toast(messageErreurIA(e) + ' Le coach embarqué prend le relais.', 'alerte');
+    // L'explication reste dans la conversation, suivie de la réponse du coach embarqué.
+    const r = Object.assign(repondreLocal(question, ecran), { source: 'local-secours', texteBrut: '' });
+    r.html = '<span class="block text-[12.5px] text-brume mb-1.5"><i class="fa-solid fa-triangle-exclamation text-ocre mr-1"></i>' +
+             messageErreurIA(e) + ' Réponse du coach embarqué en attendant :</span>' + r.html;
+    if (erreurReessayable(e)) r.actions = [{ label: 'Réessayer avec ' + nomIA, act: 'reposerQuestion', arg: question }].concat(r.actions || []);
+    return r;
   }
-  await new Promise(r => setTimeout(r, 350 + Math.random() * 350));   // temps de « réflexion » du moteur embarqué
-  return Object.assign(repondreLocal(question), { source: 'local' });
+  await pause(350 + Math.random() * 350);   // temps de « réflexion » du moteur embarqué
+  const r = Object.assign(repondreLocal(question, ecran), { source: 'local' });
+  if (note && !avertiSansCle) {
+    avertiSansCle = true;
+    r.html = '<span class="block text-[12.5px] text-brume mb-1.5">' + note + '</span>' + r.html;
+    r.actions = [{ label: 'Ajouter ma clé', act: 'reglagesCoach' }].concat(r.actions || []);
+  }
+  return r;
 }
 
-function ajouterMessage(role, html, actions = [], texte = '', source = '') {
-  ETAT.chat.push({ role, html, actions, texte, source, date: new Date().toISOString() });
+function ajouterMessage(role, html, actions = [], texte = '', source = '', ecran = '') {
+  ETAT.chatCompteur = (Number(ETAT.chatCompteur) || 0) + 1;           // numéro croissant : sert au calcul des non-lus
+  ETAT.chat.push({ role, html, actions, texte, source, ecran, n: ETAT.chatCompteur, date: new Date().toISOString() });
   if (ETAT.chat.length > 80) ETAT.chat = ETAT.chat.slice(-80);
+  if (COUCHES.coach) ETAT.chatVu = ETAT.chatCompteur;                 // panneau ouvert : le message est lu
   sauverEtat();
+  majBulleCoach();
 }
 
 let coachOccupe = false;
-async function poserQuestion(question) {
+/** Pose une question au coach ; options.reessai : la question est déjà dans le fil (nouvel essai). */
+async function poserQuestion(question, options = {}) {
   const q = String(question || '').trim();
   if (!q || coachOccupe) return;
   coachOccupe = true;
   const profil = INDEX.actif;
-  ajouterMessage('moi', esc(q), [], q);
-  rendreChat(true);
+  const ecran = ECRAN_COACH.actif ? ECRAN_COACH.capture : null;
+  if (!options.reessai) ajouterMessage('moi', esc(q), [], q, '', ecran ? ecran.libelle : '');
+  attenteCoach = { ctrl: new AbortController(), debut: Date.now(), texte: '', essai: 1, prochainEssai: 0, cause: '' };
+  rendreChat();
+  demarrerMinuterieAttente();
   let rep;
-  try { rep = await repondreCoach(q); }
-  catch (e) { console.error(e); rep = Object.assign(repondreLocal(q), { source: 'local' }); }
-  finally { coachOccupe = false; }
+  try {
+    rep = await repondreCoach(q, ecran, {
+      signal: attenteCoach.ctrl.signal,
+      surMorceau: texte => { if (attenteCoach) { attenteCoach.texte = texte; majBulleAttente(); } },
+      surEtat: etat => { if (attenteCoach) { Object.assign(attenteCoach, etat); majBulleAttente(); } }
+    });
+  } catch (e) {
+    console.error(e);
+    rep = Object.assign(repondreLocal(q, ecran), { source: 'local' });
+  } finally {
+    coachOccupe = false;
+    attenteCoach = null;
+    arreterMinuterieAttente();
+  }
   if (INDEX.actif !== profil) return;          // profil changé pendant la réflexion : réponse abandonnée
   ajouterMessage('coach', rep.html, rep.actions || [], rep.texteBrut || '', rep.source || 'local');
   rendreChat();
+  if (!COUCHES.coach) bulleSautille();         // réponse arrivée panneau fermé : la bulle prévient
 }
 
 /* ==================================================================================
@@ -4376,21 +5013,22 @@ let saisieObjectifEnCours = false;   // champs de la course modifiés, pas encor
 let saisieReglagesEnCours = false;   // réglages modifiés, pas encore enregistrés
 let brouillonType = null, brouillonTech = null;
 
-const CHAMP = 'w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px]';
+const CHAMP = 'w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]';   // 16 px : iOS ne zoome pas au toucher
 const BTN_PRINCIPAL = 'tapable w-full h-12 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[15px]';
 const BTN_SECONDAIRE = 'tapable w-full h-11 rounded-2xl verre text-[14px]';
 
 function allerA(nom) {
+  if (nom === 'coach') { ouvrirCoach(); return; }               // l'ancien onglet Coach ouvre désormais la bulle
   if (!document.getElementById('vue-' + nom)) return;
   vueActive = nom;
   $$('.vue').forEach(v => v.classList.toggle('active', v.id === 'vue-' + nom));
   $$('[data-onglet]').forEach(bt => bt.classList.toggle('actif', bt.dataset.onglet === nom));
-  window.scrollTo(0, 0);
+  if (verrousFond > 0) defilementFige = 0; else window.scrollTo(0, 0);
   rendreVue(nom);
 }
 
 function rendreVue(nom) {
-  const f = { dashboard: rendreDashboard, coach: rendreCoach, plan: rendrePlan, objectif: rendreObjectif, profil: rendreProfil }[nom];
+  const f = { dashboard: rendreDashboard, plan: rendrePlan, objectif: rendreObjectif, profil: rendreProfil }[nom];
   if (!f) return;
   try { f(); } catch (e) { console.error('Rendu ' + nom, e); }
 }
@@ -4530,7 +5168,7 @@ function carteSeance(s, opts = {}) {
   const btnStrategie = `<button data-act="allerA" data-arg="objectif" class="tapable h-9 rounded-xl bg-ocre/20 text-ocre border border-ocre/30 text-[12.5px]"><i class="fa-solid fa-route mr-1"></i>Stratégie</button>`;
   const choix = course ? (s.date <= cleJour(new Date()) ? [btnValider, btnStrategie] : [btnStrategie, btnAgenda]) : [btnValider, btnMontre, btnAgenda];
   const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>`;
-  return `<div class="rounded-2xl ${opts.compact ? 'bg-nuit/40 border border-brume/10' : 'verre'} overflow-hidden ${st === 'reporte' ? 'opacity-60' : ''}">
+  return `<div data-seance="${s.id}" class="rounded-2xl ${opts.compact ? 'bg-nuit/40 border border-brume/10' : 'verre'} overflow-hidden ${st === 'reporte' ? 'opacity-60' : ''}">
     <div class="flex">
       <div class="w-1.5 shrink-0" style="background:${t.couleur}"></div>
       <div class="flex-1 min-w-0 p-3.5">
@@ -4782,47 +5420,201 @@ function suggestionsCoach(c) {
   return l.slice(0, 8);
 }
 
-function rendreCoach() {
-  const c = contexteCoach();
-  let brief = 'VMA ' + fKmh(c.m.vma) + ' (fiabilité ' + c.fiab.niveau + ')';
-  if (c.jours != null && c.jours >= 0 && c.o.distanceKm) brief += ', J-' + c.jours + ' avant ' + esc(c.o.nom || 'ta course');
-  const s = c.auj.find(x => x.statut !== 'fait') || c.prochaine;
-  if (s) brief += '. ' + (c.auj.includes(s) ? 'Aujourd’hui' : 'Prochaine séance') + ' : ' + esc(s.titre);
-  const ia = APPAREIL.ia;
-  const mode = ia.mode === 'gemini' && ia.cleGemini ? ['Gemini', 'fa-brands fa-google']
-             : ia.mode === 'claude' && ia.cle ? ['Claude', 'fa-solid fa-wand-magic-sparkles']
-             : ia.mode === 'relais' && ia.endpoint ? ['Modèle distant', 'fa-solid fa-server'] : ['Coach embarqué', 'fa-solid fa-microchip'];
-  $('#briefingCoach').innerHTML = `<button data-act="allerA" data-arg="profil" class="tapable inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-granit text-brume mr-1.5 align-middle"><i class="${mode[1]}"></i>${mode[0]}</button>` + brief + '.';
-  if (!ETAT.chat.length) ajouterMessage('coach', messageAccueil(), [].concat(
-    c.fiab.niveau === 'faible' ? [{ label: 'Importer Strava', act: 'ouvrirSync' }, { label: 'Ajouter une référence', act: 'saisirReference' }] : [],
-    c.o.distanceKm && c.o.date ? [] : [{ label: 'Définir ma course', act: 'allerA', arg: 'objectif' }]));
-  rendreChat();
-  $('#suggestionsChat').innerHTML = suggestionsCoach(c).map(q =>
-    `<button data-act="questionRapide" data-arg="${esc(q)}" class="tapable shrink-0 h-9 px-3.5 rounded-full verre text-[12.5px] whitespace-nowrap">${esc(q)}</button>`).join('');
+/* ==================================================================================
+   LA BULLE DU COACH : accessible sur tous les écrans. À l'ouverture, le coach lit ce qui est
+   affiché (vue, fenêtre ouverte, textes et champs visibles, séances et sorties à l'écran).
+   ================================================================================== */
+
+const ECRAN_COACH = { capture: null, actif: true };
+let attenteCoach = null;          // question en cours : { ctrl, debut, texte, essai, prochainEssai, cause }
+let minuterieAttente = null;
+let actionDemarrage = null;       // raccourci de l'icône (appui long) : coach, plan, import ou course
+const SOURCES_REPONSE = {
+  gemini: ['fa-brands fa-google', 'Réponse de Gemini'],
+  claude: ['fa-solid fa-wand-magic-sparkles', 'Réponse de Claude'],
+  relais: ['fa-solid fa-server', 'Réponse du modèle distant'],
+  'local-secours': ['fa-solid fa-microchip', 'Réponse du coach embarqué']
+};
+const ACTIONS_DU_FIL = ['questionRapide', 'reposerQuestion', 'reponseLocale', 'annulerCoach'];   // elles ne referment pas le panneau
+
+function ouvrirCoach() {
+  if (!sessionOuverte || COUCHES.coach) return;
+  ECRAN_COACH.capture = capturerEcran();          // avant que le panneau ne recouvre l'écran
+  ECRAN_COACH.actif = true;
+  COUCHES.coach = true;
+  $('#panneauCoach').classList.remove('hidden');
+  empilerHistorique();
+  figerFond();
+  masquerAstuceBulle();
+  if (!APPAREIL.astuceBulle) { APPAREIL.astuceBulle = true; sauverAppareil(); }
+  rendrePanneauCoach();
+  majBulleCoach();
+  if (!plateforme().mobile) setTimeout(() => { if (COUCHES.coach) $('#saisieChat').focus(); }, 150);   // sur téléphone, pas de clavier surgissant
+}
+function fermerCoach(viaHistorique) {
+  if (!COUCHES.coach) return;
+  COUCHES.coach = false;
+  marquerChatLu(true);
+  const saisie = $('#saisieChat');
+  if (document.activeElement === saisie) saisie.blur();
+  $('#panneauCoach').classList.add('hidden');
+  libererFond();
+  if (viaHistorique !== true) depilerHistorique(1);
+  majBulleCoach();
 }
 
-function rendreChat(enAttente = false) {
+function messagesNonLus() {
+  if (!ETAT || !Array.isArray(ETAT.chat)) return 0;
+  const vu = Number(ETAT.chatVu) || 0;
+  return ETAT.chat.filter(m => m.role === 'coach' && (Number(m.n) || 0) > vu).length;
+}
+function marquerChatLu(enregistrer) {
+  if (!ETAT) return;
+  const avant = messagesNonLus();
+  ETAT.chatVu = Number(ETAT.chatCompteur) || 0;
+  if (avant || enregistrer) sauverEtat();
+}
+/** Bulle visible sur les écrans de l'app ; masquée sous une fenêtre (bouton Coach dans son en-tête) ou le clavier. */
+function majBulleCoach() {
+  const bulle = $('#bulleCoach');
+  if (!bulle) return;
+  const visible = sessionOuverte && !COUCHES.coach && !COUCHES.modale && !COUCHES.profils;
+  bulle.classList.toggle('hidden', !sessionOuverte);
+  bulle.classList.toggle('cachee', !visible);
+  const n = sessionOuverte ? messagesNonLus() : 0;
+  const pastille = $('#pastilleCoach');
+  pastille.textContent = n > 9 ? '9+' : String(n);
+  pastille.classList.toggle('hidden', !n);
+  bulle.setAttribute('aria-label', n ? 'Ouvrir le coach, ' + nbTexte(n, 'nouveau message', 'nouveaux messages') : 'Ouvrir le coach');
+  if (!visible) masquerAstuceBulle(false);
+}
+function bulleSautille() {
+  const bulle = $('#bulleCoach');
+  if (!bulle) return;
+  bulle.classList.remove('bulle-sautille');
+  void bulle.offsetWidth;
+  bulle.classList.add('bulle-sautille');
+}
+/** Une fois par appareil : petite étiquette pour faire découvrir la bulle. */
+function montrerAstuceBulle() {
+  if (APPAREIL.astuceBulle || !sessionOuverte || COUCHES.coach || COUCHES.modale || COUCHES.profils) return;
+  const a = $('#astuceBulle');
+  if (!a) return;
+  a.classList.remove('hidden');
+  setTimeout(() => masquerAstuceBulle(true), 6500);
+}
+function masquerAstuceBulle(vue = true) {
+  const a = $('#astuceBulle');
+  if (!a || a.classList.contains('hidden')) return;
+  a.classList.add('hidden');
+  if (vue && !APPAREIL.astuceBulle) { APPAREIL.astuceBulle = true; sauverAppareil(); }
+}
+
+function cerveauActif() {
+  const ia = APPAREIL.ia;
+  return ia.mode === 'gemini' && ia.cleGemini ? ['Gemini', 'fa-brands fa-google']
+       : ia.mode === 'claude' && ia.cle ? ['Claude', 'fa-solid fa-wand-magic-sparkles']
+       : ia.mode === 'relais' && ia.endpoint ? ['Modèle distant', 'fa-solid fa-server'] : ['Coach embarqué', 'fa-solid fa-microchip'];
+}
+function rendrePanneauCoach() {
+  if (!COUCHES.coach) return;
+  const c = contexteCoach();
+  if (!ETAT.chat.length) ajouterMessage('coach', messageAccueil(), [].concat(
+    c.fiab.niveau === 'faible' ? [{ label: 'Importer mes sorties', act: 'ouvrirSync' }, { label: 'Ajouter une référence', act: 'saisirReference' }] : [],
+    c.o.distanceKm && c.o.date ? [] : [{ label: 'Définir ma course', act: 'allerA', arg: 'objectif' }]));
+  const [nom, icone] = cerveauActif();
+  const e = ECRAN_COACH.capture;
+  $('#enteteCoach').innerHTML =
+    `<button data-act="reglagesCoach" class="tapable puce-coach shrink-0"><i class="${icone}"></i>${nom}</button>` +
+    (e ? `<button data-act="basculerEcranCoach" aria-pressed="${ECRAN_COACH.actif}" class="tapable puce-coach min-w-0 ${ECRAN_COACH.actif ? 'text-azur' : 'line-through opacity-70'}"
+           title="${ECRAN_COACH.actif ? 'Le coach tient compte de cet écran' : 'Écran ignoré'}"><i class="fa-solid ${ECRAN_COACH.actif ? 'fa-eye' : 'fa-eye-slash'}"></i><span class="truncate">${esc(e.libelle)}</span></button>` : '');
+  rendreChat();
+  $('#suggestionsChat').innerHTML = suggestionsEcran(c, ECRAN_COACH.actif ? e : null).map(q =>
+    `<button data-act="questionRapide" data-arg="${esc(q)}" class="tapable shrink-0 h-9 px-3.5 rounded-full verre text-[12.5px] whitespace-nowrap">${esc(q)}</button>`).join('');
+  marquerChatLu(false);
+}
+function rendreCoachSiOuvert() { if (COUCHES.coach) rendrePanneauCoach(); }
+
+function bulleMessage(msg) {
+  if (msg.role === 'moi') {
+    return `<div class="flex flex-col items-end">
+      <div class="bulle-moi rounded-2xl rounded-br-md px-3.5 py-2.5 max-w-[85%] text-[14.5px] leading-snug">${msg.html}</div>
+      ${msg.ecran ? `<div class="text-[10.5px] text-brume/70 mt-1 mr-1"><i class="fa-regular fa-eye mr-1"></i>${esc(msg.ecran)}</div>` : ''}</div>`;
+  }
+  const actions = (msg.actions || []).map(a =>
+    `<button data-act="${esc(a.act)}" ${a.arg ? `data-arg="${esc(a.arg)}"` : ''} ${ACTIONS_DU_FIL.includes(a.act) ? '' : 'data-ferme-coach="1"'} class="tapable text-[12.5px] px-3 py-1.5 rounded-full bg-ocre/15 text-ocre border border-ocre/30">${esc(a.label)}</button>`).join('');
+  const sig = SOURCES_REPONSE[msg.source];
+  const signature = sig ? `<div class="text-[10.5px] text-brume/80 mt-2"><i class="${sig[0]} mr-1"></i>${sig[1]}</div>` : '';
+  return `<div class="flex gap-2 items-start">
+    ${AVATAR_COACH}
+    <div class="bulle-coach border border-brume/15 rounded-2xl rounded-tl-md px-3.5 py-2.5 max-w-[86%] text-[14px] leading-relaxed">${msg.html}
+      ${actions ? `<div class="flex flex-wrap gap-1.5 mt-2.5">${actions}</div>` : ''}${signature}</div>
+  </div>`;
+}
+/** Bulle d'attente : réponse en cours d'écriture, affluence, nouvel essai, bouton Annuler. */
+function htmlAttente() {
+  const a = attenteCoach;
+  if (!a) return '';
+  const ecoule = Math.round((Date.now() - a.debut) / 1000);
+  const reste = a.prochainEssai ? Math.max(0, Math.ceil((a.prochainEssai - Date.now()) / 1000)) : 0;
+  let statut = '';
+  if (reste) statut = 'Forte affluence (' + esc(a.cause || 'serveur saturé') + ') : nouvel essai dans ' + reste + ' s…';
+  else if (a.essai > 1 && !a.texte) statut = 'Essai ' + a.essai + ' : je patiente, ta réponse arrive (' + ecoule + ' s)…';
+  else if (!a.texte && ecoule >= 8) statut = 'Forte affluence : je patiente, ta réponse arrive (' + ecoule + ' s)…';
+  const corps = a.texte
+    ? miseEnFormeIA(String(a.texte).replace(/\[\[[^\]]*\]?$/, '')).html          // balise d'action pas encore complète : masquée
+    : '<span class="saisie inline-block py-1"><span></span><span></span><span></span></span>';
+  const annuler = ecoule >= 4 || reste ? '<button data-act="annulerCoach" class="tapable block text-[12px] text-ocre font-semibold mt-1.5">Annuler</button>' : '';
+  return `<div id="bulleAttente" class="flex gap-2 items-start">${AVATAR_COACH}
+    <div class="bulle-coach border border-brume/15 rounded-2xl rounded-tl-md px-3.5 py-2.5 max-w-[86%] text-[14px] leading-relaxed">${corps}
+      ${statut ? `<div class="text-[11.5px] text-brume mt-1.5"><i class="fa-solid fa-hourglass-half mr-1"></i>${statut}</div>` : ''}${annuler}</div>
+  </div>`;
+}
+function majBulleAttente() {
+  if (!COUCHES.coach) return;
+  const fil = $('#filChat'), el = $('#bulleAttente');
+  if (!fil || !el) { rendreChat(); return; }
+  const enBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 160;
+  el.outerHTML = htmlAttente();
+  if (enBas) fil.scrollTop = fil.scrollHeight;
+}
+function demarrerMinuterieAttente() {
+  clearInterval(minuterieAttente);
+  minuterieAttente = setInterval(() => { if (attenteCoach) majBulleAttente(); }, 1000);
+}
+function arreterMinuterieAttente() { clearInterval(minuterieAttente); minuterieAttente = null; }
+
+function rendreChat() {
   const fil = $('#filChat');
   if (!fil) return;
-  const bulle = msg => {
-    if (msg.role === 'moi') {
-      return `<div class="flex justify-end"><div class="bulle-moi rounded-2xl rounded-br-md px-3.5 py-2.5 max-w-[85%] text-[14.5px] leading-snug">${msg.html}</div></div>`;
-    }
-    const actions = (msg.actions || []).map(a =>
-      `<button data-act="${a.act}" ${a.arg ? `data-arg="${esc(a.arg)}"` : ''} class="tapable text-[12.5px] px-3 py-1.5 rounded-full bg-ocre/15 text-ocre border border-ocre/30">${esc(a.label)}</button>`).join('');
-    const sources = { gemini: ['fa-brands fa-google', 'Réponse de Gemini'], claude: ['fa-solid fa-wand-magic-sparkles', 'Réponse de Claude'], relais: ['fa-solid fa-server', 'Réponse du modèle distant'] };
-    const signature = sources[msg.source] ? `<div class="text-[10.5px] text-brume/80 mt-2"><i class="${sources[msg.source][0]} mr-1"></i>${sources[msg.source][1]}</div>` : '';
-    return `<div class="flex gap-2 items-start">
-      ${AVATAR_COACH}
-      <div class="bulle-coach border border-brume/15 rounded-2xl rounded-tl-md px-3.5 py-2.5 max-w-[86%] text-[14px] leading-relaxed">${msg.html}
-        ${actions ? `<div class="flex flex-wrap gap-1.5 mt-2.5">${actions}</div>` : ''}${signature}</div>
-    </div>`;
-  };
-  const attente = enAttente || coachOccupe
-    ? `<div class="flex gap-2 items-center">${AVATAR_COACH}
-       <div class="bulle-coach border border-brume/15 rounded-2xl px-4 py-3 saisie"><span></span><span></span><span></span></div></div>` : '';
-  fil.innerHTML = ETAT.chat.map(bulle).join('') + attente;
-  if (vueActive === 'coach') setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 40);
+  fil.innerHTML = ETAT.chat.map(bulleMessage).join('') + htmlAttente();
+  defilerFil();
+}
+function defilerFil() {
+  const fil = $('#filChat');
+  if (fil) requestAnimationFrame(() => { fil.scrollTop = fil.scrollHeight; });
+}
+
+/* Raccourcis de l'icône installée (appui long sur Android) : ?ouvrir=coach | plan | import | course */
+function lireActionDemarrage() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const a = params.get('ouvrir');
+    if (!a) return null;
+    params.delete('ouvrir');
+    const reste = params.toString();
+    history.replaceState(history.state, '', location.pathname + (reste ? '?' + reste : '') + location.hash);
+    return ['coach', 'plan', 'import', 'course'].includes(a) ? a : null;
+  } catch (e) { return null; }
+}
+function executerActionDemarrage() {
+  const a = actionDemarrage;
+  actionDemarrage = null;
+  if (!a || !sessionOuverte) return;
+  if (a === 'plan') allerA('plan');
+  else if (a === 'course') allerA('objectif');
+  else if (a === 'import') ouvrirModaleStrava();
+  else if (a === 'coach') setTimeout(ouvrirCoach, 300);
 }
 
 /* ---------- Vue 3 : plan ---------- */
@@ -4914,7 +5706,7 @@ function rendrePlan() {
     const faites = sem.seances.filter(s => statutSeance(s) === 'fait').length;
     const courante = w && sem.lundi === w.lundi;
     const ph = PHASES[sem.phase];
-    return `<details class="rounded-xl2 verre overflow-hidden" ${courante ? 'open' : ''}>
+    return `<details data-semaine="${sem.numero}" class="rounded-xl2 verre overflow-hidden" ${courante ? 'open' : ''}>
       <summary class="px-4 py-3.5 flex items-center gap-3">
         <span class="w-1.5 h-10 rounded-full shrink-0" style="background:${ph.couleur};${sem.relache ? 'opacity:.45' : ''}"></span>
         <div class="flex-1 min-w-0">
@@ -5182,7 +5974,6 @@ function rendreProfil() {
 }
 
 /** Réglages du cerveau du coach (communs à tous les profils de l'appareil). */
-function rendreCoachSiVisible() { if (vueActive === 'coach') rendreVue('coach'); }
 function rendreReglagesIA() {
   const ia = APPAREIL.ia;
   $$('#choixModeIA [data-act="modeIA"]').forEach(bt => {
@@ -5288,6 +6079,7 @@ const LIBELLES_RPE = { 1: 'Très facile', 2: 'Très facile', 3: 'Facile', 4: 'Fa
 function ouvrirModaleValidation(id) {
   const s = trouverSeance(id);
   if (!s) return;
+  contexteFenetreSuivante = { type: 'seance', id };
   const prevu = prevuSeance(s);
   const r = s.realise;
   const dist = r ? r.distanceM / 1000 : prevu.distanceM / 1000;
@@ -5305,7 +6097,7 @@ function ouvrirModaleValidation(id) {
      <label class="text-[12px] text-brume block mb-1.5">Ressenti de l’effort : <span id="valRpeTexte" class="text-neige"></span></label>
      <input id="valRpe" type="range" min="1" max="10" step="1" value="${rpe}" class="w-full mb-4">
      <label class="text-[12px] text-brume block mb-1.5" for="valNotes">Notes (facultatif)</label>
-     <textarea id="valNotes" rows="2" class="w-full px-3 py-2 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[15px] mb-4" placeholder="Sensations, météo, terrain…">${esc(r && r.notes ? r.notes : '')}</textarea>
+     <textarea id="valNotes" rows="2" class="w-full px-3 py-2 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px] mb-4" placeholder="Sensations, météo, terrain…">${esc(r && r.notes ? r.notes : '')}</textarea>
      <button data-act="enregistrerValidation" data-arg="${s.id}" class="${BTN_PRINCIPAL} mb-2">Enregistrer</button>
      ${r ? `<button data-act="annulerValidation" data-arg="${s.id}" class="tapable w-full h-11 text-[14px] text-braise">Annuler la validation</button>` : ''}`
   );
@@ -5394,6 +6186,7 @@ function retourCoachSeance(s) {
 function ouvrirModaleActivite(id) {
   const a = ETAT.activites.find(x => x.id === id);
   if (!a) return;
+  contexteFenetreSuivante = { type: 'activite', id };
   const s = a.seanceId ? trouverSeance(a.seanceId) : null;
   const c = s ? comparerSeance(s) : null;
   const eq = distanceEquivalente(a.distanceM, a.dplus || 0, a.dmoins);
@@ -5519,8 +6312,9 @@ function activerProfil(id) {
   Object.keys(GRAPHS).forEach(effacerGraphique);
   rafraichirMetriques();
   lierActivitesAuxSeances();
-  masquerEcranProfils();
-  fermerModale();
+  if (attenteCoach) attenteCoach.ctrl.abort();      // question en cours pour le profil précédent : abandonnée
+  ECRAN_COACH.capture = null;
+  fermerToutesLesFenetres();
   programmerAutoSync();
   allerA('dashboard');
   majEntete();
@@ -5528,6 +6322,10 @@ function activerProfil(id) {
   traiterRetourStrava();
   if (ETAT.strava.autoSync) setTimeout(() => synchroniser(true), 1200);
   avertirDonneesMisesDeCote();
+  majBulleCoach();
+  majInvitationInstallation();
+  setTimeout(montrerAstuceBulle, 1400);
+  executerActionDemarrage();
 }
 
 function carteProfil(p, i) {
@@ -5587,14 +6385,20 @@ function afficherEcranProfils(mode = 'choix') {
   }
   $('#ecranProfils').classList.remove('hidden');
   $('#ecranProfils').scrollTop = 0;
-  document.body.style.overflow = 'hidden';
-  if (sessionOuverte) empilerHistorique();     // création depuis l'app : Retour ramène à l'app
+  if (!COUCHES.profils) {
+    COUCHES.profils = true;
+    figerFond();
+    if (sessionOuverte) { COUCHES.profilsHisto = true; empilerHistorique(); }   // création depuis l'app : Retour ramène à l'app
+  }
+  majBulleCoach();
 }
 function masquerEcranProfils(viaHistorique) {
-  const etaitVisible = !$('#ecranProfils').classList.contains('hidden');
   $('#ecranProfils').classList.add('hidden');
-  if ($('#fondModale').classList.contains('hidden')) document.body.style.overflow = '';
-  if (etaitVisible && viaHistorique !== true) depilerHistorique();
+  if (!COUCHES.profils) return;
+  COUCHES.profils = false;
+  libererFond();
+  if (COUCHES.profilsHisto) { COUCHES.profilsHisto = false; if (viaHistorique !== true) depilerHistorique(1); }
+  majBulleCoach();
 }
 
 function ouvrirMenuProfils() {
@@ -5620,6 +6424,7 @@ function ouvrirPinPad(id) {
   if (!p) return;
   pinCible = id;
   pinSaisi = '';
+  contexteFenetreSuivante = { sansCoach: true };
   ouvrirModale(`<div class="text-center pt-2">
       <span class="avatar-dossard mb-3" style="--couleur-profil:${p.couleur}; width:52px; height:44px; font-size:22px">${esc(initiales(p.prenom))}</span>
       <div class="titre text-[28px] leading-none">${esc(p.prenom)}</div>
@@ -5652,8 +6457,11 @@ function touchePin(t) {
   toast('Code incorrect.', 'erreur');
 }
 
-/** Dessine l'icône « dossard » en PNG (iOS exige un PNG) ; plein = fond sans coins arrondis (icône masquable Android). */
-function dessinerIcone(taille, plein = false) {
+/**
+ * Dessine l'icône « dossard » en PNG (iOS exige un PNG). plein : fond sans coins arrondis ;
+ * zoneSure : dossard réduit pour tenir dans le cercle de 80 % des icônes masquables d'Android (Samsung compris).
+ */
+function dessinerIcone(taille, plein = false, zoneSure = false) {
   const c = document.createElement('canvas');
   c.width = c.height = taille;
   const x = c.getContext('2d');
@@ -5661,6 +6469,7 @@ function dessinerIcone(taille, plein = false) {
   const arrondi = (px, py, w, h, r) => { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); };
   x.fillStyle = '#10142B';
   if (plein) x.fillRect(0, 0, 180, 180); else { arrondi(0, 0, 180, 180, 40); x.fill(); }
+  if (zoneSure) { x.translate(90, 90); x.scale(0.76, 0.76); x.translate(-90, -90); }
   x.translate(90, 92); x.rotate(-6 * Math.PI / 180); x.translate(-90, -92);
   x.shadowColor = 'rgba(0,0,0,.45)'; x.shadowBlur = 14; x.shadowOffsetY = 6;
   x.fillStyle = '#F7F3EA'; arrondi(26, 44, 128, 96, 12); x.fill();
@@ -5680,7 +6489,7 @@ function genererIcone() {
   try {
     const url = dessinerIcone(180);
     document.querySelectorAll('link[rel="apple-touch-icon"], link[rel="icon"]').forEach(l => l.setAttribute('href', url));
-    installerManifeste(dessinerIcone(192), dessinerIcone(512), dessinerIcone(512, true));
+    installerManifeste(dessinerIcone(192), dessinerIcone(512), dessinerIcone(512, true, true));
   } catch (e) { /* l'icône SVG reste en place */ }
 }
 
@@ -5839,9 +6648,9 @@ const ACTIONS = {
   },
   verrouiller: () => {
     sauverEtat();
+    fermerToutesLesFenetres();
     sessionOuverte = false;
     clearInterval(minuterieSync);
-    fermerModale();
     afficherEcranProfils('choix');
   },
   supprimerProfil: () => {
@@ -5914,6 +6723,7 @@ const ACTIONS = {
     try { await invitation.userChoice; } catch (e) { /* choix non communiqué */ }
     majCarteInstallation();
   },
+  masquerInstallation: () => { APPAREIL.installationMasquee = true; sauverAppareil(); majInvitationInstallation(); },
   modeIA: arg => {
     APPAREIL.ia.mode = ['local', 'gemini', 'claude', 'relais'].includes(arg) ? arg : 'local';
     avertiSansCle = false;
@@ -6026,7 +6836,22 @@ const ACTIONS = {
     t.style.height = '';
     poserQuestion(q);
   },
-  questionRapide: arg => { if (vueActive !== 'coach') allerA('coach'); poserQuestion(arg); },
+  questionRapide: arg => { if (!COUCHES.coach) ouvrirCoach(); poserQuestion(arg); },
+  ouvrirCoach: () => ouvrirCoach(),
+  fermerCoach: () => fermerCoach(),
+  basculerEcranCoach: () => { ECRAN_COACH.actif = !ECRAN_COACH.actif; rendrePanneauCoach(); },
+  annulerCoach: () => { if (attenteCoach) attenteCoach.ctrl.abort(); },
+  reposerQuestion: arg => poserQuestion(arg, { reessai: true }),
+  reponseLocale: arg => {
+    const r = repondreLocal(arg, ECRAN_COACH.actif ? ECRAN_COACH.capture : null);
+    ajouterMessage('coach', r.html, r.actions || [], '', 'local-secours');
+    rendreChat();
+  },
+  reglagesCoach: () => {
+    fermerToutesLesFenetres();
+    allerA('profil');
+    setTimeout(() => { const el = $('#choixModeIA'); if (el) el.scrollIntoView({ block: 'center' }); }, 350);
+  },
 
   // Course & GPX
   setType: arg => { brouillonType = arg === 'route' ? 'route' : 'trail'; saisieObjectifEnCours = true; majBoutonsObjectif(); },
@@ -6169,6 +6994,8 @@ function brancherEvenements() {
     const fn = ACTIONS[el.dataset.act];
     if (!fn) { console.warn('Action inconnue :', el.dataset.act); return; }
     if (el.type !== 'checkbox') e.preventDefault();
+    // Action proposée par le coach (« Voir le plan »…) : on referme le panneau et la fenêtre dessous, puis on agit.
+    if (el.dataset.fermeCoach === '1' && (COUCHES.coach || COUCHES.modale)) fermerToutesLesFenetres();
     try {
       const r = fn(el.dataset.arg, el, e);
       if (r && typeof r.catch === 'function') r.catch(err => { console.error(err); toast('Erreur : ' + esc(err.message), 'erreur'); });
@@ -6231,7 +7058,7 @@ function brancherEvenements() {
   $('#cleIA').addEventListener('change', e => { APPAREIL.ia.cle = e.target.value.trim(); sauverAppareil(); });
   $('#modeleIA').addEventListener('change', e => { APPAREIL.ia.modele = e.target.value; sauverAppareil(); });
   $('#regEndpointIA').addEventListener('change', e => { APPAREIL.ia.endpoint = e.target.value.trim(); sauverAppareil(); });
-  $('#cleGemini').addEventListener('change', e => { APPAREIL.ia.cleGemini = e.target.value.trim(); avertiSansCle = false; sauverAppareil(); rendreCoachSiVisible(); });
+  $('#cleGemini').addEventListener('change', e => { APPAREIL.ia.cleGemini = e.target.value.trim(); avertiSansCle = false; sauverAppareil(); rendreCoachSiOuvert(); });
   $('#modeleGemini').addEventListener('change', e => {
     if (e.target.value === 'autre') { $('#modeleGeminiLibre').classList.remove('hidden'); $('#modeleGeminiLibre').focus(); return; }
     APPAREIL.ia.modeleGemini = e.target.value;
@@ -6257,7 +7084,7 @@ function brancherEvenements() {
     if (ETAT.strava.autoSync) synchroniser(true);
   });
   // Fermer la modale avec Échap (clavier)
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerModale(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (COUCHES.coach) fermerCoach(); else fermerModale(); } });
 }
 
 async function initialiser() {
@@ -6267,7 +7094,8 @@ async function initialiser() {
   surveillerAutresOnglets();
   brancherEvenements();
   avertirDonneesMisesDeCote();
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(genererIcone); else genererIcone();
+  preparerInstallation();
+  actionDemarrage = lireActionDemarrage();
   if (!INDEX.liste.length) { afficherEcranProfils('creation'); return; }
   // Retour d'autorisation Strava : on rouvre le profil qui l'a demandée.
   const etatRetour = new URLSearchParams(location.search).get('state') || '';
