@@ -622,8 +622,7 @@ if (window.tailwind) tailwind.config = {
   <!-- Intégration IA -->
   <h3 class="titre text-[20px] px-1 mb-2">Cerveau du coach</h3>
   <div class="rounded-xl2 verre p-4 mb-6">
-    <div id="choixModeIA" class="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-nuit/60 mb-3">
-      <button data-act="modeIA" data-arg="local" class="tapable h-9 rounded-xl text-[13px] text-brume">Embarqué</button>
+    <div id="choixModeIA" class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-nuit/60 mb-3">
       <button data-act="modeIA" data-arg="gemini" class="tapable h-9 rounded-xl text-[13px] text-brume">Gemini</button>
       <button data-act="modeIA" data-arg="claude" class="tapable h-9 rounded-xl text-[13px] text-brume">Claude</button>
       <button data-act="modeIA" data-arg="relais" class="tapable h-9 rounded-xl text-[13px] text-brume">Relais</button>
@@ -730,6 +729,7 @@ if (window.tailwind) tailwind.config = {
       </div>
     </div>
     <div id="filChat" class="flex-1 min-h-0 overflow-y-auto overscroll-contain gouttieres py-3 space-y-3"></div>
+    <div id="zoneCleCoach" class="hidden shrink-0 gouttieres pb-2"></div>
     <div class="pied-coach shrink-0 gouttieres pt-1" style="padding-bottom:calc(var(--safe-bot) + 10px)">
       <div class="scroll-x flex gap-2 mb-2 pb-1" id="suggestionsChat"></div>
       <div id="zoneSaisieChat" class="verre rounded-2xl p-2 flex items-end gap-2">
@@ -1291,7 +1291,7 @@ function etatParDefaut() {
 let ETAT = etatParDefaut();
 
 let INDEX = { actif: null, liste: [] };
-let APPAREIL = { ia: { mode: 'local', cle: '', modele: '', endpoint: '', cleGemini: '', modeleGemini: '' } };
+let APPAREIL = { ia: { mode: 'gemini', cle: '', modele: '', endpoint: '', cleGemini: '', modeleGemini: '' } };
 
 /** Complète un état lu (éventuellement d'une version précédente) avec les valeurs par défaut. */
 function fusionnerEtat(lu) {
@@ -1331,14 +1331,14 @@ function chargerIndex() {
   if (!INDEX.liste.some(p => p.id === INDEX.actif)) INDEX.actif = null;
   const app = lireJson(CLE_APPAREIL) || {};
   APPAREIL = Object.assign({}, app && typeof app === 'object' ? app : {}, {
-    ia: Object.assign({ mode: 'local', cle: '', modele: MODELES_IA[0].id, endpoint: '', cleGemini: '', modeleGemini: MODELES_GEMINI[0].id }, app.ia || {})
+    ia: Object.assign({ mode: 'gemini', cle: '', modele: MODELES_IA[0].id, endpoint: '', cleGemini: '', modeleGemini: MODELES_GEMINI[0].id }, app.ia || {})
   });
-  if (!['local', 'gemini', 'claude', 'relais'].includes(APPAREIL.ia.mode)) APPAREIL.ia.mode = 'local';
+  if (!['gemini', 'claude', 'relais'].includes(APPAREIL.ia.mode)) APPAREIL.ia.mode = 'gemini';   // l'ancien mode « embarqué » n'existe plus
   if (!INDEX.liste.length) {
     const ancien = lireJson(ANCIENNE_CLE);
     if (ancien && typeof ancien === 'object') {
       const p = ajouterProfilIndex((ancien.profil && ancien.profil.prenom) || 'Moi', COULEURS_PROFIL[0], null);
-      if (ancien.ia && ancien.ia.endpoint) Object.assign(APPAREIL.ia, { endpoint: ancien.ia.endpoint, mode: ancien.ia.actif ? 'relais' : 'local' });
+      if (ancien.ia && ancien.ia.endpoint) Object.assign(APPAREIL.ia, { endpoint: ancien.ia.endpoint, mode: ancien.ia.actif ? 'relais' : 'gemini' });
       ecrireJson(PREFIXE_PROFIL + p.id, fusionnerEtat(ancien));
       effacerCle(ANCIENNE_CLE);
       INDEX.actif = p.id;
@@ -3858,8 +3858,8 @@ async function partagerFichierSeance(id) {
 
 /* ==================================================================================
    9. COACH IA
-   Moteur embarqué : détection d'intention + réponses calculées sur les vraies
-   données du coureur. Branchement optionnel sur un modèle distant (relais HTTP).
+   Le coach est une IA (Gemini par défaut, ou Claude, ou un relais) qui reçoit le dossier calculé
+   par l'application (niveau, allures, charge, plan, course) et ce qui est affiché à l'écran.
    ================================================================================== */
 
 const fKmh = v => (Math.round(v * 10) / 10).toString().replace('.', ',') + ' km/h';
@@ -3879,277 +3879,6 @@ function contexteCoach() {
     semaine: semaineCourante(),
     respect: respectPlan(),
     forme: (serieCharge(14).slice(-1)[0] || {}).fraicheur || 0
-  };
-}
-
-function resumeSeanceHtml(s) {
-  const m = mesurerSeance(s);
-  const lignes = lignesSeance(s).map(l => '<li class="ml-4 list-disc">' + esc(l) + '</li>').join('');
-  return b(esc(s.titre)) + ' (' + km1(m.distanceM) + ' km, ' + dureeLisible(m.dureeS) + (m.dplus > 20 ? ', ' + m.dplus + ' m D+' : '') + ')' +
-         '<ul class="mt-1.5 space-y-0.5">' + lignes + '</ul>' +
-         (s.conseil ? '<div class="mt-1.5 text-brume">' + esc(s.conseil) + '</div>' : '');
-}
-
-/** Réponse quand aucune donnée ne permet encore de mesurer le niveau. */
-const SANS_NIVEAU = () => ({
-  html: 'Je n’ai encore aucune sortie pour mesurer ton niveau : les allures affichées reposent sur une VMA par défaut de 12 km/h. Importe ton historique Strava, indique une course récente comme référence, ou fais un test de 6 minutes à fond sur piste (distance parcourue en km × 10 = ta VMA).',
-  actions: [{ label: 'Importer Strava', act: 'ouvrirSync' }, { label: 'Ajouter une référence', act: 'saisirReference' }]
-});
-
-const INTENTIONS = [
-  {
-    re: /^(salut|bonjour|hello|coucou|hey|bonsoir|yo)\b/,
-    f: c => {
-      let t = 'Bonjour' + (c.prenom ? ' ' + esc(c.prenom) : '') + '. ';
-      if (c.auj.length && c.auj[0].statut !== 'fait') t += 'Au programme aujourd’hui : ' + b(esc(c.auj[0].titre)) + '. ';
-      else if (c.prochaine) t += 'Prochaine séance ' + JOURS_LONGS[depuisCleJour(c.prochaine.date).getDay()] + ' : ' + b(esc(c.prochaine.titre)) + '. ';
-      if (c.jours != null && c.jours >= 0 && c.o.nom) t += 'J-' + c.jours + ' avant ' + esc(c.o.nom) + '.';
-      return { html: t + '<br>Pose-moi une question sur tes allures, ta course ou ta forme du moment.' };
-    }
-  },
-  {
-    re: /(aujourd|ce soir|ce matin|seance du jour|quoi faire|je fais quoi|programme du jour|demain|prochaine seance|cette semaine)/,
-    f: (c, q) => {
-      if (!ETAT.plan) return { html: 'Tu n’as pas encore de plan. Je le construis à partir de ton niveau et de ta course cible.', actions: [{ label: 'Générer le plan', act: 'genererPlan' }] };
-      if (/cette semaine/.test(q) && c.semaine) {
-        const l = c.semaine.seances.map(s => '<li class="ml-4 list-disc">' + JOURS_COURTS[depuisCleJour(s.date).getDay()] + ' : ' + esc(s.titre) +
-          (statutSeance(s) === 'fait' ? ' <span class="text-vallee">(faite)</span>' : '') + '</li>').join('');
-        return { html: 'Semaine ' + c.semaine.numero + ', phase ' + b(PHASES[c.semaine.phase].libelle.toLowerCase()) + (c.semaine.relache ? ' (semaine allégée)' : '') + ' :<ul class="mt-1.5">' + l + '</ul>', actions: [{ label: 'Voir le plan', act: 'allerA', arg: 'plan' }] };
-      }
-      let s = null, quand = '';
-      if (/demain/.test(q)) {
-        const k = cleJour(ajouterJours(new Date(), 1));
-        s = toutesSeances().find(x => x.date === k);
-        quand = 'Demain';
-        if (!s) return { html: 'Demain, repos. ' + (c.prochaine ? 'Ta prochaine séance : ' + resumeSeanceHtml(c.prochaine) : '') };
-      } else if (/prochaine/.test(q)) {
-        s = c.auj.find(x => x.statut !== 'fait') || c.prochaine;
-        if (!s) return { html: 'Plus aucune séance prévue : ton plan est terminé. Fixe ton prochain objectif pour en relancer un.', actions: [{ label: 'Nouvel objectif', act: 'allerA', arg: 'objectif' }] };
-        quand = c.auj.includes(s) ? 'Aujourd’hui' : 'Prochaine séance ' + JOURS_LONGS[depuisCleJour(s.date).getDay()];
-      } else {
-        s = c.auj.find(x => x.statut !== 'fait');
-        quand = 'Aujourd’hui';
-        if (!s) {
-          if (c.auj.length) return { html: 'Séance du jour déjà validée, bravo. Récupère bien : hydratation, repas avec glucides et protéines, sommeil.' + (c.prochaine ? '<br>Ensuite : ' + resumeSeanceHtml(c.prochaine) : '') };
-          return { html: 'Aujourd’hui, repos : il fait partie de l’entraînement. ' + (c.prochaine ? 'Prochaine séance ' + JOURS_LONGS[depuisCleJour(c.prochaine.date).getDay()] + ' : ' + resumeSeanceHtml(c.prochaine) : ''),
-                   actions: c.prochaine ? [{ label: 'Envoyer à la montre', act: 'montreSeance', arg: c.prochaine.id }] : [] };
-        }
-      }
-      let extra = '';
-      if (c.forme < -18 && s.type !== 'ef' && s.type !== 'recup') extra = '<div class="mt-2 text-ocre">Ta fatigue accumulée est élevée : si les jambes ne répondent pas à l’échauffement, transforme la séance en footing.</div>';
-      return { html: quand + ' : ' + resumeSeanceHtml(s) + extra,
-               actions: [{ label: 'Envoyer à la montre', act: 'montreSeance', arg: s.id }, { label: 'Valider la séance', act: 'validerSeance', arg: s.id }] };
-    }
-  },
-  {
-    re: /((5|10) ?km|semi|marathon|21 ?km|42 ?km).*(temps|chrono|allure|valoir|faire)|(temps|chrono|allure|valoir).*((5|10) ?km|semi|marathon)/,
-    f: (c, q) => {
-      if (/\b(mon|ma|objectif|trail)\b/.test(q)) return null;
-      if (c.m.parDefaut) return SANS_NIVEAU();
-      const d = [[5000, '5 km'], [10000, '10 km'], [21097, 'Semi-marathon'], [42195, 'Marathon']];
-      const l = d.map(([dist, nom]) => { const t = tempsCoursePrevu(c.m.vdot, dist); return '<li class="ml-4 list-disc">' + nom + ' : ' + b(formaterDuree(t, t >= 3600)) + ' (' + formaterAllure(t / (dist / 1000)) + '/km)</li>'; }).join('');
-      return { html: 'Tes temps probables sur route plate, avec la forme actuelle (VMA ' + fKmh(c.m.vma) + ') :<ul class="mt-1.5">' + l + '</ul><div class="mt-1.5 text-brume">En trail, compte environ 1 km de plus par 100 m de D+ pour l’effort équivalent.</div>' };
-    }
-  },
-  {
-    re: /(realiste|faisable|possible|jouable|atteignable|pronostic|prediction|prevision|combien de temps|quel temps|quel chrono|sous (l.?heure|1 ?h|les|une)|objectif)/,
-    f: c => {
-      if (!c.strat) return { html: 'Indique-moi d’abord ta course : distance, D+ et date. Je calcule ensuite ton temps probable.', actions: [{ label: 'Définir la course', act: 'allerA', arg: 'objectif' }] };
-      if (c.m.parDefaut) return { html: 'Pour juger ton objectif, il me faut ton niveau : importe tes sorties Strava ou indique une course récente. En attendant, les allures du jour J sont calées sur ton temps visé.', actions: SANS_NIVEAU().actions };
-      const s = c.strat;
-      let t = 'Sur ' + b(esc(c.o.nom || 'ta course')) + ' (' + km1(s.e.distM) + ' km' + (s.e.dplus ? ', ' + s.e.dplus + ' m D+' : '') + '), ton niveau actuel donne environ ' +
-              b(formaterDuree(s.tempsModele)) + ', soit ' + formaterAllure(s.tempsModele / (s.e.distM / 1000)) + '/km de moyenne.';
-      if (s.tempsVise && s.dplusManquant) {
-        t += '<br>Pour juger ton objectif de ' + b(formaterDuree(s.tempsVise)) + ', il me manque le D+ du parcours : 300 m de D+ représentent déjà l’équivalent d’environ 2 km de plus. Ajoute-le ou charge le GPX.';
-      } else if (s.tempsVise) {
-        t += '<br>Ton objectif de ' + b(formaterDuree(s.tempsVise)) + ' est jugé ' + b('<span style="color:' + s.verdict.couleur + '">' + s.verdict.texte.toLowerCase() + '</span>') + '.';
-        if (s.verdict.cle === 'tres-ambitieux' || s.verdict.cle === 'ambitieux') {
-          t += ' Il demande une VMA d’environ ' + b(fKmh(s.vmaNecessaire)) + ' contre ' + fKmh(c.m.vma) + ' estimée aujourd’hui.';
-          t += c.jours != null && c.jours < 21
-            ? ' En ' + c.jours + ' jours, on ne gagne pas ça : pars sur l’allure du modèle et garde de la marge pour finir fort.'
-            : ' C’est un cap à viser sur plusieurs cycles ; le plan te rapproche, mais pars sur tes allures réelles le jour J.';
-        } else if (s.verdict.cle === 'confortable') t += ' Tu as de la marge : on pourra resserrer l’objectif après la prochaine sortie de référence.';
-      }
-      if (c.fiab.niveau === 'faible') t += '<div class="mt-2 text-ocre">Attention : l’estimation repose sur peu de données (' + esc(c.fiab.texte.toLowerCase()) + '). Une vraie performance de référence rendra ce pronostic fiable.</div>';
-      if (s.dplusManquant) t += '<div class="mt-2 text-ocre">Sans D+, le temps probable ci-dessus correspond à un parcours plat : il sera plus long en réalité.</div>';
-      return { html: t, actions: [{ label: 'Voir la stratégie', act: 'allerA', arg: 'objectif' }].concat(c.fiab.niveau === 'faible' ? [{ label: 'Ajouter une référence', act: 'saisirReference' }] : []) };
-    }
-  },
-  {
-    re: /(jour j|jour-j|strategie|kilometre par kilometre|splits|passages?|gerer (la|ma) course|allures? (de|pour la|le jour|en) course)/,
-    f: c => {
-      const s = c.strat;
-      if (!s) return { html: 'Renseigne ta course pour que je calcule la stratégie kilomètre par kilomètre.', actions: [{ label: 'Définir la course', act: 'allerA', arg: 'objectif' }] };
-      const montees = s.kms.filter(k => k.pente > 0.045).map(k => k.km);
-      const descentes = s.kms.filter(k => k.pente < -0.055).map(k => k.km);
-      let t = 'Temps cible ' + b(formaterDuree(s.tempsCible)) + ' (' + (s.surObjectif ? 'ton objectif' : 'ton niveau actuel') + '), allure moyenne ' + b(formaterAllure(s.allureMoy) + '/km') +
-              ', effort équivalent plat ' + formaterAllure(s.allurePlat) + '/km.';
-      t += '<ul class="mt-1.5 space-y-0.5"><li class="ml-4 list-disc">Premier km en ' + formaterAllure(s.kms[0].allure) + ' : retiens-toi, le départ se paie à la fin.</li>';
-      if (montees.length) t += '<li class="ml-4 list-disc">Montées aux km ' + montees.slice(0, 6).join(', ') + (montees.length > 6 ? '…' : '') + ' : pense effort, pas allure.</li>';
-      if (descentes.length) t += '<li class="ml-4 list-disc">Descentes aux km ' + descentes.slice(0, 6).join(', ') + (descentes.length > 6 ? '…' : '') + ' : c’est là que tu gagnes du temps sans dépenser.</li>';
-      const mi = s.kms[Math.floor(s.kms.length / 2) - 1];
-      if (mi) t += '<li class="ml-4 list-disc">Passage au km ' + mi.km + ' prévu en ' + formaterDuree(mi.cumul) + '.</li>';
-      t += '</ul>';
-      if (s.sourceProfil !== 'gpx' && s.trail) t += '<div class="mt-2 text-brume">Ajoute le GPX pour que je cale chaque portion sur le vrai profil.</div>';
-      return { html: t, actions: [{ label: 'Voir le détail', act: 'allerA', arg: 'objectif' }] };
-    }
-  },
-  {
-    re: /(vma|vo2|vdot|mon niveau|quel niveau|forme physique|capacite)/,
-    f: c => c.m.parDefaut ? SANS_NIVEAU() : ({
-      html: 'VMA estimée ' + b(fKmh(c.m.vma)) + ', VO2max estimée ' + b(String(c.m.vo2max).replace('.', ',') + ' ml/kg/min') + '. Base de calcul : ' + esc(c.m.origine.toLowerCase().replace(/\.$/, '')) +
-            '. Fiabilité ' + b(c.fiab.niveau) + ' (' + esc(c.fiab.texte.toLowerCase()) + ').' +
-            (c.fiab.niveau !== 'bonne' ? '<br>Pour l’affiner : importe ton historique Strava, marque une course comme « effort max », ou fais un test de 6 minutes à fond sur piste (distance parcourue × 10 = ta VMA en km/h).' : ''),
-      actions: [{ label: 'Ajouter une référence', act: 'saisirReference' }, { label: 'Importer Strava', act: 'ouvrirSync' }]
-    })
-  },
-  {
-    re: /(cardio|frequence cardiaque|\bfc\b|bpm|pouls|cardiaque)/,
-    f: () => ({ html: 'Repères en % de ta fréquence cardiaque maximale : endurance fondamentale 65 à 75 %, seuil 85 à 90 %, VMA 95 % et plus. Le cardio réagit avec retard sur les efforts courts et dérive avec la chaleur : pour le fractionné, fie-toi aux allures ; pour l’endurance, le cardio est un excellent garde-fou contre l’excès de vitesse.' })
-  },
-  {
-    re: /(zones?|mes allures|allures? d.?entrainement|endurance fondamentale|\bef\b|footing lent)/,
-    f: c => {
-      if (c.m.parDefaut) return SANS_NIVEAU();
-      const z = c.m.zones;
-      const l = [['Récupération', z.recup], ['Endurance fondamentale', z.ef], ['Endurance active', z.efHaute], ['Allure marathon', z.marathon],
-                 ['Seuil', z.seuil], ['Allure 10 km', z.tempo], ['VMA longue', z.vmaLongue], ['VMA courte', z.vmaCourte]]
-        .map(([n, a]) => '<li class="ml-4 list-disc">' + n + ' : ' + b(formaterAllure(a) + '/km') + '</li>').join('');
-      return { html: 'Tes allures d’entraînement (VMA ' + fKmh(c.m.vma) + ') :<ul class="mt-1.5">' + l + '</ul><div class="mt-1.5 text-brume">En côte, raisonne en effort : l’allure ralentit naturellement.</div>' };
-    }
-  },
-  {
-    re: /(seuil|tempo|lactique|anaerobie)/,
-    f: c => c.m.parDefaut ? SANS_NIVEAU() : ({ html: 'Ton seuil se situe vers ' + b(formaterAllure(c.m.zones.seuil) + '/km') + ' : l’allure que tu tiendrais environ une heure en course. On le travaille en blocs de 8 à 15 min (ex. 3 × 10 min, 2 min de trot entre) : ça repousse le moment où l’acidité t’oblige à ralentir. Sensation juste : quelques mots possibles, pas de phrases.' })
-  },
-  {
-    re: /(fatigu|creve|epuise|lourd|mal dormi|pas en forme|raplapla|jambes lourdes|surentrain|lassitude|suis a plat|\bvide\b)/,
-    f: c => ({
-      html: 'Merci de me le dire, c’est exactement ce qu’il faut remonter. ' + (c.forme < -15 ? 'Ta charge des 7 derniers jours est nettement au-dessus de ta moyenne : la fatigue est logique. ' : '') +
-            'Si c’est ponctuel (sommeil, travail), je transforme la prochaine séance intense en footing et je réduis le volume des 7 prochains jours d’environ 25 %. Si la fatigue dure plus d’une semaine malgré le repos, parles-en à ton médecin.',
-      actions: [{ label: 'Alléger les 7 prochains jours', act: 'ajusterPlan', arg: 'alleger' }]
-    })
-  },
-  {
-    re: /(douleur|mal (au|a la|aux|a l)|blessure|blesse|genou|tendon|achille|mollet|cheville|periostite|tibia|essuie.?glace|fascia|voute|hanche|contracture|entorse|elongation)/,
-    f: () => ({
-      html: 'Règle simple : une douleur qui modifie ta foulée ou qui augmente pendant la sortie, on s’arrête. Coupe l’intensité (VMA, côtes, descentes) et garde seulement ce qui ne réveille pas la douleur : footing très souple, vélo ou natation. ' +
-            b('Consulte un médecin ou un kiné') + ' si elle dure plus de quelques jours, s’il y a gonflement, boiterie ou douleur au repos. Je ne peux pas poser de diagnostic, mais je peux alléger ton plan dès maintenant.',
-      actions: [{ label: 'Alléger les 7 prochains jours', act: 'ajusterPlan', arg: 'alleger' }]
-    })
-  },
-  {
-    re: /\b(rate|ratee|loupe|loupee|zappe|saute|sautee|annule|annulee)\b|manque (ma|la|une|mon|le|ce)|pas pu (courir|faire|aller|m.?entrainer)|pas couru|oublie (ma|la|mon)/,
-    f: () => ({
-      html: 'Pas de panique : une séance manquée ne change rien, c’est la régularité sur des semaines qui compte. Ne la rattrape pas en doublant le lendemain. Si c’était une séance clé (VMA, seuil, côtes), je peux la replacer sur ton prochain footing, à condition de garder 48 h avant la séance intense suivante.',
-      actions: [{ label: 'Replacer la séance clé', act: 'ajusterPlan', arg: 'decaler' }]
-    })
-  },
-  {
-    re: /(nutrition|manger|mange|repas|ravito|gel|boire|hydrat|glucide|petit.?dej|barre|crampe|sucre)/,
-    f: c => {
-      const t = c.strat ? c.strat.tempsCible : 0;
-      const intro = t ? 'Pour une course d’environ ' + b(formaterDuree(t)) + ' : ' + esc(conseilNutrition(t))
-        : 'Tout dépend de la durée de course : moins d’une heure, de l’eau suffit ; de 1 h à 2 h 30, 30 à 60 g de glucides par heure ; au-delà, 60 à 90 g par heure avec du sel.';
-      return { html: intro +
-        '<ul class="mt-1.5 space-y-0.5"><li class="ml-4 list-disc">Dernier repas 3 h avant : riche en glucides, pauvre en fibres et en graisses, rien de nouveau.</li>' +
-        '<li class="ml-4 list-disc">Teste tout (gels, boisson) à l’entraînement, en sortie longue, jamais pour la première fois le jour J.</li>' +
-        '<li class="ml-4 list-disc">Les 2 jours avant, augmente un peu la part de glucides sans manger davantage au total.</li></ul>' };
-    }
-  },
-  {
-    re: /(montee|\bmonter\b|\bcotes\b|en cote|la cote|une cote|grimper|\bmarcher\b|marche (active|rapide)|baton|d\+|denivele positif|raidard|\bmur\b|ascension)/,
-    f: c => {
-      const seuilMarche = c.m.vma >= 15 ? 20 : c.m.vma >= 13 ? 17 : 14;
-      return { html: 'En montée, pilote à l’effort : même respiration que sur le plat, l’allure s’effondre et c’est normal. Avec ta VMA, ' + b('au-delà d’environ ' + seuilMarche + ' % de pente, la marche active est aussi rapide que la course') + ' et bien plus économique : mains sur les cuisses, buste penché, pas courts et rapides. Relance dès que la pente s’adoucit. À l’entraînement, les séances de côtes du plan construisent exactement ça.' };
-    }
-  },
-  {
-    re: /(descente|descendre|\bd-\b|quadri|cuisses|chute|glissant)/,
-    f: () => ({ html: 'En descente, c’est la technique qui fait gagner du temps sans coût énergétique : regard 3 à 4 m devant, pas courts et rapides, bras écartés pour l’équilibre, buste légèrement en avant (se pencher en arrière freine et martèle les quadriceps). Sur terrain technique, privilégie la sécurité. Pour les cuisses, 2 séances de renforcement par semaine (fentes, squats, montées de marche) et des descentes régulières à l’entraînement.' })
-  },
-  {
-    re: /(affutage|taper|semaine (de la )?course|veille|avant la course|derniere semaine|nervosite|stress|trac)/,
-    f: c => ({
-      html: 'Affûtage : on baisse le volume de 40 à 50 % mais on garde un peu d’intensité pour rester vif. La fatigue sort, la forme remonte.' +
-            '<ul class="mt-1.5 space-y-0.5"><li class="ml-4 list-disc">Rien de nouveau : chaussures, tenue, petit-déjeuner, gels déjà testés.</li>' +
-            '<li class="ml-4 list-disc">La veille : déblocage de 20 min, sac prêt, dossard et ravitaillement vérifiés.</li>' +
-            '<li class="ml-4 list-disc">Le sommeil de l’avant-veille compte plus que celui de la veille : ne t’inquiète pas si tu dors mal la dernière nuit.</li>' +
-            '<li class="ml-4 list-disc">Échauffement : ' + esc(c.strat ? c.strat.echauffement : conseilEchauffement(10000)) + '</li></ul>'
-    })
-  },
-  {
-    re: /(chaleur|chaud|canicule|meteo|pluie|froid|vent|boue|temperature)/,
-    f: () => ({ html: 'Chaleur : au-delà de 15 °C, compte environ 1 à 2 % de temps en plus par tranche de 5 °C ; bois régulièrement, mouille la nuque, pars plus lentement. Pluie et boue : chaussures à crampons marqués, raccourcis la foulée dans les descentes. Froid et vent : couvre les extrémités et abrite-toi dans un groupe face au vent.' })
-  },
-  {
-    re: /(recup|repos|sommeil|etirement|massage|jour off|courbature)/,
-    f: () => ({ html: 'La progression se fait pendant la récupération, pas pendant la séance. Priorités, dans l’ordre : sommeil (7 à 9 h), repas complet dans les 2 h après une séance difficile, hydratation, puis footings vraiment lents. Les étirements doux sont un confort, pas une obligation. Courbatures marquées : footing de 20 à 30 min très lent ou vélo souple plutôt qu’arrêt complet.' })
-  },
-  {
-    re: /(strava|synchro|import|garmin|historique)/,
-    f: () => {
-      const etats = { api: 'Ton compte Strava est ' + b('connecté'), simulation: 'La synchro Strava tourne en ' + b('mode simulation'),
-                      fichier: 'Tes sorties viennent ' + b('d’imports de fichiers'), aucun: 'Strava n’est ' + b('pas encore connecté') };
-      const n = ETAT.activites.length;
-      return { html: etats[ETAT.strava.mode || 'aucun'] + ', ' + n + ' sortie' + (n > 1 ? 's' : '') + ' analysée' + (n > 1 ? 's' : '') + '. Chaque nouvelle sortie met à jour ton niveau et se relie automatiquement à la séance prévue le même jour.',
-               actions: [{ label: 'Connecter Strava', act: 'ouvrirSync' }, { label: 'Synchroniser', act: 'synchroniser' }] };
-    }
-  },
-  {
-    re: /(calendrier|agenda|ics|montre|watch|apple)/,
-    f: c => ({
-      html: 'Je peux ajouter tout le plan à ton calendrier (chaque événement contient la séance détaillée et un rappel), ou préparer la prochaine séance pour ta montre avec les alertes d’allure.',
-      actions: [{ label: 'Plan vers le calendrier', act: 'exporterPlanIcs' }].concat(c.prochaine || (c.auj[0])
-        ? [{ label: 'Séance vers la montre', act: 'montreSeance', arg: (c.auj.find(s => s.statut !== 'fait') || c.prochaine).id }] : [])
-    })
-  },
-  {
-    re: /(enchainer|deux courses|apres la course|prochaine course|recuperer apres|course suivante|semi.?trail)/,
-    f: c => ({
-      html: 'Pour enchaîner deux courses : après la première, compte environ un jour de récupération active par tranche de 1 à 1,5 km couru à fond (footings courts et lents, pas d’intensité). Ensuite, 2 à 3 semaines suffisent pour un bloc spécifique court avant la course suivante, avec une sortie longue par semaine sur un terrain proche de celui de la course et un affûtage de 7 à 10 jours. Le lendemain de ta course, change l’objectif ici et je reconstruis le plan à partir de ta nouvelle performance.',
-      actions: [{ label: 'Changer d’objectif', act: 'allerA', arg: 'objectif' }]
-    })
-  },
-  {
-    re: /(chaussure|shoes|drop|crampon|semelle|equipement)/,
-    f: () => ({ html: 'En trail, l’accroche prime : crampons de 4 à 5 mm sur terrain gras, plus courts et denses sur sec et roulant. Garde le drop auquel ton corps est habitué ; toute transition se fait sur plusieurs semaines. Et jamais de chaussures neuves le jour J : au moins 3 ou 4 sorties avec avant.' })
-  },
-  {
-    re: /(plan|programme|prepa|generer|genere|planning|periodisation)/,
-    f: c => {
-      if (!ETAT.plan) return { html: 'Je construis ton plan jusqu’au jour J : phases foncier, développement, spécifique et affûtage, calées sur ton niveau mesuré et tes ' + ETAT.profil.seancesSemaine + ' séances par semaine.', actions: [{ label: 'Générer le plan', act: 'genererPlan' }] };
-      const w = c.semaine;
-      let t = 'Plan de ' + b(ETAT.plan.semaines.length + ' semaines') + ' vers ' + esc(c.o.nom || 'ta course') + '. ';
-      if (w) t += 'Semaine ' + w.numero + ', phase ' + b(PHASES[w.phase].libelle.toLowerCase()) + (w.relache ? ' (allégée)' : '') + ', environ ' + Math.round(w.seances.reduce((s, x) => s + mesurerSeance(x).distanceM, 0) / 1000) + ' km prévus. ';
-      if (c.respect.echues) t += 'Tu as réalisé ' + c.respect.faites + ' séance' + (c.respect.faites > 1 ? 's' : '') + ' sur ' + c.respect.echues + '.';
-      return { html: t, actions: [{ label: 'Voir le plan', act: 'allerA', arg: 'plan' }, { label: 'Régénérer', act: 'genererPlan' }] };
-    }
-  },
-  {
-    re: /^(merci|top|super|parfait|genial|cool|ok|d.?accord|nickel)\b/,
-    f: () => ({ html: 'Avec plaisir. Bonne séance, et remonte-moi tes sensations après.' })
-  }
-];
-
-function repondreLocal(question, ecran = null) {
-  const q = normaliser(question);
-  const c = contexteCoach();
-  if (ecran) {                                   // « cette séance », « cet écran »… : réponse sur ce qui est affiché
-    try { const r = repondreSurEcran(q, ecran, c); if (r) return r; } catch (e) { console.error(e); }
-  }
-  for (const intention of INTENTIONS) {
-    if (intention.re.test(q)) {
-      try {
-        const r = intention.f(c, q);
-        if (r) return r;               // null : l'intention passe la main à la suivante
-      } catch (e) { console.error(e); break; }
-    }
-  }
-  return {
-    html: 'Je n’ai pas bien saisi. Je peux t’aider sur ce qui est affiché à l’écran, ta séance du jour, tes allures, le réalisme de ton objectif, la stratégie en montée ou en descente, la nutrition ou la fatigue.',
-    actions: [{ label: 'Ma séance du jour', act: 'questionRapide', arg: 'Quelle est ma séance du jour ?' },
-              { label: 'Mon objectif est-il réaliste ?', act: 'questionRapide', arg: 'Mon objectif est-il réaliste ?' }]
   };
 }
 
@@ -4289,153 +4018,6 @@ function ecranPourIA(e) {
            texteVisible: e.texteVisible, champsVisibles: e.champs, donnees: e.donnees };
 }
 
-/* ---------- Réponses embarquées sur l'écran affiché ---------- */
-
-const RE_DEIXIS = /(cet ecran|l.?ecran|ce que je vois|ce qui est affiche|tableau de bord|cette page|\bici\b|analyse (ca|cela|ce|cet|cette|mon|ma|mes)\b|explique.?(moi )?(ca|cela|ce|cet|cette)\b|qu.?en penses.?tu|penses.?tu de (ca|cela|ce|cet|cette)\b|commente|resume.?(moi )?(ca|cela|ce|cet|cette)\b)/;
-const BUTS_SEANCE = {
-  ef: 'L’endurance fondamentale construit le moteur (capillaires, économie de course). Elle doit rester facile : tu peux parler en courant.',
-  recup: 'La récupération active fait circuler le sang sans ajouter de fatigue : très lent, très court, c’est une séance de soin.',
-  sl: 'La sortie longue habitue le corps à durer (réserves, tendons, mental). Allure facile et régulière ; teste ton ravitaillement.',
-  vma: 'Le fractionné VMA élève ton plafond aérobie : répétitions courtes et rapides, la récupération entre elles fait partie de la séance.',
-  seuil: 'Le seuil repousse le moment où les jambes saturent : effort soutenu mais contrôlé, sans finir à bloc.',
-  specifique: 'L’allure spécifique grave dans tes jambes le rythme visé le jour J.',
-  cotes: 'Les côtes renforcent cuisses et mollets et améliorent la foulée en montée, avec moins de chocs que la vitesse sur le plat.',
-  fartlek: 'Le fartlek alterne les rythmes au ressenti : de la vitesse sans la rigidité de la piste.',
-  deblocage: 'Le déblocage réveille les jambes avant une échéance : court, quelques accélérations, aucune fatigue.',
-  course: 'C’est le jour J : ta stratégie kilomètre par kilomètre est dans l’onglet Course.'
-};
-const fr1 = x => String(x).replace('.', ',');
-
-function repondreSurEcran(q, ecran, c) {
-  const f = ecran.fenetre;
-  if (f && f.type === 'seance') {
-    const s = trouverSeance(f.id);
-    if (s && /(adapt|raccourc|allege|modifi|rempla|decal|deplac|fatigu|pas le temps|moins de temps)/.test(q)) return adapterSeanceLocal(s, c);
-    if (s && (RE_DEIXIS.test(q) || /(cette seance|la seance|pourquoi|a quoi sert|quelle allure|allures?)/.test(q))) return expliquerSeanceLocal(s);
-  }
-  if (f && f.type === 'activite') {
-    const a = ETAT.activites.find(x => x.id === f.id);
-    if (a && (RE_DEIXIS.test(q) || /(cette sortie|la sortie|allure|rapide|lent|bonne|analyse)/.test(q))) return analyserSortieLocal(a, c);
-  }
-  if (!f && ecran.vue === 'plan' && /(cette semaine|ce plan|mon plan)/.test(q) && /(pense|analyse|explique|commente|avis|quoi)/.test(q)) return analysePlanLocal(c, ecran.donnees);
-  if (!RE_DEIXIS.test(q)) return null;
-  if (f) return { html: 'Tu regardes ' + b(esc(f.titre || 'une fenêtre de l’app')) + '. Pose-moi une question précise à son sujet : je te réponds avec tes chiffres.' };
-  if (ecran.vue === 'plan') return analysePlanLocal(c, ecran.donnees);
-  if (ecran.vue === 'objectif') return analyseCourseLocal(c, ecran.donnees);
-  if (ecran.vue === 'profil') return analyseProfilLocal(c);
-  return analyseAccueilLocal(c);
-}
-function expliquerSeanceLocal(s) {
-  const st = statutSeance(s);
-  let html = resumeSeanceHtml(s) + '<div class="mt-1.5">' + (BUTS_SEANCE[s.type] || '') + '</div>';
-  const actions = [];
-  if (st === 'fait') {
-    const cmp = comparerSeance(s);
-    if (cmp) html += '<div class="mt-1.5">Réalisée : ' + km1(cmp.realise.distanceM) + ' km en ' + formaterDuree(cmp.realise.dureeS) +
-                     ' (' + formaterAllure(cmp.realise.allure) + '/km). ' + esc(cmp.verdict.texte) + '.</div>';
-  } else if (st === 'manque') {
-    html += '<div class="mt-1.5">Elle n’a pas été faite : si c’était une séance clé, je peux la replacer dans les prochains jours.</div>';
-    actions.push({ label: 'Replacer la séance clé', act: 'ajusterPlan', arg: 'decaler' });
-  } else if (s.type !== 'course') actions.push({ label: 'Séance vers la montre', act: 'montreSeance', arg: s.id });
-  return { html, actions };
-}
-function adapterSeanceLocal(s, c) {
-  const m = mesurerSeance(s);
-  const intense = (INTENSITE_TYPE[s.type] || 0) >= 0.6;
-  const li = t => '<li class="ml-4 list-disc">' + t + '</li>';
-  return {
-    html: 'Pour adapter ' + b(esc(s.titre)) + ' :<ul class="mt-1.5 space-y-0.5">' +
-      li('Peu de temps : garde l’échauffement et le cœur de la séance, raccourcis le retour au calme' + (intense ? ' ou fais deux répétitions de moins' : '') + '.') +
-      li('Fatigué : transforme-la en footing de ' + Math.max(25, Math.round(m.dureeS / 60 * 0.6)) + ' min en endurance (' + formaterAllure(c.m.zones.ef) + '/km), ou prends un jour de repos.') +
-      li('Douleur : pas de séance aujourd’hui ; si elle persiste ou augmente, consulte un médecin ou un kiné.') + '</ul>',
-    actions: [{ label: 'Alléger les 7 prochains jours', act: 'ajusterPlan', arg: 'alleger' }]
-  };
-}
-function analyserSortieLocal(a, c) {
-  const eq = distanceEquivalente(a.distanceM, a.dplus || 0, a.dmoins);
-  const allurePlat = a.tempsS / (eq / 1000);
-  const zone = zoneDeLAllure(allurePlat);
-  const recentes = ETAT.activites.filter(x => x.id !== a.id).slice(0, 8);
-  const moyenne = recentes.length
-    ? recentes.reduce((t, x) => t + x.tempsS / (distanceEquivalente(x.distanceM, x.dplus || 0, x.dmoins) / 1000), 0) / recentes.length : null;
-  let html = b(esc(a.nom)) + ' : ' + km1(a.distanceM) + ' km en ' + formaterDuree(a.tempsS) + ' (' + formaterAllure(a.tempsS / (a.distanceM / 1000)) + '/km' +
-             (a.dplus ? ', ' + a.dplus + ' m D+' : '') + ').';
-  if (zone) html += '<br>Ramenée au plat, ton allure (' + formaterAllure(allurePlat) + '/km) correspond à la zone ' + b(zone) + '.';
-  if (moyenne) {
-    const d = allurePlat - moyenne;
-    html += ' C’est ' + (Math.abs(d) < 8 ? 'dans ta moyenne récente' : Math.round(Math.abs(d)) + ' s/km plus ' + (d < 0 ? 'rapide' : 'lent') + ' que ta moyenne récente') + '.';
-  }
-  if (a.fcMoy) html += ' Fréquence cardiaque moyenne : ' + a.fcMoy + ' bpm.';
-  const s = a.seanceId ? trouverSeance(a.seanceId) : null;
-  const cmp = s ? comparerSeance(s) : null;
-  if (cmp) html += '<br>Séance prévue : ' + esc(s.titre) + '. ' + esc(cmp.verdict.texte) + '.';
-  else if (allurePlat < c.m.zones.marathon) html += '<br>C’était soutenu : prévois du facile le lendemain.';
-  return { html };
-}
-function analyseAccueilLocal(c) {
-  const lignes = [];
-  if (c.o.distanceKm && c.o.date && c.jours != null && c.jours >= 0) {
-    let t = 'J-' + c.jours + ' avant ' + b(esc(c.o.nom || 'ta course'));
-    if (c.strat && !c.strat.niveauInconnu) t += ' : temps probable ' + b(formaterDuree(c.strat.tempsModele)) + (c.strat.verdict ? ' (' + esc(c.strat.verdict.texte) + ')' : '');
-    lignes.push(t + '.');
-  } else lignes.push('Pas encore de course cible : définis-la pour que je construise ton plan.');
-  const s = c.auj.find(x => x.statut !== 'fait') || c.prochaine;
-  if (s) lignes.push((c.auj.includes(s) ? 'Aujourd’hui' : 'Prochaine séance ' + JOURS_LONGS[depuisCleJour(s.date).getDay()]) + ' : ' + b(esc(s.titre)) + '.');
-  const f = c.forme;
-  if (ETAT.activites.length) lignes.push(f > 5 ? 'Forme : tu es frais, c’est le bon moment pour une séance de qualité.'
-    : f > -10 ? 'Forme : charge équilibrée, continue ainsi.'
-    : f > -25 ? 'Forme : tu es en charge, c’est normal en préparation ; soigne le sommeil.'
-    : 'Forme : la fatigue est élevée, garde les prochains jours faciles.');
-  if (c.respect.echues) lignes.push('Plan suivi : ' + c.respect.faites + ' séance' + (c.respect.faites > 1 ? 's' : '') + ' sur ' + c.respect.echues + '.');
-  const der = ETAT.activites[0];
-  if (der) lignes.push('Dernière sortie : ' + km1(der.distanceM) + ' km en ' + formaterDuree(der.tempsS) + ', ' + dateCourte(new Date(der.date)) + '.');
-  return { html: lignes.join('<br>'), actions: s && s.type !== 'course' ? [{ label: 'Séance vers la montre', act: 'montreSeance', arg: s.id }] : [] };
-}
-function analysePlanLocal(c, donnees) {
-  if (!ETAT.plan) return { html: 'Pas encore de plan : génère-le, il sera calé sur ton niveau et ta course.', actions: [{ label: 'Générer le plan', act: 'genererPlan' }] };
-  const nums = (donnees && donnees.semainesDepliees) || [];
-  const w = ETAT.plan.semaines.find(x => nums.includes(x.numero)) || c.semaine || ETAT.plan.semaines[0];
-  const km = w.seances.reduce((t, x) => t + mesurerSeance(x).distanceM, 0);
-  const faites = w.seances.filter(x => statutSeance(x) === 'fait').length;
-  const cles = w.seances.filter(x => (INTENSITE_TYPE[x.type] || 0) >= 0.6 || x.type === 'sl');
-  const phase = normaliser(PHASES[w.phase].libelle);
-  let html = 'Semaine ' + w.numero + ' (' + PHASES[w.phase].libelle.toLowerCase() + (w.relache ? ', allégée' : '') + ') : ' + b(km1(km) + ' km') +
-             ' en ' + w.seances.length + ' séances, ' + faites + ' faite' + (faites > 1 ? 's' : '') + '.';
-  if (cles.length) html += '<br>Séances clés : ' + cles.map(x => b(esc(x.titre)) + ' (' + JOURS_LONGS[depuisCleJour(x.date).getDay()] + ')').join(', ') + '.';
-  html += '<br>' + (w.relache ? 'Semaine allégée : on assimile le travail des semaines précédentes, n’ajoute rien.'
-    : /affutage/.test(phase) ? 'Affûtage : le volume baisse, l’intensité reste. Tu dois arriver frais, pas rouillé.'
-    : /specifique/.test(phase) ? 'Phase spécifique : on se rapproche de l’allure et du terrain du jour J.'
-    : 'Phase de construction : le facile reste facile pour réussir les séances clés.');
-  const prochaine = w.seances.find(x => ['prevu', 'aujourdhui'].includes(statutSeance(x)) && x.type !== 'course');
-  return { html, actions: prochaine ? [{ label: 'Séance vers la montre', act: 'montreSeance', arg: prochaine.id }] : [] };
-}
-function analyseCourseLocal(c, donnees) {
-  const o = c.o, st = c.strat;
-  if (!o.distanceKm || !o.date) return { html: 'Définis ta course (distance, D+, date) : je calculerai ton temps probable et tes allures kilomètre par kilomètre.' };
-  const dplus = (o.gpx ? o.gpx.dplus : o.dplus) || 0;
-  let html = b(esc(o.nom || 'Ta course')) + ' : ' + fr1(o.distanceKm) + ' km' + (dplus ? ', ' + dplus + ' m D+' : '') + ', ' + dateLongue(depuisCleJour(o.date)) + '.';
-  if (st && !st.niveauInconnu) {
-    html += '<br>Temps probable ' + b(formaterDuree(st.tempsModele)) + ', allure moyenne ' + formaterAllure(st.allureMoy) + '/km.';
-    if (st.verdict) html += ' ' + esc(st.verdict.texte) + '.';
-  }
-  const montees = (donnees && donnees.monteesPrincipales) || monteesParcours(st);
-  if (montees.length) html += '<br>Montées principales : ' + montees.map(m => 'km ' + fr1(m.duKm) + ' à ' + fr1(m.auKm) + ' (' + m.dplus + ' m, ' + m.penteMoyenne + ')').join(', ') + '.';
-  html += '<br>' + (o.type === 'trail'
-    ? 'Pars sous tes sensations : les montées se gèrent au souffle (marche active au-delà de 12 à 15 %), et ce sont les descentes qui usent les cuisses.'
-    : 'Les deux premiers kilomètres un peu sous l’allure cible, puis de la régularité : un départ trop rapide se paie double sur la fin.');
-  return { html };
-}
-function analyseProfilLocal(c) {
-  if (c.m.parDefaut) return SANS_NIVEAU();
-  const z = c.m.zones;
-  return {
-    html: 'VMA ' + b(fKmh(c.m.vma)) + ', VO2max estimée ' + fr1(c.m.vo2max) + ' (fiabilité ' + c.fiab.niveau + ' : ' + esc(c.fiab.texte) + ').' +
-      '<br>Tes allures : endurance ' + formaterAllure(z.ef) + '/km, seuil ' + formaterAllure(z.seuil) + '/km, VMA ' + formaterAllure(z.vmaCourte) + '/km.' +
-      '<br>' + (c.fiab.niveau === 'faible' ? 'Pour fiabiliser : importe plus de sorties ou indique une course récente comme référence.'
-        : 'Pour progresser : de la régularité (' + ETAT.profil.seancesSemaine + ' séances par semaine), une séance de qualité par semaine, le reste facile.'),
-    actions: c.fiab.niveau === 'faible' ? [{ label: 'Ajouter une référence', act: 'saisirReference' }] : []
-  };
-}
 /** Questions proposées selon l'écran. */
 function suggestionsEcran(c, ecran) {
   const l = [];
@@ -4450,7 +4032,7 @@ function suggestionsEcran(c, ecran) {
   return l.slice(0, 8);
 }
 
-/* ---------- Cerveau du coach : Claude (clé personnelle), relais serveur ou moteur embarqué ---------- */
+/* ---------- Cerveau du coach : Gemini (par défaut), Claude (clé personnelle) ou relais serveur ---------- */
 
 /* Gemini (Google AI Studio). Google a annoncé l'arrêt des modèles 2.5 à l'automne 2026 :
    si le modèle choisi disparaît, RDD bascule seul sur l'alias « dernier Gemini Flash ». */
@@ -4467,12 +4049,10 @@ const MODELES_IA = [
   { id: 'claude-haiku-4-5-20251001', nom: 'Claude Haiku 4.5 : rapide et économique' }
 ];
 const TEXTES_MODE_IA = {
-  local: 'Moteur embarqué : il reconnaît le sujet de ta question et calcule la réponse avec tes données. Instantané, hors ligne et gratuit.',
   gemini: 'Gemini, l’IA de Google, lit le résumé de ton dossier (niveau, allures, charge, plan, course, dernières sorties) et te répond en conversation libre. Clé gratuite sur Google AI Studio, conservée sur cet appareil. Avec l’offre gratuite, Google peut utiliser les échanges pour améliorer ses services.',
   claude: 'Claude, l’IA d’Anthropic, lit le résumé de ton dossier (niveau, allures, charge, plan, course, dernières sorties) et te répond en conversation libre, comme un vrai coach. La clé reste sur cet appareil ; les questions sont facturées sur ton compte Anthropic.',
   relais: 'Ton propre serveur reçoit la question avec le résumé du dossier et renvoie la réponse du modèle de ton choix. Pratique pour partager une clé sans l’installer sur chaque téléphone.'
 };
-let avertiSansCle = false;
 
 /** Texte brut d'un message du fil (analyse inerte : rien n'est exécuté). */
 function texteBrut(html) {
@@ -4556,7 +4136,7 @@ function promptSystemeCoach(ecran = null) {
 /** Fil de discussion au format de l'API : rôles alternés, premier message de l'utilisateur. */
 function historiqueIA() {
   const msgs = [];
-  ETAT.chat.filter(m => m.source !== 'annule' && m.source !== 'local-secours').slice(-12).forEach(m => {
+  ETAT.chat.filter(m => !['annule', 'erreur', 'local-secours'].includes(m.source)).slice(-12).forEach(m => {
     const role = m.role === 'moi' ? 'user' : 'assistant';
     const contenu = String(m.role === 'moi' ? (m.texte || texteBrut(m.html)) : texteBrut(m.html)).trim();
     if (!contenu) return;
@@ -4919,45 +4499,38 @@ function erreurReessayable(e) {
   if ((e.raisons || []).includes('API_KEY_INVALID') || [400, 401, 403, 404].includes(e.statut)) return false;
   return true;
 }
+const cleRefusee = e => !!e && ((e.raisons || []).includes('API_KEY_INVALID') || /api key not valid/i.test(String(e.message || '')) || e.statut === 401);
+const NOM_CERVEAU = () => ({ gemini: 'Gemini', claude: 'Claude', relais: 'le modèle distant' }[APPAREIL.ia.mode] || 'Gemini');
+
+/** Le cerveau choisi est-il configuré (clé ou adresse renseignée) ? */
+function cerveauPret() {
+  const ia = APPAREIL.ia;
+  return ia.mode === 'claude' ? !!ia.cle : ia.mode === 'relais' ? !!ia.endpoint : !!ia.cleGemini;
+}
 function reponseAnnulee(question) {
-  return {
-    html: '<span class="text-brume">Question annulée.</span>', source: 'annule',
-    actions: [{ label: 'Réessayer', act: 'reposerQuestion', arg: question }, { label: 'Réponse rapide sans IA', act: 'reponseLocale', arg: question }]
-  };
+  return { html: '<span class="text-brume">Question annulée.</span>', source: 'annule', actions: [{ label: 'Réessayer', act: 'reposerQuestion', arg: question }] };
+}
+/** Réponse d'erreur : explication claire dans la conversation, avec Réessayer quand cela a un sens. */
+function reponseErreur(e, question) {
+  const actions = [];
+  if (erreurReessayable(e)) actions.push({ label: 'Réessayer avec ' + NOM_CERVEAU(), act: 'reposerQuestion', arg: question });
+  if (cleRefusee(e) || (e && e.statut === 403)) actions.push({ label: 'Changer ma clé', act: 'reglagesCoach' });
+  return { html: '<span class="block text-[13px]"><i class="fa-solid fa-triangle-exclamation text-ocre mr-1.5"></i>' + messageErreurIA(e) + '</span>', source: 'erreur', actions };
 }
 
 async function repondreCoach(question, ecran = null, opts = {}) {
   const ia = APPAREIL.ia;
-  const nomIA = { gemini: 'Gemini', claude: 'Claude', relais: 'le modèle distant' }[ia.mode] || 'l’IA';
-  let note = '';
   try {
-    if (ia.mode === 'gemini') {
-      if (ia.cleGemini) return await repondreGemini(ecran, opts);
-      note = 'Ajoute ta clé Google AI Studio (Profil, Cerveau du coach) pour activer Gemini. En attendant, le coach embarqué te répond :';
-    } else if (ia.mode === 'claude') {
-      if (ia.cle) return await repondreClaude(ecran, opts);
-      note = 'Ajoute ta clé Anthropic (Profil, Cerveau du coach) pour activer Claude. En attendant, le coach embarqué te répond :';
-    } else if (ia.mode === 'relais' && ia.endpoint) {
-      return await repondreDistant(question, ecran, opts);
-    }
+    if (ia.mode === 'claude' && ia.cle) return await repondreClaude(ecran, opts);
+    if (ia.mode === 'relais' && ia.endpoint) return await repondreDistant(question, ecran, opts);
+    if (ia.mode === 'gemini' && ia.cleGemini) return await repondreGemini(ecran, opts);
+    return { html: 'Pour répondre, ton coach a besoin d’une clé ' + (ia.mode === 'gemini' ? 'Google AI Studio (gratuite)' : ia.mode === 'claude' ? 'Anthropic' : 'de relais') + '.',
+             source: 'erreur', actions: [{ label: 'Ajouter ma clé', act: 'reglagesCoach' }] };
   } catch (e) {
     if (e && e.code === 'annule') return reponseAnnulee(question);
     console.warn(e);
-    // L'explication reste dans la conversation, suivie de la réponse du coach embarqué.
-    const r = Object.assign(repondreLocal(question, ecran), { source: 'local-secours', texteBrut: '' });
-    r.html = '<span class="block text-[12.5px] text-brume mb-1.5"><i class="fa-solid fa-triangle-exclamation text-ocre mr-1"></i>' +
-             messageErreurIA(e) + ' Réponse du coach embarqué en attendant :</span>' + r.html;
-    if (erreurReessayable(e)) r.actions = [{ label: 'Réessayer avec ' + nomIA, act: 'reposerQuestion', arg: question }].concat(r.actions || []);
-    return r;
+    return reponseErreur(e, question);
   }
-  await pause(350 + Math.random() * 350);   // temps de « réflexion » du moteur embarqué
-  const r = Object.assign(repondreLocal(question, ecran), { source: 'local' });
-  if (note && !avertiSansCle) {
-    avertiSansCle = true;
-    r.html = '<span class="block text-[12.5px] text-brume mb-1.5">' + note + '</span>' + r.html;
-    r.actions = [{ label: 'Ajouter ma clé', act: 'reglagesCoach' }].concat(r.actions || []);
-  }
-  return r;
 }
 
 function ajouterMessage(role, html, actions = [], texte = '', source = '', ecran = '') {
@@ -4974,6 +4547,7 @@ let coachOccupe = false;
 async function poserQuestion(question, options = {}) {
   const q = String(question || '').trim();
   if (!q || coachOccupe) return;
+  if (!cerveauPret()) { signalerCleManquante(); return; }          // pas de clé : on guide au lieu de répondre dans le vide
   coachOccupe = true;
   const profil = INDEX.actif;
   const ecran = ECRAN_COACH.actif ? ECRAN_COACH.capture : null;
@@ -4990,14 +4564,14 @@ async function poserQuestion(question, options = {}) {
     });
   } catch (e) {
     console.error(e);
-    rep = Object.assign(repondreLocal(q, ecran), { source: 'local' });
+    rep = reponseErreur(e, q);
   } finally {
     coachOccupe = false;
     attenteCoach = null;
     arreterMinuterieAttente();
   }
   if (INDEX.actif !== profil) return;          // profil changé pendant la réflexion : réponse abandonnée
-  ajouterMessage('coach', rep.html, rep.actions || [], rep.texteBrut || '', rep.source || 'local');
+  ajouterMessage('coach', rep.html, rep.actions || [], rep.texteBrut || '', rep.source || 'erreur');
   rendreChat();
   if (!COUCHES.coach) bulleSautille();         // réponse arrivée panneau fermé : la bulle prévient
 }
@@ -5432,10 +5006,9 @@ let actionDemarrage = null;       // raccourci de l'icône (appui long) : coach,
 const SOURCES_REPONSE = {
   gemini: ['fa-brands fa-google', 'Réponse de Gemini'],
   claude: ['fa-solid fa-wand-magic-sparkles', 'Réponse de Claude'],
-  relais: ['fa-solid fa-server', 'Réponse du modèle distant'],
-  'local-secours': ['fa-solid fa-microchip', 'Réponse du coach embarqué']
+  relais: ['fa-solid fa-server', 'Réponse du modèle distant']
 };
-const ACTIONS_DU_FIL = ['questionRapide', 'reposerQuestion', 'reponseLocale', 'annulerCoach'];   // elles ne referment pas le panneau
+const ACTIONS_DU_FIL = ['questionRapide', 'reposerQuestion', 'annulerCoach'];   // elles ne referment pas le panneau
 
 function ouvrirCoach() {
   if (!sessionOuverte || COUCHES.coach) return;
@@ -5512,9 +5085,35 @@ function masquerAstuceBulle(vue = true) {
 
 function cerveauActif() {
   const ia = APPAREIL.ia;
-  return ia.mode === 'gemini' && ia.cleGemini ? ['Gemini', 'fa-brands fa-google']
-       : ia.mode === 'claude' && ia.cle ? ['Claude', 'fa-solid fa-wand-magic-sparkles']
-       : ia.mode === 'relais' && ia.endpoint ? ['Modèle distant', 'fa-solid fa-server'] : ['Coach embarqué', 'fa-solid fa-microchip'];
+  return ia.mode === 'claude' ? ['Claude', 'fa-solid fa-wand-magic-sparkles']
+       : ia.mode === 'relais' ? ['Modèle distant', 'fa-solid fa-server'] : ['Gemini', 'fa-brands fa-google'];
+}
+
+/** Carte d'activation du coach (clé absente) : saisie directe pour Gemini, renvoi vers les réglages sinon. */
+function carteCleCoach() {
+  const ia = APPAREIL.ia;
+  if (ia.mode !== 'gemini') {
+    return `<div class="rounded-2xl bg-ocre/10 border border-ocre/30 p-3.5">
+      <div class="titre text-[17px] leading-tight">Active ton coach</div>
+      <p class="text-[12.5px] text-brume leading-relaxed mt-1">${ia.mode === 'claude' ? 'Il manque ta clé API Anthropic.' : 'Il manque l’adresse de ton relais.'} Tu peux aussi revenir à Gemini, gratuit.</p>
+      <button data-act="reglagesCoach" class="tapable w-full h-11 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14.5px] mt-2.5">Ouvrir les réglages</button></div>`;
+  }
+  return `<div id="carteCleCoach" class="rounded-2xl bg-ocre/10 border border-ocre/30 p-3.5">
+    <div class="titre text-[17px] leading-tight">Active ton coach en 1 minute</div>
+    <p class="text-[12.5px] text-brume leading-relaxed mt-1">Ton coach s’appuie sur Gemini, l’IA de Google. Il te faut une clé gratuite : ouvre Google AI Studio, touche « Créer une clé API », copie-la, puis colle-la ici. Elle reste sur cet appareil.</p>
+    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="tapable block text-center h-11 leading-[44px] rounded-2xl verre text-[14px] mt-2.5"><i class="fa-brands fa-google mr-1.5"></i>Obtenir ma clé gratuite</a>
+    <input id="cleGeminiPanneau" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Colle ta clé ici (AIza…)"
+      class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px] mt-2">
+    <button data-act="enregistrerCleCoach" class="tapable w-full h-11 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14.5px] mt-2">Activer le coach</button>
+  </div>`;
+}
+/** Pas de clé : message d'aide, et la carte d'activation passe au premier plan. */
+function signalerCleManquante() {
+  if (!COUCHES.coach) { ouvrirCoach(); return; }
+  rendrePanneauCoach();
+  toast('Ajoute d’abord ta clé pour activer le coach.', 'info');
+  const champ = $('#cleGeminiPanneau');
+  if (champ && !plateforme().mobile) champ.focus();
 }
 function rendrePanneauCoach() {
   if (!COUCHES.coach) return;
@@ -5525,10 +5124,15 @@ function rendrePanneauCoach() {
   const [nom, icone] = cerveauActif();
   const e = ECRAN_COACH.capture;
   $('#enteteCoach').innerHTML =
-    `<button data-act="reglagesCoach" class="tapable puce-coach shrink-0"><i class="${icone}"></i>${nom}</button>` +
+    `<button data-act="reglagesCoach" class="tapable puce-coach shrink-0"><i class="${icone}"></i>${nom}${cerveauPret() ? '' : ' : clé manquante'}</button>` +
     (e ? `<button data-act="basculerEcranCoach" aria-pressed="${ECRAN_COACH.actif}" class="tapable puce-coach min-w-0 ${ECRAN_COACH.actif ? 'text-azur' : 'line-through opacity-70'}"
            title="${ECRAN_COACH.actif ? 'Le coach tient compte de cet écran' : 'Écran ignoré'}"><i class="fa-solid ${ECRAN_COACH.actif ? 'fa-eye' : 'fa-eye-slash'}"></i><span class="truncate">${esc(e.libelle)}</span></button>` : '');
   rendreChat();
+  const pret = cerveauPret();
+  $('#zoneCleCoach').innerHTML = pret ? '' : carteCleCoach();
+  $('#zoneCleCoach').classList.toggle('hidden', pret);
+  $('#suggestionsChat').classList.toggle('hidden', !pret);
+  $('#zoneSaisieChat').classList.toggle('hidden', !pret);
   $('#suggestionsChat').innerHTML = suggestionsEcran(c, ECRAN_COACH.actif ? e : null).map(q =>
     `<button data-act="questionRapide" data-arg="${esc(q)}" class="tapable shrink-0 h-9 px-3.5 rounded-full verre text-[12.5px] whitespace-nowrap">${esc(q)}</button>`).join('');
   marquerChatLu(false);
@@ -5979,7 +5583,7 @@ function rendreReglagesIA() {
   $$('#choixModeIA [data-act="modeIA"]').forEach(bt => {
     bt.className = 'tapable h-9 rounded-xl text-[13px] ' + (bt.dataset.arg === ia.mode ? 'bg-ocre text-[#23120A] font-semibold' : 'text-brume');
   });
-  $('#texteModeIA').textContent = TEXTES_MODE_IA[ia.mode] || TEXTES_MODE_IA.local;
+  $('#texteModeIA').textContent = TEXTES_MODE_IA[ia.mode] || TEXTES_MODE_IA.gemini;
   $('#blocGemini').classList.toggle('hidden', ia.mode !== 'gemini');
   $('#blocClaude').classList.toggle('hidden', ia.mode !== 'claude');
   $('#blocRelais').classList.toggle('hidden', ia.mode !== 'relais');
@@ -6725,13 +6329,32 @@ const ACTIONS = {
   },
   masquerInstallation: () => { APPAREIL.installationMasquee = true; sauverAppareil(); majInvitationInstallation(); },
   modeIA: arg => {
-    APPAREIL.ia.mode = ['local', 'gemini', 'claude', 'relais'].includes(arg) ? arg : 'local';
-    avertiSansCle = false;
+    APPAREIL.ia.mode = ['gemini', 'claude', 'relais'].includes(arg) ? arg : 'gemini';
     sauverAppareil();
     rendreReglagesIA();
     if (arg === 'gemini' && !APPAREIL.ia.cleGemini) toast('Colle ta clé Google AI Studio pour activer Gemini.', 'info');
     if (arg === 'claude' && !APPAREIL.ia.cle) toast('Colle ta clé API Anthropic pour activer Claude.', 'info');
     if (arg === 'relais' && !APPAREIL.ia.endpoint) toast('Renseigne l’adresse de ton relais.', 'info');
+  },
+  enregistrerCleCoach: async () => {
+    const saisie = (($('#cleGeminiPanneau') || {}).value || '').trim();
+    if (saisie.length < 20 || /\s/.test(saisie)) { toast('Cette clé semble incomplète : copie-la en entier depuis Google AI Studio (elle commence par « AIza »).', 'alerte'); return; }
+    APPAREIL.ia.mode = 'gemini';
+    APPAREIL.ia.cleGemini = saisie;
+    sauverAppareil();
+    toast('Vérification de la clé…', 'info');
+    try {
+      const nom = await testerConnexionGemini();
+      toast(esc(nom) + ' est prêt : pose ta première question.', 'succes');
+    } catch (e) {
+      if (cleRefusee(e)) {                                          // clé refusée : on ne la garde pas
+        APPAREIL.ia.cleGemini = '';
+        sauverAppareil();
+        toast(messageErreurIA(e), 'erreur');
+      } else toast(messageErreurIA(e) + ' La clé est enregistrée : réessaie dans un instant.', 'alerte');
+    }
+    rendreReglagesIA();
+    rendrePanneauCoach();
   },
   testerIA: async () => {
     APPAREIL.ia.cle = $('#cleIA').value.trim();
@@ -6842,11 +6465,6 @@ const ACTIONS = {
   basculerEcranCoach: () => { ECRAN_COACH.actif = !ECRAN_COACH.actif; rendrePanneauCoach(); },
   annulerCoach: () => { if (attenteCoach) attenteCoach.ctrl.abort(); },
   reposerQuestion: arg => poserQuestion(arg, { reessai: true }),
-  reponseLocale: arg => {
-    const r = repondreLocal(arg, ECRAN_COACH.actif ? ECRAN_COACH.capture : null);
-    ajouterMessage('coach', r.html, r.actions || [], '', 'local-secours');
-    rendreChat();
-  },
   reglagesCoach: () => {
     fermerToutesLesFenetres();
     allerA('profil');
@@ -7058,7 +6676,7 @@ function brancherEvenements() {
   $('#cleIA').addEventListener('change', e => { APPAREIL.ia.cle = e.target.value.trim(); sauverAppareil(); });
   $('#modeleIA').addEventListener('change', e => { APPAREIL.ia.modele = e.target.value; sauverAppareil(); });
   $('#regEndpointIA').addEventListener('change', e => { APPAREIL.ia.endpoint = e.target.value.trim(); sauverAppareil(); });
-  $('#cleGemini').addEventListener('change', e => { APPAREIL.ia.cleGemini = e.target.value.trim(); avertiSansCle = false; sauverAppareil(); rendreCoachSiOuvert(); });
+  $('#cleGemini').addEventListener('change', e => { APPAREIL.ia.cleGemini = e.target.value.trim(); sauverAppareil(); rendreCoachSiOuvert(); });
   $('#modeleGemini').addEventListener('change', e => {
     if (e.target.value === 'autre') { $('#modeleGeminiLibre').classList.remove('hidden'); $('#modeleGeminiLibre').focus(); return; }
     APPAREIL.ia.modeleGemini = e.target.value;
