@@ -1,0 +1,77 @@
+{
+  "name": "RDD, Runner du dimanche",
+  "short_name": "RDD",
+  "description": "Coach running et trail : ton niveau, ton plan et tes allures du jour J.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#10142B",
+  "theme_color": "#10142B",
+  "categories": [
+    "health",
+    "fitness",
+    "sports"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icone-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Demander au coach",
+      "short_name": "Coach",
+      "url": "./?ouvrir=coach",
+      "icons": [
+        {
+          "src": "icone-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Mon plan d’entraînement",
+      "short_name": "Plan",
+      "url": "./?ouvrir=plan",
+      "icons": [
+        {
+          "src": "icone-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Importer une sortie",
+      "short_name": "Importer",
+      "url": "./?ouvrir=import",
+      "icons": [
+        {
+          "src": "icone-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
