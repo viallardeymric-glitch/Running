@@ -251,6 +251,10 @@ if (window.tailwind) tailwind.config = {
   body.clavier .pied-coach{ padding-bottom:10px !important; }
   .puce-coach{ display:inline-flex; align-items:center; gap:4px; max-width:100%; height:24px; padding:0 9px; border-radius:99px;
     font-size:11px; background:#262C57; color:#9DA5CA; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ---------- Déplacement d'une séance : calendrier et glisser-déposer ---------- */
+  .pastille-glisser{ touch-action:none; cursor:grab; }
+  .fantome-glisser{ position:fixed; z-index:80; pointer-events:none; transform:translate(-50%,-75%) scale(1.15); box-shadow:0 14px 30px -10px rgba(0,0,0,.85); }
+  .case-jour.survol-glisser{ outline:2px solid #FF9D66; outline-offset:-2px; background:rgba(255,157,102,.18); }
 </style>
 </head>
 <body class="font-corps antialiased">
@@ -513,6 +517,15 @@ if (window.tailwind) tailwind.config = {
     </div>
   </div>
 
+  <!-- Stratégie nutritionnelle : juste sous le profil du parcours -->
+  <div id="blocNutrition" class="hidden">
+    <div class="flex items-baseline justify-between px-1 mb-2">
+      <h3 class="titre text-[19px]">Stratégie nutritionnelle</h3>
+      <button data-act="partagerNutrition" class="text-[12px] text-ocre tapable"><i class="fa-solid fa-share-nodes mr-1"></i>Partager</button>
+    </div>
+    <div id="contenuNutrition" class="rounded-xl2 verre p-4 mb-4"></div>
+  </div>
+
   <!-- Stratégie jour J -->
   <div id="blocStrategie" class="hidden">
     <div class="flex items-baseline justify-between px-1 mb-2">
@@ -732,7 +745,10 @@ if (window.tailwind) tailwind.config = {
     <div id="zoneCleCoach" class="hidden shrink-0 gouttieres pb-2"></div>
     <div class="pied-coach shrink-0 gouttieres pt-1" style="padding-bottom:calc(var(--safe-bot) + 10px)">
       <div class="scroll-x flex gap-2 mb-2 pb-1" id="suggestionsChat"></div>
+      <div id="piecesChat" class="hidden scroll-x flex gap-2 mb-2 pb-1"></div>
       <div id="zoneSaisieChat" class="verre rounded-2xl p-2 flex items-end gap-2">
+        <button data-act="joindreFichier" aria-label="Joindre une photo ou un fichier" class="tapable w-10 h-10 rounded-xl grid place-items-center shrink-0 text-brume"><i class="fa-solid fa-paperclip text-[16px]"></i></button>
+        <input id="inputPieceCoach" type="file" multiple class="hidden">
         <textarea id="saisieChat" rows="1" placeholder="Pose ta question au coach…" enterkeyhint="send"
           class="flex-1 bg-transparent resize-none outline-none px-2 py-2 text-[16px] placeholder:text-brume/70 max-h-32"></textarea>
         <button data-act="envoyerChat" aria-label="Envoyer" class="tapable w-10 h-10 rounded-xl bg-ocre text-[#23120A] grid place-items-center shrink-0">
@@ -1281,7 +1297,8 @@ function etatParDefaut() {
     metriques: null,
     objectif: {
       nom: '', type: 'trail', distanceKm: null, dplus: null, dmoins: null,
-      date: '', heure: '09:00', tempsVise: '', technicite: 'moyen', gpx: null
+      date: '', heure: '09:00', tempsVise: '', technicite: 'moyen', gpx: null,
+      nutrition: { conditions: 'temperee', boisson: 'eau', ravitos: '' }    // ravitos : km saisis à la main (« 5 ; 12,5 »)
     },
     plan: null,
     chat: []
@@ -1699,24 +1716,68 @@ function nouvelleActivite(o) {
 }
 
 /** Ajoute des activités en évitant les doublons (même jour, même distance à 150 m près). */
-function fusionnerActivites(liste) {
-  // Doublon : même jour et même distance à 150 m près, ou départ à moins de 3 h avec une distance à 3 % près
-  // (la même sortie importée depuis deux sources, l'une en heure UTC et l'autre en heure locale).
-  let ajoutees = 0;
-  const connues = ETAT.activites.map(a => ({ t: new Date(a.date).getTime(), d: a.distanceM, j: cleJour(a.date) }));
+/** Saisies faites à la main (sortie ajoutée, séance validée en tapant les valeurs) : moins précises qu'un import. */
+const SOURCES_MANUELLES = ['saisie', 'journal'];
+const estSaisieManuelle = a => !!a && SOURCES_MANUELLES.includes(a.source);
+
+/**
+ * Sortie déjà connue : même jour et même distance à 150 m près, ou départ à moins de 3 h avec une distance à 3 % près
+ * (la même sortie venue de deux sources, l'une en heure UTC, l'autre en heure locale).
+ * Pour un import, les saisies manuelles ne comptent pas : elles seront remplacées, pas opposées.
+ */
+function doublonDe(n) {
+  const t = new Date(n.date).getTime(), j = cleJour(n.date);
+  const manuelle = estSaisieManuelle(n);
+  return ETAT.activites.find(a => {
+    if (a === n || (!manuelle && estSaisieManuelle(a))) return false;
+    const ecart = Math.abs(a.distanceM - n.distanceM);
+    return (cleJour(a.date) === j && ecart < 150) || (Math.abs(new Date(a.date).getTime() - t) < 3 * 3600000 && ecart < Math.max(150, 0.03 * n.distanceM));
+  }) || null;
+}
+/**
+ * Saisie manuelle du même jour que l'import n, pour la même activité (la course à pied, seule activité suivie par RDD,
+ * qu'elle soit sur route, en trail ou sur tapis). Distance à 60 % près, sinon c'est une autre sortie du jour.
+ */
+function saisieARemplacer(n) {
+  const j = cleJour(n.date);
+  const candidates = ETAT.activites
+    .filter(a => estSaisieManuelle(a) && cleJour(a.date) === j && a.distanceM > 0)
+    .map(a => ({ a, ecart: Math.abs(Math.log(n.distanceM / a.distanceM)) }))
+    .filter(x => x.ecart <= Math.log(1.6))
+    .sort((x, y) => x.ecart - y.ecart);
+  return candidates.length ? candidates[0].a : null;
+}
+/** Remplace la saisie manuelle par l'import : données précises, lien avec la séance, ressenti et notes conservés. */
+function remplacerSaisie(ancienne, nouvelle) {
+  nouvelle.seanceId = ancienne.seanceId || nouvelle.seanceId || null;
+  nouvelle.effortMax = !!(ancienne.effortMax || nouvelle.effortMax);
+  if (ancienne.ignorerPlan) nouvelle.ignorerPlan = true;
+  nouvelle.remplace = { source: ancienne.source, distanceM: ancienne.distanceM, tempsS: ancienne.tempsS, le: new Date().toISOString() };
+  ETAT.activites[ETAT.activites.indexOf(ancienne)] = nouvelle;
+  toutesSeances().forEach(x => {
+    if (x.realise && x.realise.activiteId === ancienne.id) {
+      Object.assign(x.realise, { activiteId: nouvelle.id, distanceM: nouvelle.distanceM, tempsS: nouvelle.tempsS, dplus: nouvelle.dplus });
+    }
+  });
+}
+/**
+ * Intègre des sorties : les doublons sont écartés, une saisie manuelle du même jour est remplacée par
+ * l'import (bilan.remplacees), le reste est ajouté. Renvoie le nombre de sorties intégrées (ajoutées ou remplaçantes).
+ */
+function fusionnerActivites(liste, bilan = null) {
+  let integrees = 0;
   (liste || []).forEach(n => {
-    if (!n || !(n.distanceM > 300) || !(n.tempsS > 120)) return;
-    const t = new Date(n.date).getTime();
-    if (!isFinite(t)) return;
-    const j = cleJour(n.date);
-    const doublon = connues.some(a => {
-      const ecart = Math.abs(a.d - n.distanceM);
-      return (a.j === j && ecart < 150) || (Math.abs(a.t - t) < 3 * 3600000 && ecart < Math.max(150, 0.03 * n.distanceM));
-    });
-    if (!doublon) { ETAT.activites.push(n); connues.push({ t, d: n.distanceM, j }); ajoutees++; }
+    if (!n || !(n.distanceM > 300) || !(n.tempsS > 120) || !isFinite(new Date(n.date).getTime())) return;
+    if (doublonDe(n)) return;
+    const remplacee = estSaisieManuelle(n) ? null : saisieARemplacer(n);
+    if (remplacee) {
+      remplacerSaisie(remplacee, n);
+      if (bilan) bilan.remplacees = (bilan.remplacees || 0) + 1;
+    } else ETAT.activites.push(n);
+    integrees++;
   });
   ETAT.activites.sort((a, b) => new Date(b.date) - new Date(a.date));
-  return ajoutees;
+  return integrees;
 }
 
 /* ---------- Historique de démonstration réaliste ---------- */
@@ -2515,7 +2576,8 @@ function majProgression(fraction, detail) {
 }
 function fermerProgression() { if ($('#barreProgression') && !$('#fondModale').classList.contains('hidden')) fermerModale(); }
 
-const LIBELLES_SOURCES = { 'apple-sante': 'Apple Santé', 'samsung-health': 'Samsung Health', gpx: 'GPX', tcx: 'TCX', 'strava-fichier': 'fichier Strava', 'strava-api': 'Strava', saisie: 'saisie' };
+const LIBELLES_SOURCES = { 'apple-sante': 'Apple Santé', 'samsung-health': 'Samsung Health', gpx: 'GPX', tcx: 'TCX', 'strava-fichier': 'fichier Strava', 'strava-api': 'Strava', saisie: 'saisie',
+                           journal: 'séance validée', 'coach-ia': 'coach (pièce jointe)' };
 
 function messageErreurImport(nom, e) {
   if (e && e.code === 'gpx-parcours') return '« ' + esc(nom) + ' » n’a pas d’horodatage : c’est un parcours. Charge-le dans l’onglet Course.';
@@ -2524,13 +2586,14 @@ function messageErreurImport(nom, e) {
 }
 
 async function importerFichiersActivites(fichiers) {
-  const bilan = { ajoutees: 0, doublons: 0, autres: 0, erreurs: 0, sources: new Set() };
+  const bilan = { ajoutees: 0, remplacees: 0, doublons: 0, autres: 0, erreurs: 0, sources: new Set() };
   for (const f of fichiers) {
     try {
       const liste = (await activitesDepuisFichier(f, bilan)).filter(Boolean);
       const valides = liste.filter(a => a.distanceM > 300 && a.tempsS > 120);
-      const n = fusionnerActivites(valides);
-      bilan.ajoutees += n;
+      const avant = bilan.remplacees;
+      const n = fusionnerActivites(valides, bilan);
+      bilan.ajoutees += n - (bilan.remplacees - avant);
       bilan.doublons += valides.length - n;
       valides.forEach(a => bilan.sources.add(LIBELLES_SOURCES[a.source] || 'fichier'));
     } catch (e) {
@@ -2541,12 +2604,14 @@ async function importerFichiersActivites(fichiers) {
     }
   }
   fermerProgression();
-  if (bilan.ajoutees > 0) {
+  if (bilan.ajoutees > 0 || bilan.remplacees > 0) {
     if (ETAT.strava.mode === 'aucun' || !ETAT.strava.mode) ETAT.strava.mode = 'fichier';
     ETAT.strava.dernierSync = new Date().toISOString();
     ETAT.strava.derniereSource = [...bilan.sources].join(', ');
-    apresNouvellesActivites(bilan.ajoutees);
-    toast(nbTexte(bilan.ajoutees, 'sortie importée', 'sorties importées') +
+    apresNouvellesActivites(bilan.ajoutees + bilan.remplacees);
+    toast([bilan.ajoutees ? nbTexte(bilan.ajoutees, 'sortie importée', 'sorties importées') : '',
+           bilan.remplacees ? nbTexte(bilan.remplacees, 'saisie manuelle remplacée par les données précises', 'saisies manuelles remplacées par les données précises') : '']
+            .filter(Boolean).join(', ') +
           (bilan.doublons ? ', ' + nbTexte(bilan.doublons, 'déjà connue', 'déjà connues') : '') +
           (bilan.autres ? ', ' + nbTexte(bilan.autres, 'autre activité ignorée', 'autres activités ignorées') : '') + '.', 'succes');
   } else if (!bilan.erreurs) {
@@ -2789,13 +2854,6 @@ function consigneKm(k, idx, n, trail, technicite, vma) {
   return { icone: 'fa-equals', texte: 'Allure de croisière' };
 }
 
-function conseilNutrition(tempsS) {
-  const min = tempsS / 60;
-  if (min < 50)  return 'Pas de ravitaillement nécessaire. Bois 300 à 500 ml dans l’heure qui précède le départ.';
-  if (min < 75)  return 'Quelques gorgées aux ravitaillements. Un gel facultatif vers la mi-course si tu pars à jeun depuis longtemps.';
-  if (min < 150) return 'Vise 30 à 60 g de glucides par heure (un gel toutes les 30 à 40 min) et 400 à 600 ml d’eau par heure.';
-  return 'Vise 60 à 90 g de glucides par heure, 500 à 750 ml d’eau par heure selon la chaleur, et 300 à 600 mg de sodium par heure.';
-}
 function conseilEchauffement(distM) {
   if (distM <= 12500) return '15 min très facile, 4 min d’éducatifs, puis 3 accélérations progressives de 20 s.';
   if (distM <= 25000) return '10 min très facile et 2 accélérations de 15 s.';
@@ -2893,7 +2951,6 @@ function calculerStrategieBrute(base) {
     allureMoy: tempsCible / (e.distM / 1000),
     allurePlat: tempsCible / (e.deff / 1000),
     vmaNecessaire: vdotNecessaire ? Math.round(vmaDepuisVdot(vdotNecessaire) * 10) / 10 : null,
-    nutrition: conseilNutrition(tempsCible),
     echauffement: conseilEchauffement(e.distM),
     sourceProfil: o.gpx ? 'gpx' : 'moyen'
   };
@@ -2909,6 +2966,268 @@ function allureCoursePlat() {
   if (!s) return metriques().zones.tempo;
   const surEntrainement = s.surObjectif ? s.allurePlat : (s.tempsModele * 0.985) / (s.e.deff / 1000);
   return allureSaine(Math.max(surEntrainement, metriques().zones.vmaLongue));
+}
+
+/* ==================================================================================
+   5 bis. STRATÉGIE NUTRITIONNELLE : glucides, eau, sodium, prises et ravitaillements
+   Repères généraux des recommandations sportives (ACSM, ISSN) pour un coureur en bonne santé :
+   - moins d'1 h 15 : pas de glucides nécessaires pendant l'effort ;
+   - 1 h 15 à 2 h 30 : 30 à 60 g/h ; 2 h 30 à 4 h : 60 g/h ; au-delà : 60 à 90 g/h si l'estomac y est entraîné ;
+   - eau : selon le poids et la chaleur, entre 300 et 800 ml/h (au-delà : risque d'hyponatrémie) ;
+   - sodium : 300 à 600 mg/h au-delà de 2 h ou par forte chaleur.
+   ================================================================================== */
+
+const GLUCIDES_GEL = 25, GLUCIDES_BARRE = 30, GLUCIDES_BOISSON_PAR_L = 60;
+const CONDITIONS_NUTRITION = {
+  fraiche:  { libelle: 'Fraîches',  mlParKg: 5.5, sodium: 300 },
+  temperee: { libelle: 'Tempérées', mlParKg: 7,   sodium: 400 },
+  chaude:   { libelle: 'Chaudes',   mlParKg: 9,   sodium: 600 }
+};
+const fr1 = x => String(x).replace('.', ',');
+const litres = ml => fr1(Math.round(ml / 100) / 10) + ' L';
+/** Temps de course en heures et minutes (« 1:22 ») : plus lisible qu'à la seconde près pour un repère de ravitaillement. */
+const tempsCourse = t => { const m = Math.round(t / 60); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
+
+/** Kilomètre atteint au temps t (s), d'après la stratégie kilomètre par kilomètre. */
+function kmAuTemps(st, t) {
+  let cumulT = 0, cumulD = 0;
+  for (const k of st.kms) {
+    if (t <= cumulT + k.temps) return (cumulD + Math.max(0, Math.min(1, (t - cumulT) / k.temps)) * k.dist) / 1000;
+    cumulT += k.temps; cumulD += k.dist;
+  }
+  return cumulD / 1000;
+}
+/** Temps de passage (s) au kilomètre km. */
+function tempsAuKm(st, km) {
+  const d = km * 1000;
+  let cumulT = 0, cumulD = 0;
+  for (const k of st.kms) {
+    if (d <= cumulD + k.dist) return cumulT + Math.max(0, Math.min(1, (d - cumulD) / k.dist)) * k.temps;
+    cumulT += k.temps; cumulD += k.dist;
+  }
+  return cumulT;
+}
+/** Ravitaillements retenus : saisis à la main en priorité, sinon lus dans le GPX. */
+function ravitosCourse(st) {
+  const o = ETAT.objectif;
+  const distKm = st.e.distM / 1000;
+  const saisis = String((o.nutrition && o.nutrition.ravitos) || '').split(/[;\s]+/).map(x => lireNombre(x)).filter(x => x > 0 && x < distKm);
+  const source = saisis.length ? saisis.map(km => ({ km, nom: '' })) : ((o.gpx && o.gpx.ravitos) || []).filter(r => r.km > 0 && r.km < distKm);
+  const liste = source.slice().sort((a, b) => a.km - b.km).filter((r, i, l) => !i || r.km - l[i - 1].km >= 0.3);
+  return {
+    liste: liste.map(r => ({ km: Math.round(r.km * 10) / 10, nom: r.nom || '', tempsS: tempsAuKm(st, r.km) })),
+    origine: saisis.length ? 'saisie' : (liste.length ? 'gpx' : null)
+  };
+}
+
+/** Plan de ravitaillement complet pour la stratégie st (temps estimé, terrain, poids du profil). */
+function planNutrition(st) {
+  if (!st || !(st.tempsCible > 0) || !st.kms || !st.kms.length) return null;
+  const o = ETAT.objectif;
+  const reglages = Object.assign({ conditions: 'temperee', boisson: 'eau', ravitos: '' }, o.nutrition || {});
+  const cond = CONDITIONS_NUTRITION[reglages.conditions] || CONDITIONS_NUTRITION.temperee;
+  const poidsSaisi = ETAT.profil.poids > 30 && ETAT.profil.poids < 250;
+  const poids = poidsSaisi ? ETAT.profil.poids : 70;
+  const duree = st.tempsCible, min = duree / 60, trail = st.trail;
+  // Glucides par heure selon la durée de l'effort
+  const gH = min < 75 ? 0 : min < 150 ? 40 : min < 240 ? 60 : 70;
+  // Eau : selon le poids et la chaleur, bornée entre 300 et 800 ml/h
+  const eauH = Math.round(Math.min(800, Math.max(300, poids * cond.mlParKg)) / 10) * 10;
+  const sodiumH = min >= 120 || reglages.conditions === 'chaude' ? cond.sodium : 0;
+  const boissonIso = reglages.boisson === 'iso';
+  const gBoissonH = boissonIso && min >= 60 ? Math.round(eauH / 1000 * GLUCIDES_BOISSON_PAR_L) : 0;
+  const gSolidesH = Math.max(0, gH - gBoissonH);
+  const prises = [];
+  if (gSolidesH > 0) {
+    const mixte = trail && min >= 120;                     // trail long : gels et barres en alternance
+    const unite = mixte ? (GLUCIDES_GEL + GLUCIDES_BARRE) / 2 : GLUCIDES_GEL;
+    // Nombre de prises pour atteindre la cible, réparties de la première (30 à 45 min) au dernier quart d'heure exclu
+    const finPrises = duree - 15 * 60;
+    const premiere = Math.min(finPrises, Math.min(45, Math.max(30, Math.round(unite / gSolidesH * 60 / 5) * 5)) * 60);
+    let n = Math.max(1, Math.round(gSolidesH * duree / 3600 / unite));
+    while (n > 1 && (finPrises - premiere) / (n - 1) < 15 * 60) n--;            // au moins 15 min entre deux prises
+    const liste = [];
+    for (let k = 0; k < n; k++) {
+      const t = n === 1 ? premiere : premiere + (finPrises - premiere) * k / (n - 1);
+      liste.push({ t: Math.min(finPrises, Math.round(t / 300) * 300), note: '' });   // arrondi à 5 min, plus simple à retenir
+    }
+    // Trail : la prise la plus proche d'une grosse montée est avancée à son pied (km clé), si l'écart reste d'au moins 15 min
+    if (trail) monteesParcours(st).forEach(m => {
+      const tm = tempsAuKm(st, m.duKm), cible = Math.max(10 * 60, tm - 5 * 60);
+      let i = -1, ecart = Infinity;
+      liste.forEach((x, k) => { const e = Math.abs(x.t - cible); if (!x.note && x.t >= tm - 20 * 60 && x.t <= tm + 15 * 60 && e < ecart) { ecart = e; i = k; } });
+      if (i < 0) return;
+      const avant = i ? liste[i - 1].t : 0, apres = i < liste.length - 1 ? liste[i + 1].t : Infinity;
+      if (cible - avant >= 15 * 60 && apres - cible >= 15 * 60) liste[i] = { t: cible, note: 'avant la montée du km ' + fr1(m.duKm) };
+    });
+    liste.forEach((x, k) => {
+      const barre = mixte && k % 2 === 1;
+      prises.push({ n: k + 1, tempsS: Math.round(x.t), km: Math.round(kmAuTemps(st, x.t) * 10) / 10,
+                    quoi: barre ? 'barre' : 'gel', g: barre ? GLUCIDES_BARRE : GLUCIDES_GEL, note: x.note });
+    });
+    // Gel caféiné facultatif dans le dernier tiers (efforts de plus d'1 h 30)
+    if (min >= 90) {
+      const cible = duree - 45 * 60;
+      const gel = prises.filter(x => x.quoi === 'gel' && x.tempsS > duree * 0.5)
+        .reduce((best, x) => (!best || Math.abs(x.tempsS - cible) < Math.abs(best.tempsS - cible) ? x : best), null);
+      if (gel) { gel.quoi = 'gel caféiné'; gel.note = gel.note || 'facultatif, si tu le tolères à l’entraînement'; }
+    }
+  } else if (min >= 60 && !boissonIso) {
+    prises.push({ n: 1, tempsS: Math.round(duree / 2), km: Math.round(kmAuTemps(st, duree / 2) * 10) / 10, quoi: 'gel', g: GLUCIDES_GEL,
+                  note: 'facultatif, si tu pars à jeun depuis longtemps' });
+  }
+  const nbGels = prises.filter(x => x.quoi !== 'barre').length, nbBarres = prises.filter(x => x.quoi === 'barre').length;
+  const glucidesTotal = Math.round(prises.reduce((t2, x) => t2 + x.g, 0) + gBoissonH * duree / 3600);
+  const eauTotale = Math.round(eauH * duree / 3600 / 50) * 50;
+  // Ravitaillements : tronçons entre deux points d'eau et contenance à emporter
+  const r = ravitosCourse(st);
+  const bornes = [{ km: 0, tempsS: 0 }].concat(r.liste, [{ km: Math.round(st.e.distM / 100) / 10, tempsS: duree }]);
+  const troncons = [];
+  for (let k = 1; k < bornes.length; k++) {
+    const d = bornes[k].tempsS - bornes[k - 1].tempsS;
+    troncons.push({ deKm: bornes[k - 1].km, aKm: bornes[k].km, dureeS: d, eauMl: Math.round(eauH * d / 3600 / 50) * 50 });
+  }
+  const plusLong = troncons.reduce((a, b) => (b.dureeS > a.dureeS ? b : a), troncons[0]);
+  const contenance = Math.max(250, Math.ceil(plusLong.eauMl / 250) * 250);
+  const alertes = [];
+  if (!poidsSaisi) alertes.push('Poids non renseigné : calcul sur 70 kg. Indique-le dans Profil pour un dosage personnalisé.');
+  if (st.niveauInconnu) alertes.push('Temps estimé provisoire (niveau pas encore mesuré) : les quantités suivront ton vrai niveau.');
+  if (trail && !r.liste.length && eauTotale > 1500) alertes.push('Plus de ' + litres(1500) + ' d’eau sur la course : renseigne les km des ravitaillements (règlement de l’épreuve) pour savoir quoi emporter.');
+  const plan = {
+    duree, poids, poidsSaisi, trail, conditions: reglages.conditions, boisson: reglages.boisson,
+    glucidesParHeure: gH, gBoissonH, glucidesTotal, eauParHeure: eauH, eauTotale, sodiumParHeure: sodiumH,
+    prises, nbGels, nbBarres, ravitos: r.liste, origineRavitos: r.origine, troncons, plusLong, contenance, alertes
+  };
+  plan.rappels = rappelsNutrition(plan);
+  return plan;
+}
+
+/** Rappels de prévention : avant, pendant et après la course. */
+function rappelsNutrition(p) {
+  const ml = x => Math.round(p.poids * x / 50) * 50;
+  return {
+    avant: [
+      'La veille : repas riche en glucides (pâtes, riz, pain), sans excès ni nouveauté.',
+      'Dernier repas 3 h avant le départ, puis ' + ml(5) + ' à ' + ml(7) + ' ml d’eau dans les 2 à 4 h qui précèdent, et quelques gorgées juste avant.'
+    ],
+    pendant: [
+      'Bois par petites gorgées régulières, toutes les 15 à 20 min, avant d’avoir soif : la soif arrive en retard pendant l’effort. Sans te forcer pour autant : trop boire est aussi dangereux.',
+      p.prises.length ? 'Prends chaque gel avec quelques gorgées d’eau, avant de ressentir la fatigue.' : null,
+      p.sodiumParHeure ? 'Sel : environ ' + p.sodiumParHeure + ' mg de sodium par heure (boisson électrolytes, pastilles ou aliments salés aux ravitaillements).' : null,
+      p.conditions === 'chaude' ? 'Chaleur : mouille nuque et casquette à chaque point d’eau et accepte de ralentir.' : null,
+      'Vertiges, nausées, crampes intenses ou confusion : ralentis, bois et préviens un signaleur.'
+    ].filter(Boolean),
+    apres: ['Dans l’heure qui suit : boisson, glucides et protéines (un lait chocolaté par exemple), puis un vrai repas.'],
+    general: [
+      'Rien de nouveau le jour J : gels, barres et boisson s’essaient en sortie longue.',
+      'Pèse-toi avant et après une sortie longue : 1 kg perdu correspond à environ 1 L de sueur non compensé. Vise moins de 2 % de perte.'
+    ]
+  };
+}
+
+/** Résumé en une phrase (synthèse de la stratégie, agenda). */
+function resumeNutrition(p) {
+  if (!p) return '';
+  const eau = 'eau ' + p.eauParHeure + ' ml/h (' + litres(p.eauTotale) + ' au total)';
+  if (!p.glucidesParHeure) return 'Pas de glucides nécessaires pendant l’effort' + (p.prises.length ? ' (un gel facultatif à mi-course)' : '') + ' ; ' + eau + (p.sodiumParHeure ? ', sodium ' + p.sodiumParHeure + ' mg/h' : '') + '.';
+  const produits = [p.nbGels ? nbTexte(p.nbGels, 'gel', 'gels') : '', p.nbBarres ? nbTexte(p.nbBarres, 'barre', 'barres') : '', p.gBoissonH ? 'boisson énergétique' : ''].filter(Boolean).join(', ');
+  return p.glucidesParHeure + ' g de glucides par heure (' + produits + '), ' + eau + (p.sodiumParHeure ? ', sodium ' + p.sodiumParHeure + ' mg/h' : '') + '.';
+}
+/** Texte complet ou compact (partage de la stratégie, export du plan vers l'agenda). */
+function texteNutrition(p, complet = true) {
+  if (!p) return '';
+  const l = ['RAVITAILLEMENT ET HYDRATATION', resumeNutrition(p)];
+  if (p.prises.length) l.push('Prises : ' + p.prises.map(x => tempsCourse(x.tempsS) + ' (km ' + fr1(x.km) + ') ' + x.quoi + (x.note ? ', ' + x.note : '')).join(' ; '));
+  if (p.ravitos.length) l.push('Ravitaillements : ' + p.ravitos.map(r => 'km ' + fr1(r.km) + (r.nom ? ' ' + r.nom : '') + ' vers ' + tempsCourse(r.tempsS)).join(' ; ') +
+    '. Plus longue section : ' + dureeLisible(p.plusLong.dureeS) + ', emporte au moins ' + p.contenance + ' ml.');
+  else l.push(p.trail ? 'Sans ravitaillement renseigné : ' + litres(p.eauTotale) + ' d’eau sur la course.' : 'Points d’eau : quelques gorgées à chacun (souvent tous les 5 km sur route).');
+  if (complet) {
+    const r = p.rappels;
+    l.push('', 'Avant : ' + r.avant.join(' '), 'Pendant : ' + r.pendant.join(' '), 'Après : ' + r.apres.join(' '), r.general.join(' '),
+           'Repères généraux, à ajuster selon ta tolérance digestive et ta transpiration.');
+  }
+  return l.join('\n');
+}
+
+/** Bloc « Stratégie nutritionnelle » de l'écran Course. */
+function rendreNutrition(st) {
+  const bloc = $('#blocNutrition');
+  if (!bloc) return;
+  const p = planNutrition(st);
+  bloc.classList.toggle('hidden', !p);
+  if (!p) return;
+  const reglage = (cle, valeur, libelle) => {
+    const actif = (cle === 'conditions' ? p.conditions : p.boisson) === valeur;
+    return `<button data-act="reglerNutrition" data-arg="${cle}:${valeur}" aria-pressed="${actif}" class="tapable h-8 rounded-lg text-[12px] ${actif ? 'bg-ocre text-[#23120A] font-semibold' : 'text-brume'}">${libelle}</button>`;
+  };
+  const stat = (titre, valeur, detail) => `<div class="rounded-xl bg-nuit/50 p-2.5"><div class="text-[10.5px] text-brume">${titre}</div><div class="chiffre text-[20px] leading-tight mt-0.5">${valeur}</div><div class="text-[10.5px] text-brume">${detail}</div></div>`;
+  const icone = q => q === 'barre' ? 'fa-cookie-bite' : q === 'gel caféiné' ? 'fa-mug-hot' : 'fa-droplet';
+  const lignePrise = x => `<div class="flex items-center gap-3 py-1.5">
+      <div class="w-12 chiffre text-[16px]">${tempsCourse(x.tempsS)}</div>
+      <div class="w-14 text-[11.5px] text-brume">km ${fr1(x.km)}</div>
+      <div class="flex-1 min-w-0 text-[12.5px]"><i class="fa-solid ${icone(x.quoi)} text-ocre mr-1.5"></i>${x.quoi === 'barre' ? 'Barre' : x.quoi === 'gel caféiné' ? 'Gel caféiné' : 'Gel'}${x.note ? `<span class="text-brume"> · ${esc(x.note)}</span>` : ''}</div>
+    </div>`;
+  const prises = p.prises.length > 10
+    ? p.prises.slice(0, 8).map(lignePrise).join('') + `<details><summary class="text-[12px] text-ocre py-1.5">Voir les ${p.prises.length - 8} autres prises</summary>${p.prises.slice(8).map(lignePrise).join('')}</details>`
+    : p.prises.map(lignePrise).join('');
+  const ravitos = p.ravitos.length
+    ? `<div class="text-[12px] text-brume mb-1.5">${p.origineRavitos === 'gpx' ? 'Lus dans le GPX' : 'Saisis à la main'} : la plus longue section dure ${dureeLisible(p.plusLong.dureeS)}, emporte au moins <span class="text-neige">${p.contenance} ml</span>.</div>` +
+      p.ravitos.map(r => `<div class="flex items-center gap-3 py-1 text-[12.5px]"><i class="fa-solid fa-bottle-water text-azur w-4"></i><span class="w-14">km ${fr1(r.km)}</span><span class="w-12 text-brume">${tempsCourse(r.tempsS)}</span><span class="flex-1 truncate text-brume">${esc(r.nom || 'Ravitaillement')}</span></div>`).join('')
+    : `<div class="text-[12px] text-brume">${p.trail ? 'Aucun point de ravitaillement connu : prévois ' + litres(p.eauTotale) + ' sur la course, ou indique leurs km ci-dessous.' : 'Sur route, les points d’eau sont en général tous les 5 km : quelques gorgées à chacun. Indique leurs km pour un plan précis.'}</div>`;
+  const liste = (titre, l) => `<div class="mt-2"><div class="text-[11.5px] text-brume uppercase tracking-wide mb-1">${titre}</div><ul class="space-y-1">${l.map(x => `<li class="flex gap-2 text-[12.5px] leading-snug"><span class="mt-[7px] w-1 h-1 rounded-full bg-brume/60 shrink-0"></span><span>${esc(x)}</span></li>`).join('')}</ul></div>`;
+  $('#contenuNutrition').innerHTML = `
+    <div class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-nuit/60 mb-2">${reglage('conditions', 'fraiche', 'Fraîches')}${reglage('conditions', 'temperee', 'Tempérées')}${reglage('conditions', 'chaude', 'Chaudes')}</div>
+    <div class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-nuit/60 mb-3">${reglage('boisson', 'eau', 'Eau + gels')}${reglage('boisson', 'iso', 'Boisson énergétique')}</div>
+    <div class="text-[12px] text-brume mb-3">Pour ${dureeLisible(p.duree)} de course${p.trail ? ' en trail' : ' sur route'}, ${fr1(p.poids)} kg${p.poidsSaisi ? '' : ' (par défaut)'}.
+      ${p.poidsSaisi ? '' : '<button data-act="renseignerPoids" class="text-ocre tapable ml-1">Indiquer mon poids</button>'}</div>
+    ${p.alertes.map(a => `<div class="mb-2 flex gap-2 text-[12px] text-ocre leading-relaxed"><i class="fa-solid fa-triangle-exclamation mt-[3px]"></i><span>${esc(a)}</span></div>`).join('')}
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      ${stat('Glucides', p.glucidesParHeure ? p.glucidesParHeure + ' g/h' : '—', p.glucidesParHeure ? p.glucidesTotal + ' g au total' : 'inutiles sous 1 h 15')}
+      ${stat('À emporter', p.nbGels + p.nbBarres ? [p.nbGels ? p.nbGels + ' gel' + (p.nbGels > 1 ? 's' : '') : '', p.nbBarres ? p.nbBarres + ' barre' + (p.nbBarres > 1 ? 's' : '') : ''].filter(Boolean).join(' + ') : '—', p.gBoissonH ? 'dont ' + p.gBoissonH + ' g/h par la boisson' : 'gel ≈ 25 g, barre ≈ 30 g')}
+      ${stat('Eau', p.eauParHeure + ' ml/h', litres(p.eauTotale) + ' au total')}
+      ${stat('Sodium', p.sodiumParHeure ? p.sodiumParHeure + ' mg/h' : '—', p.sodiumParHeure ? 'au-delà de 2 h ou s’il fait chaud' : 'pas nécessaire ici')}
+    </div>
+    ${p.prises.length ? `<div class="text-[11.5px] text-brume uppercase tracking-wide mb-0.5">Prises (temps de course, kilomètre)</div><div class="groupe-fin mb-3">${prises}</div>` : ''}
+    <div class="text-[11.5px] text-brume uppercase tracking-wide mb-1">Points d’eau</div>
+    ${ravitos}
+    <div class="mt-2"><label for="nutRavitos" class="text-[11.5px] text-brume block mb-1">Km des ravitaillements (facultatif, séparés par « ; »)</label>
+      <input id="nutRavitos" type="text" inputmode="decimal" autocomplete="off" placeholder="ex : 8 ; 15,5 ; 23" value="${esc((ETAT.objectif.nutrition || {}).ravitos || '')}" class="${CHAMP}"></div>
+    <div class="ligne-sep my-3"></div>
+    ${liste('Avant', p.rappels.avant)}${liste('Pendant', p.rappels.pendant)}${liste('Après', p.rappels.apres)}${liste('À retenir', p.rappels.general)}
+    <div class="text-[11px] text-brume/80 mt-3 leading-relaxed">Repères généraux pour un coureur en bonne santé, à ajuster selon ta tolérance digestive et ta transpiration. En cas de problème de santé (diabète, troubles digestifs…), demande conseil à un professionnel.</div>`;
+}
+
+/** Points de ravitaillement d'un GPX (waypoints « Ravito », « Eau », « Water », « Food »…), placés au km le plus proche du tracé. */
+function ravitosDepuisGpx(texte, points) {
+  if (!/<wpt\b/i.test(texte) || !points || points.length < 2) return [];
+  const doc = new DOMParser().parseFromString(texte, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return [];
+  const cumul = [];
+  let d = 0;
+  points.forEach((p, i) => {
+    if (i) { const x = distanceHaversine(points[i - 1], p); if (p.seg === points[i - 1].seg || x < 200) d += x; }
+    cumul.push(d);
+  });
+  const sansAccents = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[_-]/g, ' ');
+  const MOTS = /\b(ravit\w*|eau|water|drink\w*|boissons?|buvette|aid|food|refresh\w*|feed|liquide|solide|station)\b/;
+  const EXCLUS = /\b(depart|start|arrivee?|finish)\b/;
+  const pas = Math.max(1, Math.floor(points.length / 3000));
+  const res = [];
+  Array.from(doc.getElementsByTagNameNS('*', 'wpt')).slice(0, 300).forEach(w => {
+    const lat = parseFloat(w.getAttribute('lat')), lon = parseFloat(w.getAttribute('lon'));
+    if (!isFinite(lat) || !isFinite(lon)) return;
+    const champ = n => { const el = enfantXml(w, n); return el ? el.textContent.trim() : ''; };
+    const nom = champ('name');
+    const libelle = sansAccents([nom, champ('desc'), champ('cmt'), champ('sym'), champ('type')].join(' '));
+    if (!MOTS.test(libelle) || EXCLUS.test(libelle)) return;
+    const cible = { lat, lon };
+    let meilleur = Infinity, idx = 0;
+    for (let k = 0; k < points.length; k += pas) { const x = distanceHaversine(points[k], cible); if (x < meilleur) { meilleur = x; idx = k; } }
+    for (let k = Math.max(0, idx - pas); k < Math.min(points.length, idx + pas + 1); k++) { const x = distanceHaversine(points[k], cible); if (x < meilleur) { meilleur = x; idx = k; } }
+    if (meilleur > 300) return;                                    // point trop loin du tracé
+    res.push({ km: Math.round(cumul[idx] / 100) / 10, nom: nom.slice(0, 40) });
+  });
+  return res.sort((a, b) => a.km - b.km).filter((r, i, l) => !i || r.km - l[i - 1].km >= 0.3).slice(0, 40);
 }
 
 /* ==================================================================================
@@ -3555,6 +3874,232 @@ function ajusterPlan(mode) {
 }
 
 /* ==================================================================================
+   7 bis. DÉPLACER UNE SÉANCE : glisser la pastille sur le calendrier ou toucher un jour,
+   avec la logique du coach (affûtage avant la course, enchaînements, doubles séances)
+   ================================================================================== */
+
+let deplacement = null;            // { id, cible, cascade }
+const ABREGES_TYPE = { ef: 'EF', recup: 'Récup', sl: 'Longue', vma: 'VMA', seuil: 'Seuil', specifique: 'Spé', cotes: 'Côtes', fartlek: 'Fartlek', deblocage: 'Débloc' };
+
+function seanceDeplacable(s) {
+  return !!s && s.type !== 'course' && ['prevu', 'aujourdhui', 'manque'].includes(statutSeance(s));
+}
+/** Séances suivantes de la même semaine, encore à faire (décalage en cascade). */
+function suivantesDansLaSemaine(s) {
+  const w = ETAT.plan ? ETAT.plan.semaines.find(x => x.seances.includes(s)) : null;
+  return w ? w.seances.filter(x => x !== s && x.date > s.date && x.type !== 'course' && ['prevu', 'aujourdhui'].includes(statutSeance(x))) : [];
+}
+/** Jour de la course, s'il figure au plan (sinon, pas de contrainte d'affûtage). */
+function dateCoursePlan() {
+  const c = toutesSeances().find(x => x.type === 'course');
+  return c ? c.date : null;
+}
+
+/**
+ * Logique du coach pour un déplacement : { bloquant, inchange, messages: [{ niveau: 'bloque' | 'alerte' | 'info' | 'ok', texte }] }.
+ * Bloquant : jour passé, jour de la course ou après, séance difficile à J-2 ou J-1, sortie longue dans les 6 derniers jours.
+ */
+function verifierDeplacement(s, cible, cascade = false) {
+  const msgs = [];
+  const ajouter = (niveau, texte) => msgs.push({ niveau, texte });
+  const auj = cleJour(new Date());
+  const J = dateCoursePlan();
+  if (!s) return { bloquant: true, messages: [{ niveau: 'bloque', texte: 'Séance introuvable.' }] };
+  if (s.type === 'course') ajouter('bloque', 'Le jour J ne se déplace pas ici : change la date de la course dans l’onglet Course.');
+  else if (statutSeance(s) === 'fait') ajouter('bloque', 'Cette séance est déjà réalisée.');
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(cible || '')) ajouter('bloque', 'Choisis un jour.');
+  else if (cible < auj) ajouter('bloque', 'Ce jour est passé : si tu as fait la séance, valide-la plutôt.');
+  else if (J && cible >= J) ajouter('bloque', cible === J ? 'C’est le jour de ta course.' : 'Après ta course, cette séance n’a plus de raison d’être.');
+  if (msgs.length) return { bloquant: true, messages: msgs };
+  if (cible === s.date) return { bloquant: true, inchange: true, messages: [{ niveau: 'info', texte: 'C’est déjà son jour : glisse la pastille ou touche un autre jour.' }] };
+  const intense = (INTENSITE_TYPE[s.type] || 0) >= 0.6, longue = s.type === 'sl', dure = intense || longue;
+  const avant = J ? ecartJours(depuisCleJour(cible), depuisCleJour(J)) : null;
+  if (J && dure && avant <= 2) ajouter('bloque', 'À J-' + avant + ', pas de séance difficile : tu arriverais fatigué au départ. Garde un footing court ou un déblocage.');
+  else if (J && longue && avant <= 6) ajouter('bloque', 'Une sortie longue à J-' + avant + ' entame ta fraîcheur : place-la au moins 7 jours avant la course.');
+  else if (J && longue && avant <= 10) ajouter('alerte', 'Sortie longue à J-' + avant + ' : raccourcis-la d’un tiers, l’affûtage a commencé.');
+  else if (J && intense && avant <= 5) ajouter('alerte', 'À J-' + avant + ', garde l’intensité courte : moins de répétitions, même allure.');
+  const autres = toutesSeances().filter(x => x !== s && x.statut !== 'reporte');
+  const ceJour = autres.find(x => x.date === cible);
+  if (ceJour) ajouter('alerte', 'Tu as déjà « ' + esc(ceJour.titre) + ' » ce jour-là : deux séances le même jour.');
+  if (dure) {
+    const voisin = autres.find(x => x.type !== 'course' && ((INTENSITE_TYPE[x.type] || 0) >= 0.6 || x.type === 'sl') &&
+                                     Math.abs(ecartJours(depuisCleJour(cible), depuisCleJour(x.date))) === 1);
+    if (voisin) ajouter('alerte', 'Séance dure la veille ou le lendemain (« ' + esc(voisin.titre) + ' ») : laisse un jour facile entre les deux.');
+  }
+  if (Math.abs(ecartJours(depuisCleJour(s.date), depuisCleJour(cible))) > 7) ajouter('alerte', 'Plus d’une semaine d’écart : l’équilibre de tes semaines change.');
+  if (!(ETAT.profil.joursDispo || []).includes(depuisCleJour(cible).getDay())) ajouter('info', 'Ce n’est pas un de tes jours habituels.');
+  if (cascade) {
+    const delta = ecartJours(depuisCleJour(s.date), depuisCleJour(cible));
+    suivantesDansLaSemaine(s).forEach(x => {
+      const jour = cleJour(ajouterJours(depuisCleJour(x.date), delta));
+      const v = verifierDeplacement(x, jour, false);
+      const motif = v.messages.find(m => m.niveau === 'bloque');
+      if (v.bloquant && motif) ajouter('bloque', '« ' + esc(x.titre) + ' » passerait au ' + dateCourte(depuisCleJour(jour)) + ' : ' + motif.texte.charAt(0).toLowerCase() + motif.texte.slice(1));
+    });
+  }
+  if (!msgs.some(m => m.niveau === 'bloque' || m.niveau === 'alerte')) ajouter('ok', 'Rien à redire : ton plan reste cohérent' + (J ? ' (J-' + avant + ' avant ta course).' : '.'));
+  return { bloquant: msgs.some(m => m.niveau === 'bloque'), messages: msgs };
+}
+
+function ouvrirDeplacement(id, cibleProposee) {
+  const s = trouverSeance(id);
+  if (!seanceDeplacable(s)) { toast('Cette séance ne peut pas être déplacée.', 'info'); return; }
+  deplacement = { id, cible: /^\d{4}-\d{2}-\d{2}$/.test(cibleProposee || '') ? cibleProposee : null, cascade: false };
+  contexteFenetreSuivante = { type: 'seance', id };
+  ouvrirModale(htmlDeplacement());
+  brancherGlisser();
+}
+function rendreDeplacement() {
+  if (!deplacement || !COUCHES.modale || !$('#feuilleDeplacement')) return;
+  const feuille = $('#fondModale > div:last-child'), defilement = feuille.scrollTop;
+  $('#corpsModale').innerHTML = htmlDeplacement();
+  feuille.scrollTop = defilement;
+  brancherGlisser();
+}
+function choisirJourDeplacement(jour) {
+  if (!deplacement || !/^\d{4}-\d{2}-\d{2}$/.test(jour || '')) return;
+  deplacement.cible = jour;
+  rendreDeplacement();
+}
+
+/** Fenêtre de déplacement : raccourcis, calendrier de 4 semaines, logique du coach, autre date. */
+function htmlDeplacement() {
+  const d = deplacement, s = d && trouverSeance(d.id);
+  if (!s) return '';
+  const t = TYPES_SEANCE[s.type] || TYPES_SEANCE.ef;
+  const auj = cleJour(new Date()), J = dateCoursePlan(), cible = d.cible;
+  const depart = s.date < auj ? auj : s.date;
+  // Raccourcis : le lendemain, deux jours plus tard, le prochain jour libre sans contre-indication
+  const rapides = [];
+  const plus = n => cleJour(ajouterJours(depuisCleJour(depart), n));
+  rapides.push([plus(s.date < auj ? 0 : 1), s.date <= auj ? (s.date < auj ? 'Aujourd’hui' : 'Demain') : 'Le lendemain']);
+  rapides.push([plus(s.date < auj ? 1 : 2), s.date === auj ? 'Après-demain' : (s.date < auj ? 'Demain' : '+2 jours')]);
+  for (let n = 1; n <= 21; n++) {
+    const jour = plus(n);
+    if (toutesSeances().some(x => x !== s && x.date === jour)) continue;
+    const v = verifierDeplacement(s, jour, false);
+    if (!v.bloquant && !v.messages.some(m => m.niveau === 'alerte')) { if (!rapides.some(r => r[0] === jour)) rapides.push([jour, 'Prochain jour libre']); break; }
+  }
+  const puces = rapides.filter(r => r[0] >= auj && (!J || r[0] < J)).map(([jour, libelle]) =>
+    `<button data-act="choisirJourDeplacement" data-arg="${jour}" class="tapable h-9 px-3 rounded-full ${jour === cible ? 'bg-ocre text-[#23120A] font-semibold' : 'verre'} text-[12.5px]">${libelle} <span class="opacity-70">${dateCourte(depuisCleJour(jour))}</span></button>`).join('');
+  // Calendrier : 4 semaines à partir de la semaine de la séance (ou de la semaine en cours)
+  const debut = lundiDe(depuisCleJour(s.date < auj ? s.date : auj));
+  const pastille = `<span id="pastilleDeplacement" class="pastille-glisser absolute inset-x-0.5 bottom-0.5 h-[17px] rounded-md text-[9.5px] font-semibold grid place-items-center text-[#23120A] overflow-hidden" style="background:${t.couleur}">${ABREGES_TYPE[s.type] || 'Séance'}</span>`;
+  let cases = '';
+  for (let i = 0; i < 28; i++) {
+    const date = ajouterJours(debut, i), jour = cleJour(date);
+    const passe = jour < auj, estCourse = !!J && jour === J, apres = !!J && jour > J;
+    const autres = toutesSeances().filter(x => x !== s && x.date === jour && x.statut !== 'reporte');
+    const v = !passe && !estCourse && !apres && jour !== s.date ? verifierDeplacement(s, jour, d.cascade) : null;
+    const place = jour === (cible || s.date);
+    const cls = ['case-jour relative h-12 rounded-lg text-left px-1 pt-0.5 border'];
+    if (place) cls.push(cible && cible !== s.date ? (v && v.bloquant ? 'border-braise bg-braise/15' : 'border-ocre bg-ocre/15') : 'border-brume/40 bg-nuit/50');
+    else if (jour === s.date) cls.push('border-dashed border-brume/50 bg-nuit/30');
+    else cls.push('border-transparent bg-nuit/50');
+    if (passe || apres) cls.push('opacity-35');
+    const mois = date.getDate() === 1 || i === 0 ? `<span class="text-[9px] text-brume ml-0.5">${MOIS_COURTS[date.getMonth()]}</span>` : '';
+    const points = autres.slice(0, 3).map(x => `<span class="inline-block w-1.5 h-1.5 rounded-full mr-0.5" style="background:${(TYPES_SEANCE[x.type] || TYPES_SEANCE.ef).couleur}"></span>`).join('');
+    const signe = estCourse ? '<i class="fa-solid fa-flag-checkered text-ocre text-[11px] absolute right-1 top-1"></i>'
+      : v && v.bloquant ? '<i class="fa-solid fa-ban text-braise/70 text-[9px] absolute right-1 top-1"></i>'
+      : v && v.messages.some(m => m.niveau === 'alerte') ? '<span class="absolute right-1 top-1.5 w-1.5 h-1.5 rounded-full bg-ocre"></span>' : '';
+    cases += `<button data-act="choisirJourDeplacement" data-arg="${jour}" data-jour="${jour}" aria-label="${dateLongue(date)}" class="${cls.join(' ')}">` +
+      `<span class="text-[12px] ${jour === auj ? 'text-ocre font-semibold' : ''}">${date.getDate()}</span>${mois}<span class="block leading-none mt-0.5">${points}</span>${signe}${place ? pastille : ''}</button>`;
+  }
+  const v = cible ? verifierDeplacement(s, cible, d.cascade) : null;
+  const icones = { bloque: 'fa-ban text-braise', alerte: 'fa-triangle-exclamation text-ocre', info: 'fa-circle-info text-azur', ok: 'fa-check text-vallee' };
+  const messages = v ? v.messages.map(m => `<div class="flex gap-2 text-[12.5px] leading-snug"><i class="fa-solid ${icones[m.niveau]} mt-[3px] w-4 shrink-0"></i><span>${m.texte}</span></div>`).join('')
+                     : '<div class="text-[12.5px] text-brume">Glisse la pastille sur un autre jour, ou touche un jour.</div>';
+  const suivantes = suivantesDansLaSemaine(s);
+  const ok = !!v && !v.bloquant;
+  const sousTitre = esc(s.titre) + ' · prévue ' + dateCourte(depuisCleJour(s.date)) + (J ? ' · course ' + dateCourte(depuisCleJour(J)) : '');
+  return `<div id="feuilleDeplacement">` +
+    enteteModale('fa-solid fa-calendar-day', t.couleur, statutSeance(s) === 'manque' ? 'Reporter la séance' : 'Déplacer la séance', sousTitre) + `
+    <div class="flex flex-wrap gap-1.5 mb-3">${puces}</div>
+    <div class="grid grid-cols-7 gap-1 mb-1">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => `<div class="text-center text-[10.5px] text-brume">${x}</div>`).join('')}</div>
+    <div id="calendrierDeplacement" class="grid grid-cols-7 gap-1 mb-3">${cases}</div>
+    <div class="rounded-xl bg-nuit/50 p-3 mb-3">
+      <div class="text-[11.5px] text-brume uppercase tracking-wide mb-1.5">Logique du coach${cible && cible !== s.date ? ' · ' + dateLongue(depuisCleJour(cible)) : ''}</div>
+      <div class="space-y-1.5">${messages}</div>
+    </div>
+    ${suivantes.length ? `<label class="flex items-center gap-3 text-[13px] mb-3"><input type="checkbox" data-act="basculerCascadeDeplacement" ${d.cascade ? 'checked' : ''} class="w-5 h-5 accent-[#FF9D66]">Décaler aussi ${suivantes.length > 1 ? 'les ' + suivantes.length + ' séances suivantes' : 'la séance suivante'} de la semaine</label>` : ''}
+    <div class="mb-3"><label for="autreDateDeplacement" class="text-[12px] text-brume block mb-1.5">Ou une autre date</label>
+      <input id="autreDateDeplacement" type="date" min="${auj}" ${J ? `max="${cleJour(ajouterJours(depuisCleJour(J), -1))}"` : ''} value="${cible || ''}" class="${CHAMP}"></div>
+    <button data-act="confirmerDeplacement" ${ok ? '' : 'disabled'} class="${BTN_PRINCIPAL} ${ok ? '' : 'opacity-40'} mb-2">${cible && cible !== s.date ? 'Déplacer au ' + dateCourte(depuisCleJour(cible)) : 'Choisis un jour'}</button>
+    <button data-act="avisCoachDeplacement" class="${BTN_SECONDAIRE}"><i class="fa-solid fa-comment-dots mr-2"></i>Demander l’avis du coach</button>
+  </div>`;
+}
+
+/** Glisser-déposer de la pastille (doigt, stylet ou souris) sur une case du calendrier. */
+function brancherGlisser() {
+  const pastille = $('#pastilleDeplacement');
+  if (!pastille) return;
+  pastille.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const fantome = pastille.cloneNode(true);
+    fantome.removeAttribute('id');
+    fantome.className = 'fantome-glisser h-[22px] px-2 rounded-md text-[11px] font-semibold grid place-items-center text-[#23120A]';
+    fantome.style.background = pastille.style.background;
+    document.body.appendChild(fantome);
+    let survol = null;
+    const placer = (x, y) => { fantome.style.left = x + 'px'; fantome.style.top = y + 'px'; };
+    const bouger = ev => {
+      placer(ev.clientX, ev.clientY);
+      const sous = document.elementFromPoint(ev.clientX, ev.clientY);
+      const cellule = sous ? sous.closest('#calendrierDeplacement [data-jour]') : null;
+      if (survol && survol !== cellule) survol.classList.remove('survol-glisser');
+      survol = cellule;
+      if (survol) survol.classList.add('survol-glisser');
+    };
+    const terminer = garder => {
+      document.removeEventListener('pointermove', bouger);
+      document.removeEventListener('pointerup', relacher);
+      document.removeEventListener('pointercancel', annuler);
+      fantome.remove();
+      if (survol) survol.classList.remove('survol-glisser');
+      if (garder && survol) choisirJourDeplacement(survol.dataset.jour);
+    };
+    const relacher = () => terminer(true), annuler = () => terminer(false);
+    placer(e.clientX, e.clientY);
+    document.addEventListener('pointermove', bouger);
+    document.addEventListener('pointerup', relacher);
+    document.addEventListener('pointercancel', annuler);
+  });
+}
+
+/** Déplace la séance (et la suite de la semaine si demandé) après une dernière vérification. */
+function appliquerDeplacement() {
+  const d = deplacement, s = d && trouverSeance(d.id);
+  if (!s || !d.cible) return;
+  const v = verifierDeplacement(s, d.cible, d.cascade);
+  if (v.bloquant) { toast((v.messages.find(m => m.niveau === 'bloque') || v.messages[0]).texte, 'alerte'); return; }
+  const delta = ecartJours(depuisCleJour(s.date), depuisCleJour(d.cible));
+  const suite = d.cascade ? suivantesDansLaSemaine(s) : [];
+  deplacerVers(s, d.cible);
+  suite.forEach(x => deplacerVers(x, cleJour(ajouterJours(depuisCleJour(x.date), delta))));
+  deplacement = null;
+  sauverEtat();
+  fermerModale();
+  rendreTout();
+  toast('« ' + esc(s.titre) + ' » déplacée au ' + dateCourte(depuisCleJour(s.date)) +
+        (suite.length ? ', ' + nbTexte(suite.length, 'autre séance décalée', 'autres séances décalées') : '') + '.', 'succes');
+}
+/** Change la date d'une séance ; elle rejoint la semaine du plan qui contient ce jour. */
+function deplacerVers(x, jour) {
+  if (!x.dateInitiale) x.dateInitiale = x.date;      // garde l'identifiant d'agenda : un nouvel export met l'événement à jour
+  x.date = jour;
+  x.deplacee = true;
+  const ancienne = ETAT.plan.semaines.find(w => w.seances.includes(x));
+  const nouvelle = ETAT.plan.semaines.find(w => w.lundi === cleJour(lundiDe(depuisCleJour(jour)))) || ancienne;
+  if (ancienne && nouvelle && nouvelle !== ancienne) {
+    ancienne.seances.splice(ancienne.seances.indexOf(x), 1);
+    nouvelle.seances.push(x);
+  }
+  if (nouvelle) nouvelle.seances.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/* ==================================================================================
    8. EXPORTS : CALENDRIER (.ics) ET SÉANCES STRUCTURÉES APPLE WATCH
    ================================================================================== */
 
@@ -3588,7 +4133,7 @@ function texteCompletSeance(s) {
   if (s.type === 'course') {
     const st = calculerStrategie();
     if (st) t += '\n\nObjectif : ' + formaterDuree(st.tempsCible) + ' (allure moyenne ' + formaterAllure(st.allureMoy) + '/km).\n' +
-                 'Échauffement : ' + st.echauffement + '\nRavitaillement : ' + st.nutrition;
+                 'Échauffement : ' + st.echauffement + '\n\n' + texteNutrition(planNutrition(st), false);
   }
   return t;
 }
@@ -3621,7 +4166,7 @@ function evenementIcs(s, uid) {
   const maintenant = horodatageUtc(new Date());
   return [
     'BEGIN:VEVENT',
-    'UID:' + (uid || uidIcs('seance', s.date.replace(/-/g, '') + (s.type === 'course' ? '-course' : ''))),
+    'UID:' + (uid || uidIcs('seance', (s.dateInitiale || s.date).replace(/-/g, '') + (s.type === 'course' ? '-course' : ''))),
     'SEQUENCE:' + sequenceIcs(),
     'DTSTAMP:' + maintenant,
     'LAST-MODIFIED:' + maintenant,
@@ -3676,7 +4221,7 @@ function construireIcs(seances, nomCalendrier, activites = []) {
   ];
   const parJour = {};
   (seances || []).forEach(s => {
-    const base = s.date.replace(/-/g, '') + (s.type === 'course' ? '-course' : '');
+    const base = (s.dateInitiale || s.date).replace(/-/g, '') + (s.type === 'course' ? '-course' : '');   // date d'origine : stable si la séance est déplacée
     parJour[base] = (parJour[base] || 0) + 1;                 // deux séances le même jour : identifiants distincts
     lignes.push(...evenementIcs(s, uidIcs('seance', base + (parJour[base] > 1 ? '-' + parJour[base] : ''))));
   });
@@ -4064,7 +4609,7 @@ function texteBrut(html) {
 function resumeSeanceIA(x) {
   const m = mesurerSeance(x);
   return {
-    date: x.date, jour: JOURS_LONGS[depuisCleJour(x.date).getDay()], titre: x.titre, type: (TYPES_SEANCE[x.type] || {}).libelle,
+    id: x.id, date: x.date, jour: JOURS_LONGS[depuisCleJour(x.date).getDay()], titre: x.titre, type: (TYPES_SEANCE[x.type] || {}).libelle,
     statut: statutSeance(x), distanceKm: Math.round(m.distanceM / 100) / 10, duree: dureeLisible(m.dureeS), deroule: lignesSeance(x),
     realise: x.realise ? { km: Math.round(x.realise.distanceM / 100) / 10, duree: formaterDuree(x.realise.tempsS), ressenti: x.realise.rpe || null, notes: x.realise.notes || '' } : null
   };
@@ -4094,6 +4639,12 @@ function contexteIA() {
       tempsProbable: s && !s.niveauInconnu ? formaterDuree(s.tempsModele) : null,
       verdictObjectif: s && s.verdict ? s.verdict.texte : null, vmaNecessaire: s ? s.vmaNecessaire : null,
       allureMoyenneCible: s ? a(s.allureMoy) : null,
+      ravitaillement: (() => {
+        const p = s ? planNutrition(s) : null;
+        return p ? { glucidesGParHeure: p.glucidesParHeure, eauMlParHeure: p.eauParHeure, sodiumMgParHeure: p.sodiumParHeure || null, gels: p.nbGels, barres: p.nbBarres,
+                     prises: p.prises.slice(0, 16).map(x => tempsCourse(x.tempsS) + ' km ' + fr1(x.km) + ' ' + x.quoi),
+                     ravitaillementsKm: p.ravitos.map(r => r.km), poidsKg: p.poids + (p.poidsSaisi ? '' : ' (par défaut)'), conditions: p.conditions } : null;
+      })(),
       parKm: s ? s.kms.filter((k, i) => s.kms.length <= 30 || i % Math.ceil(s.kms.length / 30) === 0 || i === s.kms.length - 1)
                   .map(k => ({ km: k.km, allure: formaterAllure(k.allure), dplus: Math.round(k.dplus), dmoins: Math.round(k.dmoins), consigne: k.consigne.texte })) : null
     } : null,
@@ -4101,6 +4652,7 @@ function contexteIA() {
       semaines: ETAT.plan.semaines.length,
       semaineEnCours: c.semaine ? { numero: c.semaine.numero, phase: PHASES[c.semaine.phase].libelle, allegee: !!c.semaine.relache, seances: c.semaine.seances.map(resume) } : null,
       prochaineSeance: c.prochaine ? resume(c.prochaine) : null,
+      aVenir: toutesSeances().filter(x => x.date >= cleJour(new Date()) && x.type !== 'course' && ['prevu', 'aujourdhui'].includes(statutSeance(x))).slice(0, 12).map(resume),
       respect: c.respect.echues ? c.respect.faites + ' séances faites sur ' + c.respect.echues : null
     } : null,
     sortiesRecentes: ETAT.activites.slice(0, 8).map(x => ({
@@ -4121,6 +4673,10 @@ function promptSystemeCoach(ecran = null) {
     '- Réponds court : 2 à 6 phrases, ou une liste de 3 à 5 points si c’est plus clair. Pas de titres, pas de tableau.',
     '- Santé : aucun diagnostic. Douleur qui persiste ou augmente, gonflement, boiterie, douleur au repos, douleur thoracique ou malaise : conseille d’arrêter et de consulter un médecin ou un kinésithérapeute.',
     '- Nutrition : repères sportifs généraux seulement, pas de régime ni d’objectif de poids.',
+    '- Pour proposer de déplacer une séance, ajoute [[deplacer:ID:AAAA-MM-JJ]] (ID d’une séance de plan.aVenir). Avant la course, respecte l’affûtage : rien de difficile à J-2 et J-1, pas de sortie longue dans les 6 derniers jours ; si un déplacement va contre ces règles, explique pourquoi et propose un autre jour.',
+    '- Le coureur peut joindre des photos (capture de montre ou d’application, analyse de fréquence cardiaque), des PDF ou des traces. Dis brièvement ce que tu y lis, puis commente-le.',
+    '- Si une pièce jointe montre une sortie de course réalisée, termine par [[activite:{"date":"AAAA-MM-JJ","heure":"HH:MM","distanceKm":10.2,"duree":"H:MM:SS","dplus":120,"fcMoy":150,"type":"route","nom":"…"}]] (type : route, trail ou tapis). Mets null pour toute valeur illisible et n’invente rien. Une balise par sortie, trois au plus. Les fichiers marqués « lu par l’application » sont déjà proposés à l’enregistrement : pas de balise pour eux.',
+    '- Ravitaillement de la course : appuie-toi sur course.ravitaillement du CONTEXTE.',
     '- Tu peux proposer une action en ajoutant, à la toute fin de ta réponse, une ou plusieurs balises parmi : [[alleger]] (alléger les 7 prochains jours), [[decaler]] (replacer une séance clé manquée), [[plan]] (générer ou mettre à jour le plan), [[montre]] (envoyer la prochaine séance à la montre), [[calendrier]] (exporter le plan dans l’agenda), [[course]] (ouvrir la fiche de la course), [[strava]] (connecter Strava). L’utilisateur confirme d’un geste : ne dis jamais que tu as modifié le plan toi-même.',
     '',
     'CONTEXTE (JSON) :',
@@ -4136,9 +4692,13 @@ function promptSystemeCoach(ecran = null) {
 /** Fil de discussion au format de l'API : rôles alternés, premier message de l'utilisateur. */
 function historiqueIA() {
   const msgs = [];
+  const dernierMoi = ETAT.chat.filter(m => m.role === 'moi').slice(-1)[0];     // ses pièces sont jointes en entier à la requête
   ETAT.chat.filter(m => !['annule', 'erreur', 'local-secours'].includes(m.source)).slice(-12).forEach(m => {
     const role = m.role === 'moi' ? 'user' : 'assistant';
-    const contenu = String(m.role === 'moi' ? (m.texte || texteBrut(m.html)) : texteBrut(m.html)).trim();
+    let contenu = String(m.role === 'moi' ? (m.texte || texteBrut(m.html)) : texteBrut(m.html)).trim();
+    if (m.role === 'moi' && Array.isArray(m.pieces) && m.pieces.length) {
+      contenu += '\n[Pièces jointes : ' + m.pieces.map(x => x.nom).join(', ') + ']' + (m !== dernierMoi ? m.pieces.filter(x => x.resume).map(x => '\n' + x.resume).join('') : '');
+    }
     if (!contenu) return;
     if (msgs.length && msgs[msgs.length - 1].role === role) msgs[msgs.length - 1].content += '\n\n' + contenu;
     else msgs.push({ role, content: contenu });
@@ -4149,8 +4709,14 @@ function historiqueIA() {
 
 /** Réponse de l'IA : mise en forme sûre (texte échappé) et balises d'action changées en boutons. */
 function miseEnFormeIA(texte) {
-  const cles = [];
-  const propre = String(texte).replace(/\[\[\s*([^\]\s]+)\s*\]\]/g, (m, k) => { cles.push(normaliser(k)); return ''; }).trim();
+  const cles = [], propositions = [], deplacements = [];
+  const propre = String(texte)
+    .replace(/\[\[\s*activite\s*:\s*(\{[\s\S]*?\})\s*\]\]/gi, (m, json) => {        // sortie lue dans une pièce jointe
+      try { const p = propositionDepuisIA(JSON.parse(json)); if (p && propositions.length < 3) propositions.push(p); } catch (e) { /* balise illisible : ignorée */ }
+      return '';
+    })
+    .replace(/\[\[\s*deplacer\s*:\s*([\w-]+)\s*:\s*(\d{4}-\d{2}-\d{2})\s*\]\]/gi, (m, id, jour) => { deplacements.push({ id, jour }); return ''; })
+    .replace(/\[\[\s*([^\]\s]+)\s*\]\]/g, (m, k) => { cles.push(normaliser(k)); return ''; }).trim();
   const prochaine = seancesDuJour().find(x => x.statut !== 'fait') || prochaineSeance();
   const catalogue = {
     alleger: { label: 'Alléger les 7 prochains jours', act: 'ajusterPlan', arg: 'alleger' },
@@ -4162,6 +4728,10 @@ function miseEnFormeIA(texte) {
     strava: { label: 'Connecter Strava', act: 'ouvrirSync' }
   };
   const actions = [...new Set(cles)].map(k => catalogue[k]).filter(Boolean);
+  deplacements.slice(0, 2).forEach(x => {
+    const seance = trouverSeance(x.id);
+    if (seanceDeplacable(seance)) actions.push({ label: 'Déplacer « ' + seance.titre + ' » au ' + dateCourte(depuisCleJour(x.jour)), act: 'proposerDeplacement', arg: x.id + '|' + x.jour });
+  });
   let html = '', dansListe = false;
   esc(propre).split('\n').forEach(ligne => {
     ligne = ligne.replace(/^\s*#{1,6}\s+/, '');                     // titres Markdown : texte simple
@@ -4177,7 +4747,7 @@ function miseEnFormeIA(texte) {
   });
   if (dansListe) html += '</ul>';
   html = html.replace(/(<br>)+$/, '').replace(/\*\*(.+?)\*\*/g, '<b class="text-neige font-semibold">$1</b>');
-  return { html, actions, texteBrut: propre };
+  return { html, actions, texteBrut: propre, propositions };
 }
 
 const pause = ms => new Promise(r => setTimeout(r, ms));
@@ -4275,7 +4845,18 @@ async function avecPatience(appel, opts = {}) {
 }
 
 /** Appel direct de l'API Claude depuis le navigateur, avec la clé personnelle de l'appareil. */
-async function appelerClaude(systeme, messages, maxTokens = 800, signal = null) {
+async function appelerClaude(systeme, messages, maxTokens = 800, signal = null, pieces = null) {
+  const msgs = messages.map(m => ({ role: m.role, content: m.content }));
+  const dernier = msgs[msgs.length - 1];
+  if (pieces && pieces.length && dernier && dernier.role === 'user') {
+    const blocs = [];
+    pieces.forEach(p => {
+      if (p.nature === 'image' && /^image\/(jpeg|png|gif|webp)$/.test(p.mime) && p.donnees) blocs.push({ type: 'image', source: { type: 'base64', media_type: p.mime, data: p.donnees } });
+      else if (p.nature === 'pdf' && p.donnees) blocs.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: p.donnees } });
+      else if (p.texte) blocs.push({ type: 'text', text: 'Fichier joint « ' + p.nom + ' » :\n' + p.texte });
+    });
+    dernier.content = blocs.concat([{ type: 'text', text: String(dernier.content) }]);
+  }
   const rep = await requeteAvecDelai('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -4284,7 +4865,7 @@ async function appelerClaude(systeme, messages, maxTokens = 800, signal = null) 
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true'
     },
-    body: JSON.stringify({ model: APPAREIL.ia.modele || MODELES_IA[0].id, max_tokens: maxTokens, system: systeme, messages })
+    body: JSON.stringify({ model: APPAREIL.ia.modele || MODELES_IA[0].id, max_tokens: maxTokens, system: systeme, messages: msgs })
   }, POLITIQUE_ATTENTE.premiereReponse, signal);
   if (!rep.ok) {
     let detail = '';
@@ -4322,6 +4903,21 @@ async function erreurGemini(rep) {
 }
 
 /** Un appel à generateContent (REST v1beta). La clé passe dans l'en-tête, jamais dans l'adresse. */
+/** Messages au format Gemini ; les pièces jointes accompagnent la dernière question. */
+function contenuGemini(messages, pieces = null) {
+  const contents = messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content) }] }));
+  const dernier = contents[contents.length - 1];
+  if (pieces && pieces.length && dernier && dernier.role === 'user') {
+    const parts = [];
+    pieces.forEach(p => {
+      if ((p.nature === 'image' || p.nature === 'pdf') && p.donnees) parts.push({ inlineData: { mimeType: p.mime, data: p.donnees } });
+      else if (p.texte) parts.push({ text: 'Fichier joint « ' + p.nom + ' »' + (p.nature === 'activite' ? ' (lu par l’application)' : '') + ' :\n' + p.texte });
+    });
+    dernier.parts = parts.concat(dernier.parts);
+  }
+  return contents;
+}
+
 /**
  * Un appel en flux (streamGenerateContent, SSE) : la réponse s'affiche au fur et à mesure.
  * Le délai court jusqu'au premier morceau, puis entre deux morceaux : une longue réponse n'est jamais coupée.
@@ -4357,7 +4953,7 @@ async function appelerGeminiFlux(systeme, messages, modele, avecReflexion = true
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': APPAREIL.ia.cleGemini },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systeme }] },
-          contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content) }] })),
+          contents: contenuGemini(messages, opts.pieces),
           generationConfig
         })
       });
@@ -4471,7 +5067,7 @@ async function repondreGemini(ecran, opts = {}) {
 }
 
 async function repondreClaude(ecran, opts = {}) {
-  const texte = await avecPatience(() => appelerClaude(promptSystemeCoach(ecran), historiqueIA(), 800, opts.signal), opts);
+  const texte = await avecPatience(() => appelerClaude(promptSystemeCoach(ecran), historiqueIA(), 800, opts.signal, opts.pieces), opts);
   if (!texte) throw Object.assign(new Error('réponse vide'), { code: 'vide', fournisseur: 'claude' });
   return Object.assign(miseEnFormeIA(texte), { source: 'claude' });
 }
@@ -4481,7 +5077,8 @@ async function repondreDistant(question, ecran, opts = {}) {
   const texte = await avecPatience(async () => {
     const rep = await requeteAvecDelai(APPAREIL.ia.endpoint, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, systeme: promptSystemeCoach(ecran), messages: historiqueIA(), contexte: contexteIA(), ecran: ecranPourIA(ecran) })
+      body: JSON.stringify({ question, systeme: promptSystemeCoach(ecran), messages: historiqueIA(), contexte: contexteIA(), ecran: ecranPourIA(ecran),
+                             pieces: (opts.pieces || []).map(x => ({ nom: x.nom, nature: x.nature, mime: x.mime || null, donnees: x.donnees || null, texte: x.texte || null })) })
     }, 120000, opts.signal);
     if (!rep.ok) throw Object.assign(new Error('statut ' + rep.status), { statut: rep.status });
     const brut = await rep.text();
@@ -4533,32 +5130,282 @@ async function repondreCoach(question, ecran = null, opts = {}) {
   }
 }
 
-function ajouterMessage(role, html, actions = [], texte = '', source = '', ecran = '') {
+function ajouterMessage(role, html, actions = [], texte = '', source = '', ecran = '', extra = null) {
   ETAT.chatCompteur = (Number(ETAT.chatCompteur) || 0) + 1;           // numéro croissant : sert au calcul des non-lus
-  ETAT.chat.push({ role, html, actions, texte, source, ecran, n: ETAT.chatCompteur, date: new Date().toISOString() });
+  const msg = { role, html, actions, texte, source, ecran, n: ETAT.chatCompteur, date: new Date().toISOString() };
+  if (extra && Array.isArray(extra.pieces) && extra.pieces.length) msg.pieces = extra.pieces;
+  if (extra && Array.isArray(extra.propositions) && extra.propositions.length) msg.propositions = extra.propositions;
+  ETAT.chat.push(msg);
   if (ETAT.chat.length > 80) ETAT.chat = ETAT.chat.slice(-80);
+  // Vignettes des pièces jointes : seulement sur les 30 derniers messages (la mémoire du navigateur est limitée)
+  ETAT.chat.slice(0, -30).forEach(m => (m.pieces || []).forEach(x => { x.vignette = ''; }));
   if (COUCHES.coach) ETAT.chatVu = ETAT.chatCompteur;                 // panneau ouvert : le message est lu
   sauverEtat();
   majBulleCoach();
 }
 
+/* ---------- Pièces jointes du coach : photos, PDF, traces et fichiers d'activité ---------- */
+
+let piecesEnAttente = [];
+let propositionEnCours = null;      // proposition de sortie ouverte dans la saisie manuelle (« Modifier »)
+const MAX_PIECES = 5, POIDS_MAX_ENVOI = 15 * 1024 * 1024;
+
+const lireCommeDataUrl = f => new Promise((ok, ko) => {
+  const r = new FileReader();
+  r.onload = () => ok(String(r.result)); r.onerror = () => ko(new Error('lecture impossible'));
+  r.readAsDataURL(f);
+});
+async function base64DeFichier(f) { return (await lireCommeDataUrl(f)).split(',')[1] || ''; }
+
+/** Photo réduite à 1600 px (lisible pour l'IA, légère à envoyer) et vignette de 120 px pour la conversation. */
+async function imagePourIA(f) {
+  const url = URL.createObjectURL(f);
+  try {
+    const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error('image illisible')); i.src = url; });
+    const dessiner = max => {
+      const r = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * r)); c.height = Math.max(1, Math.round(img.naturalHeight * r));
+      const x = c.getContext('2d');
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);      // fond blanc : une capture transparente reste lisible
+      x.drawImage(img, 0, 0, c.width, c.height);
+      return c;
+    };
+    const grande = dessiner(1600);
+    return { mime: 'image/jpeg', base64: grande.toDataURL('image/jpeg', 0.85).split(',')[1], vignette: dessiner(120).toDataURL('image/jpeg', 0.7), largeur: grande.width, hauteur: grande.height };
+  } catch (e) {
+    // Format que ce navigateur n'affiche pas (HEIC sur ordinateur) : envoyé tel quel, Gemini sait le lire
+    if (f.size > 10 * 1024 * 1024) throw new Error('photo trop lourde (10 Mo au maximum)');
+    return { mime: /\.hei[cf]$/i.test(f.name || '') ? 'image/heic' : (f.type || 'image/jpeg'), base64: await base64DeFichier(f), vignette: '' };
+  } finally { URL.revokeObjectURL(url); }
+}
+/** Sorties lues dans une trace, résumées pour l'IA. */
+function resumeActivitesPourIA(liste) {
+  return liste.slice(0, 5).map(a => '- ' + dateLongue(new Date(a.date)) + ' à ' + new Date(a.date).toTimeString().slice(0, 5) + ' : ' + km1(a.distanceM) + ' km en ' +
+    formaterDuree(a.tempsS) + ' (' + formaterAllure(a.tempsS / (a.distanceM / 1000)) + '/km)' + (a.dplus ? ', ' + a.dplus + ' m D+' : '') +
+    (a.fcMoy ? ', FC moyenne ' + a.fcMoy + ' bpm' : '') + ', « ' + a.nom + ' »').join('\n') + (liste.length > 5 ? '\n(et ' + (liste.length - 5) + ' autres)' : '');
+}
+/** Prépare un fichier pour le coach : photo réduite, PDF, trace lue par l'application ou texte. */
+async function preparerPiece(f) {
+  const p = { id: idUnique('pj'), nom: String(f.name || 'fichier').slice(0, 80), taille: f.size || 0, etat: 'prepa' };
+  piecesEnAttente.push(p);
+  rendrePieces();
+  try {
+    if (!f.size) throw new Error('fichier vide');
+    const nom = p.nom.toLowerCase(), type = String(f.type || '').toLowerCase();
+    if (/^(video|audio)\//.test(type) || /\.(mp4|mov|m4v|avi|mkv|webm|mp3|m4a|wav|aac)$/.test(nom)) throw new Error('vidéo ou son : non pris en charge');
+    if (type.startsWith('image/') || /\.(jpe?g|png|webp|gif|hei[cf])$/.test(nom)) {
+      const img = await imagePourIA(f);
+      Object.assign(p, { nature: 'image', mime: img.mime, donnees: img.base64, vignette: img.vignette });
+    } else if (type === 'application/pdf' || nom.endsWith('.pdf')) {
+      if (f.size > 15 * 1024 * 1024) throw new Error('PDF trop lourd (15 Mo au maximum)');
+      Object.assign(p, { nature: 'pdf', mime: 'application/pdf', donnees: await base64DeFichier(f) });
+    } else {
+      const format = await formatFichier(f);
+      if (format === 'fit') throw new Error('format FIT : exporte la sortie en GPX ou TCX');
+      if (['zip', 'apple', 'samsung'].includes(format)) throw new Error('export complet : importe-le dans Profil, Mes sorties');
+      let activites = [];
+      if (['gpx', 'tcx', 'csv', 'json'].includes(format)) {
+        try { activites = (await activitesDepuisFichier(f, { autres: 0 })).filter(a => a && a.distanceM > 300 && a.tempsS > 120); }
+        catch (e) {
+          if (e.code === 'gpx-parcours') {                          // parcours sans horodatage : résumé pour le coach
+            const trace = lireTraceParcours(await lireFichierTexte(f)), an = analyserTrace(trace.points);
+            Object.assign(p, { nature: 'texte', texte: 'Parcours GPX (pas une sortie réalisée) « ' + (trace.nom || p.nom) + ' » : ' + km1(an.distanceM) + ' km, ' + an.dplus + ' m D+, ' + an.dmoins + ' m D-' +
+              (an.altMin != null ? ', altitude de ' + an.altMin + ' à ' + an.altMax + ' m' : '') + '.' });
+          } else if (format === 'gpx' || format === 'tcx') throw e;  // un CSV ou un JSON quelconque est lu comme du texte
+        }
+      }
+      if (activites.length) Object.assign(p, { nature: 'activite', activites, texte: resumeActivitesPourIA(activites) });
+      else if (!p.nature) {
+        if (f.size > 2 * 1024 * 1024 || !(type.startsWith('text/') || /\.(txt|md|csv|json|xml)$/.test(nom) || ['csv', 'json'].includes(format))) {
+          throw new Error('type non pris en charge (photo, PDF, GPX, TCX, CSV ou texte)');
+        }
+        const texte = await lireFichierTexte(f);
+        if ((texte.slice(0, 20000).match(/[\u0000-\u0008\u000E-\u001F\uFFFD]/g) || []).length > Math.min(20000, texte.length) * 0.01) throw new Error('fichier binaire : non pris en charge');
+        Object.assign(p, { nature: 'texte', texte: texte.slice(0, 30000) });
+      }
+    }
+    p.etat = 'pret';
+  } catch (e) {
+    p.etat = 'erreur';
+    p.erreur = String((e && e.message) || e).slice(0, 90);
+  }
+  rendrePieces();
+}
+function ajouterPieces(fichiers) {
+  const place = MAX_PIECES - piecesEnAttente.length;
+  if (fichiers.length > place) toast('Pas plus de ' + MAX_PIECES + ' fichiers par message.', 'info');
+  fichiers.slice(0, Math.max(0, place)).forEach(f => preparerPiece(f));
+}
+const vignetteSure = v => (/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(String(v || '')) ? v : '');
+function apercuPiece(p, taille) {
+  const v = vignetteSure(p.vignette);
+  if (v) return `<img src="${v}" alt="" class="rounded-md object-cover shrink-0" style="width:${taille}px;height:${taille}px">`;
+  const ic = { pdf: 'fa-file-pdf', activite: 'fa-route', texte: 'fa-file-lines', image: 'fa-image' }[p.nature] || 'fa-paperclip';
+  return `<span class="rounded-md bg-granit grid place-items-center shrink-0" style="width:${taille}px;height:${taille}px"><i class="fa-solid ${ic} text-brume text-[12px]"></i></span>`;
+}
+function libellePiece(p) {
+  return p.nature === 'activite' ? nbTexte(p.activites.length, 'sortie lue', 'sorties lues') : p.nature === 'pdf' ? 'PDF' : p.nature === 'image' ? 'Photo' : 'Texte';
+}
+/** Fichiers en attente d'envoi, au-dessus de la zone de saisie. */
+function rendrePieces() {
+  const zone = $('#piecesChat');
+  if (!zone) return;
+  zone.classList.toggle('hidden', !piecesEnAttente.length);
+  zone.innerHTML = piecesEnAttente.map(p => `<div class="shrink-0 flex items-center gap-2 h-11 pl-1.5 pr-1 rounded-xl ${p.etat === 'erreur' ? 'bg-braise/15 border border-braise/40' : 'bg-nuit/60 border border-brume/20'} max-w-[230px]">
+      ${p.etat === 'prepa' ? '<span class="w-8 h-8 grid place-items-center shrink-0"><i class="fa-solid fa-circle-notch fa-spin text-brume"></i></span>' : apercuPiece(p, 32)}
+      <div class="min-w-0"><div class="text-[12px] truncate">${esc(p.nom)}</div>
+        <div class="text-[10.5px] ${p.etat === 'erreur' ? 'text-braise' : 'text-brume'} truncate">${p.etat === 'prepa' ? 'Préparation…' : p.etat === 'erreur' ? esc(p.erreur) : libellePiece(p)}</div></div>
+      <button data-act="retirerPiece" data-arg="${p.id}" aria-label="Retirer ${esc(p.nom)}" class="tapable w-7 h-7 rounded-lg grid place-items-center text-brume shrink-0"><i class="fa-solid fa-xmark"></i></button>
+    </div>`).join('');
+}
+/** Ce qui est gardé d'une pièce jointe dans la conversation (jamais le fichier lui-même). */
+function metaPiece(p) {
+  return { nom: p.nom, nature: p.nature, mime: p.mime || '', taille: p.taille, vignette: p.vignette || '',
+           resume: p.nature === 'activite' || p.nature === 'texte' ? String(p.texte || '').slice(0, 1500) : '' };
+}
+
+/* ---------- Sorties proposées à l'enregistrement (lues dans une pièce jointe) ---------- */
+
+/** Balise [[activite:{…}]] de l'IA → proposition vérifiée (valeurs absurdes écartées, rien d'inventé). */
+function propositionDepuisIA(j) {
+  if (!j || typeof j !== 'object') return null;
+  const auj = cleJour(new Date());
+  let date = /^\d{4}-\d{2}-\d{2}$/.test(String(j.date || '')) ? String(j.date) : null;
+  const dateSupposee = !date || date > auj || date < cleJour(ajouterJours(new Date(), -730));
+  if (dateSupposee) date = auj;
+  const heure = /^\d{1,2}:\d{2}$/.test(String(j.heure || '')) ? String(j.heure) : (ETAT.profil.heureSeance || '18:00');
+  const d = depuisCleJour(date);
+  const [h, mn] = heure.split(':').map(Number);
+  d.setHours(Math.min(23, h), Math.min(59, mn), 0, 0);
+  const distKm = lireNombre(j.distanceKm), duree = j.duree != null ? lireDuree(String(j.duree)) : NaN;
+  const dplus = lireNombre(j.dplus), fc = lireNombre(j.fcMoy);
+  const a = {
+    nom: String(j.nom || '').trim().slice(0, 60) || 'Sortie lue par le coach',
+    date: d.toISOString(), type: j.type === 'trail' ? 'trail' : (j.type === 'route' || j.type === 'tapis' ? 'route' : null),
+    distanceM: distKm > 0.3 && distKm < 400 ? Math.round(distKm * 1000) : null,
+    tempsS: duree > 120 && duree < 48 * 3600 ? Math.round(duree) : null,
+    dplus: dplus >= 0 && dplus < 20000 ? Math.round(dplus) : 0,
+    fcMoy: fc > 50 && fc < 230 ? Math.round(fc) : null,
+    source: 'coach-ia'
+  };
+  if (!a.distanceM && !a.tempsS) return null;                       // rien d'exploitable
+  return { id: idUnique('prop'), origine: 'ia', etat: 'proposee', dateSupposee, incomplet: !a.distanceM || !a.tempsS, activite: a };
+}
+function propositionDepuisActivite(a, nomFichier) {
+  return { id: idUnique('prop'), origine: 'fichier', fichier: nomFichier, etat: 'proposee', incomplet: false,
+           activite: { nom: a.nom, date: a.date, type: a.type, distanceM: a.distanceM, tempsS: a.tempsS, dplus: a.dplus || 0, dmoins: a.dmoins, fcMoy: a.fcMoy || null, source: a.source } };
+}
+function trouverProposition(id) {
+  for (const m of ETAT.chat) {
+    const p = (m.propositions || []).find(x => x.id === id);
+    if (p) return { m, p };
+  }
+  return null;
+}
+/** Ce que deviendrait la sortie : nouvelle, remplaçante d'une saisie manuelle, ou déjà connue. */
+function situationProposition(p) {
+  const a = p.activite;
+  if (p.etat === 'enregistree') return { texte: '<i class="fa-solid fa-check text-vallee mr-1"></i>Enregistrée dans ton historique.', boutons: [] };
+  if (p.etat === 'ignoree') return { texte: 'Ignorée.', boutons: [] };
+  if (p.incomplet) return { texte: 'Données incomplètes : vérifie et complète avant d’enregistrer.', boutons: [['modifierProposition', 'Compléter et enregistrer', true], ['ignorerProposition', 'Ignorer']] };
+  const n = nouvelleActivite(Object.assign({}, a));
+  const j = cleJour(a.date);
+  const doublon = doublonDe(n);
+  if (doublon) return { texte: 'Déjà dans ton historique : ' + km1(doublon.distanceM) + ' km en ' + formaterDuree(doublon.tempsS) + ' (' + esc(LIBELLES_SOURCES[doublon.source] || doublon.source || 'sortie') + ').',
+                        boutons: [['mettreAJourProposition', 'Mettre à jour avec ces données', true], ['ignorerProposition', 'Ignorer']] };
+  const manuelle = saisieARemplacer(n);
+  const seance = toutesSeances().find(x => x.date === j && x.statut !== 'fait' && x.statut !== 'reporte');
+  const suite = seance ? ' Ta séance « ' + esc(seance.titre) + ' » sera marquée réalisée.' : '';
+  if (manuelle) return { texte: 'Remplacera ta saisie manuelle du jour (' + km1(manuelle.distanceM) + ' km) par ces données plus précises.' + suite,
+                         boutons: [['enregistrerProposition', 'Remplacer ma saisie', true], ['modifierProposition', 'Modifier'], ['ignorerProposition', 'Ignorer']] };
+  return { texte: seance ? 'Séance prévue ce jour-là : « ' + esc(seance.titre) + ' ». Elle sera marquée réalisée.' : 'Nouvelle sortie pour ton historique.',
+           boutons: [['enregistrerProposition', seance ? 'Enregistrer et valider la séance' : 'Enregistrer la sortie', true], ['modifierProposition', 'Modifier'], ['ignorerProposition', 'Ignorer']] };
+}
+function carteProposition(p) {
+  const a = p.activite, sit = situationProposition(p);
+  const valeurs = [dateCourte(new Date(a.date)) + (p.dateSupposee ? ' (date supposée)' : ''),
+    a.distanceM ? km1(a.distanceM) + ' km' : 'distance ?', a.tempsS ? formaterDuree(a.tempsS) : 'durée ?',
+    a.distanceM && a.tempsS ? formaterAllure(a.tempsS / (a.distanceM / 1000)) + '/km' : '',
+    a.dplus ? a.dplus + ' m D+' : '', a.fcMoy ? a.fcMoy + ' bpm' : ''].filter(Boolean).join(' · ');
+  const boutons = sit.boutons.map(([act, libelle, principal]) => `<button data-act="${act}" data-arg="${p.id}" ${ACTIONS_DU_FIL.includes(act) ? '' : 'data-ferme-coach="1"'}
+      class="tapable text-[12.5px] px-3 py-1.5 rounded-full ${principal ? 'bg-vallee/20 text-vallee border border-vallee/40 font-semibold' : 'bg-nuit/50 text-brume border border-brume/20'}">${libelle}</button>`).join('');
+  return `<div data-proposition="${p.id}" class="mt-2.5 rounded-xl border ${p.etat === 'enregistree' ? 'border-vallee/40' : 'border-brume/20'} bg-nuit/40 p-3">
+    <div class="flex items-center gap-1.5 text-[11px] text-vallee font-semibold uppercase tracking-wide min-w-0"><i class="fa-solid fa-person-running"></i><span class="shrink-0">Sortie détectée</span>${p.fichier ? `<span class="normal-case font-normal text-brume truncate">· ${esc(p.fichier)}</span>` : ''}</div>
+    <div class="text-[13.5px] text-neige mt-1">${esc(a.nom || '')}</div>
+    <div class="text-[12.5px] mt-0.5">${valeurs}</div>
+    <div class="text-[12px] text-brume mt-1.5 leading-snug">${sit.texte}</div>
+    ${boutons ? `<div class="flex flex-wrap gap-1.5 mt-2">${boutons}</div>` : ''}
+  </div>`;
+}
+/** Enregistre la sortie proposée : fusion intelligente (doublon écarté, saisie manuelle remplacée), séance du jour validée. */
+function enregistrerProposition(id) {
+  const r = trouverProposition(id);
+  if (!r || r.p.etat !== 'proposee' || r.p.incomplet) return;
+  const n = activiteSure(Object.assign({}, r.p.activite, { date: new Date(r.p.activite.date) }));
+  if (!n) { toast('Données inexploitables : utilise « Modifier ».', 'alerte'); return; }
+  const bilan = { remplacees: 0 };
+  if (!fusionnerActivites([n], bilan)) {
+    toast('Cette sortie est déjà dans ton historique.', 'info');
+  } else {
+    r.p.activiteId = n.id;
+    apresNouvellesActivites(1);
+    const seance = n.seanceId ? trouverSeance(n.seanceId) : null;
+    toast((bilan.remplacees ? 'Saisie manuelle remplacée par ces données.' : 'Sortie enregistrée.') + (seance ? ' Séance « ' + esc(seance.titre) + ' » validée.' : ''), 'succes');
+  }
+  r.p.etat = 'enregistree';
+  sauverEtat();
+  rendreChat();
+}
+/** Met à jour la sortie déjà connue avec les valeurs lues (distance, durée, D+, fréquence cardiaque). */
+function mettreAJourProposition(id) {
+  const r = trouverProposition(id);
+  if (!r || r.p.etat !== 'proposee') return;
+  const a = r.p.activite;
+  const cible = doublonDe(nouvelleActivite(Object.assign({}, a)));
+  if (!cible) { enregistrerProposition(id); return; }
+  if (a.distanceM) cible.distanceM = a.distanceM;
+  if (a.tempsS) cible.tempsS = a.tempsS;
+  if (a.dplus) cible.dplus = a.dplus;
+  if (a.fcMoy) cible.fcMoy = a.fcMoy;
+  toutesSeances().forEach(x => {
+    if (x.realise && x.realise.activiteId === cible.id) Object.assign(x.realise, { distanceM: cible.distanceM, tempsS: cible.tempsS, dplus: cible.dplus });
+  });
+  r.p.etat = 'enregistree';
+  r.p.activiteId = cible.id;
+  apresNouvellesActivites(0);
+  toast('Sortie mise à jour.', 'succes');
+  rendreChat();
+}
+function modifierProposition(id) {
+  const r = trouverProposition(id);
+  if (!r) return;
+  const a = r.p.activite;
+  ouvrirModaleSortieManuelle({ proposition: id, nom: a.nom, date: cleJour(a.date), type: a.type === 'trail' ? 'trail' : 'route',
+                               distKm: a.distanceM ? Math.round(a.distanceM / 10) / 100 : null, duree: a.tempsS ? formaterDuree(a.tempsS) : '', dplus: a.dplus || 0 });
+}
+
 let coachOccupe = false;
 /** Pose une question au coach ; options.reessai : la question est déjà dans le fil (nouvel essai). */
 async function poserQuestion(question, options = {}) {
-  const q = String(question || '').trim();
+  const pieces = (options.pieces || []).filter(p => p && p.etat === 'pret');
+  let q = String(question || '').trim();
+  if (!q && pieces.length) q = pieces.length > 1 ? 'Analyse ces fichiers.' : 'Analyse ce fichier.';
   if (!q || coachOccupe) return;
   if (!cerveauPret()) { signalerCleManquante(); return; }          // pas de clé : on guide au lieu de répondre dans le vide
   coachOccupe = true;
   const profil = INDEX.actif;
   const ecran = ECRAN_COACH.actif ? ECRAN_COACH.capture : null;
-  if (!options.reessai) ajouterMessage('moi', esc(q), [], q, '', ecran ? ecran.libelle : '');
+  if (!options.reessai) ajouterMessage('moi', esc(q), [], q, '', ecran ? ecran.libelle : '', { pieces: pieces.map(metaPiece) });
+  // Traces lues par l'application : la proposition d'enregistrement ne dépend pas de l'IA
+  const locales = pieces.filter(p => p.nature === 'activite').flatMap(p => p.activites.map(a => propositionDepuisActivite(a, p.nom)));
   attenteCoach = { ctrl: new AbortController(), debut: Date.now(), texte: '', essai: 1, prochainEssai: 0, cause: '' };
   rendreChat();
   demarrerMinuterieAttente();
   let rep;
   try {
     rep = await repondreCoach(q, ecran, {
-      signal: attenteCoach.ctrl.signal,
+      signal: attenteCoach.ctrl.signal, pieces,
       surMorceau: texte => { if (attenteCoach) { attenteCoach.texte = texte; majBulleAttente(); } },
       surEtat: etat => { if (attenteCoach) { Object.assign(attenteCoach, etat); majBulleAttente(); } }
     });
@@ -4571,7 +5418,8 @@ async function poserQuestion(question, options = {}) {
     arreterMinuterieAttente();
   }
   if (INDEX.actif !== profil) return;          // profil changé pendant la réflexion : réponse abandonnée
-  ajouterMessage('coach', rep.html, rep.actions || [], rep.texteBrut || '', rep.source || 'erreur');
+  const propositions = locales.concat(rep.propositions || []).slice(0, 6);
+  ajouterMessage('coach', rep.html, rep.actions || [], rep.texteBrut || '', rep.source || 'erreur', '', { propositions });
   rendreChat();
   if (!COUCHES.coach) bulleSautille();         // réponse arrivée panneau fermé : la bulle prévient
 }
@@ -4731,7 +5579,8 @@ function carteSeance(s, opts = {}) {
     reporte: `<span class="${PUCE} bg-granit text-brume">Reportée</span>`,
     prevu: ''
   }[st];
-  const ajuste = s.ajuste ? `<span class="${PUCE} bg-violine/15 text-violine">${s.ajuste === 'allégée' ? 'Allégée' : 'Replacée ici'}</span>` : '';
+  const ajuste = (s.ajuste ? `<span class="${PUCE} bg-violine/15 text-violine">${s.ajuste === 'allégée' ? 'Allégée' : 'Replacée ici'}</span>` : '') +
+                 (s.deplacee && st !== 'fait' ? `<span class="${PUCE} bg-azur/15 text-azur">Déplacée</span>` : '');
   const lignes = lignesSeance(s).map(l =>
     `<li class="flex gap-2"><span class="mt-[7px] w-1 h-1 rounded-full bg-brume/60 shrink-0"></span><span>${esc(l)}</span></li>`).join('');
   const course = s.type === 'course';
@@ -4740,8 +5589,13 @@ function carteSeance(s, opts = {}) {
   const btnMontre = `<button data-act="montreSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-stopwatch mr-1"></i>Montre</button>`;
   const btnAgenda = `<button data-act="icsSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-regular fa-calendar-plus mr-1"></i>Agenda</button>`;
   const btnStrategie = `<button data-act="allerA" data-arg="objectif" class="tapable h-9 rounded-xl bg-ocre/20 text-ocre border border-ocre/30 text-[12.5px]"><i class="fa-solid fa-route mr-1"></i>Stratégie</button>`;
-  const choix = course ? (s.date <= cleJour(new Date()) ? [btnValider, btnStrategie] : [btnStrategie, btnAgenda]) : [btnValider, btnMontre, btnAgenda];
-  const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>`;
+  const btnDeplacer = `<button data-act="deplacerSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-calendar-day mr-1"></i>${st === 'manque' ? 'Reporter' : 'Déplacer'}</button>`;
+  let choix = course ? (s.date <= cleJour(new Date()) ? [btnValider, btnStrategie] : [btnStrategie, btnAgenda])
+                     : [btnValider].concat(seanceDeplacable(s) ? [btnDeplacer] : [], [btnMontre, btnAgenda]);
+  // Quatre boutons : icône au-dessus du libellé pour tenir sur un téléphone
+  if (choix.length === 4) choix = choix.map(b => b.replace('h-9 rounded-xl', 'h-12 rounded-xl flex flex-col items-center justify-center gap-1 leading-none')
+                                             .replace('text-[12.5px]', 'text-[11px]').replace(' mr-1"></i>', '"></i>'));
+  const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 2 ? 'grid-cols-2' : choix.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>`;
   return `<div data-seance="${s.id}" class="rounded-2xl ${opts.compact ? 'bg-nuit/40 border border-brume/10' : 'verre'} overflow-hidden ${st === 'reporte' ? 'opacity-60' : ''}">
     <div class="flex">
       <div class="w-1.5 shrink-0" style="background:${t.couleur}"></div>
@@ -5008,7 +5862,7 @@ const SOURCES_REPONSE = {
   claude: ['fa-solid fa-wand-magic-sparkles', 'Réponse de Claude'],
   relais: ['fa-solid fa-server', 'Réponse du modèle distant']
 };
-const ACTIONS_DU_FIL = ['questionRapide', 'reposerQuestion', 'annulerCoach'];   // elles ne referment pas le panneau
+const ACTIONS_DU_FIL = ['questionRapide', 'reposerQuestion', 'annulerCoach', 'enregistrerProposition', 'mettreAJourProposition', 'ignorerProposition'];   // elles ne referment pas le panneau
 
 function ouvrirCoach() {
   if (!sessionOuverte || COUCHES.coach) return;
@@ -5142,6 +5996,7 @@ function rendreCoachSiOuvert() { if (COUCHES.coach) rendrePanneauCoach(); }
 function bulleMessage(msg) {
   if (msg.role === 'moi') {
     return `<div class="flex flex-col items-end">
+      ${Array.isArray(msg.pieces) && msg.pieces.length ? `<div class="flex flex-wrap justify-end gap-1.5 mb-1 max-w-[85%]">${msg.pieces.map(x => `<span class="inline-flex items-center gap-1.5 max-w-[200px] h-8 pl-1 pr-2 rounded-lg bg-nuit/50 border border-brume/20 text-[11.5px]">${apercuPiece(x, 24)}<span class="truncate">${esc(x.nom)}</span></span>`).join('')}</div>` : ''}
       <div class="bulle-moi rounded-2xl rounded-br-md px-3.5 py-2.5 max-w-[85%] text-[14.5px] leading-snug">${msg.html}</div>
       ${msg.ecran ? `<div class="text-[10.5px] text-brume/70 mt-1 mr-1"><i class="fa-regular fa-eye mr-1"></i>${esc(msg.ecran)}</div>` : ''}</div>`;
   }
@@ -5152,6 +6007,7 @@ function bulleMessage(msg) {
   return `<div class="flex gap-2 items-start">
     ${AVATAR_COACH}
     <div class="bulle-coach border border-brume/15 rounded-2xl rounded-tl-md px-3.5 py-2.5 max-w-[86%] text-[14px] leading-relaxed">${msg.html}
+      ${(msg.propositions || []).map(carteProposition).join('')}
       ${actions ? `<div class="flex flex-wrap gap-1.5 mt-2.5">${actions}</div>` : ''}${signature}</div>
   </div>`;
 }
@@ -5390,6 +6246,7 @@ function rendreObjectif(remplirChamps = true) {
   // Stratégie
   const s = calculerStrategie();
   $('#blocStrategie').classList.toggle('hidden', !s);
+  rendreNutrition(s);
   if (!s) { effacerGraphique('graphAllures'); return; }
   const m = metriques();
   const fiab = fiabiliteNiveau();
@@ -5427,7 +6284,7 @@ function rendreObjectif(remplirChamps = true) {
     <div class="ligne-sep my-3"></div>
     <div class="space-y-2 text-[12.5px] leading-relaxed">
       <div class="flex gap-2"><i class="fa-solid fa-fire text-ocre mt-[3px] w-4"></i><span><span class="text-neige">Échauffement.</span> ${esc(s.echauffement)}</span></div>
-      <div class="flex gap-2"><i class="fa-solid fa-bottle-water text-azur mt-[3px] w-4"></i><span><span class="text-neige">Ravitaillement.</span> ${esc(s.nutrition)}</span></div>
+      <div class="flex gap-2"><i class="fa-solid fa-bottle-water text-azur mt-[3px] w-4"></i><span><span class="text-neige">Ravitaillement.</span> ${esc(resumeNutrition(planNutrition(s)))} Le détail est plus haut, sous le profil.</span></div>
       ${s.sourceProfil !== 'gpx' && s.trail ? `<div class="flex gap-2 text-brume"><i class="fa-solid fa-route mt-[3px] w-4"></i><span>Sans GPX, l’effort est réparti uniformément. Charge la trace pour une stratégie portion par portion.</span></div>` : ''}
     </div>`;
 
@@ -5475,7 +6332,7 @@ function texteStrategie() {
              'Temps cible ' + formaterDuree(s.tempsCible) + ', allure moyenne ' + formaterAllure(s.allureMoy) + '/km', ''];
   s.kms.forEach(k => l.push('Km ' + k.km + ' : ' + formaterAllure(k.allure) + '/km, passage ' + formaterDuree(k.cumul) +
     (k.dplus > 5 || k.dmoins > 5 ? ' (+' + Math.round(k.dplus) + ' / -' + Math.round(k.dmoins) + ' m)' : '') + ', ' + k.consigne.texte));
-  l.push('', 'Échauffement : ' + s.echauffement, 'Ravitaillement : ' + s.nutrition);
+  l.push('', 'Échauffement : ' + s.echauffement, '', texteNutrition(planNutrition(s), true));
   return l.join('\n');
 }
 
@@ -5815,20 +6672,22 @@ function ouvrirModaleActivite(id) {
 
 /* ---------- Sortie manuelle ---------- */
 
-function ouvrirModaleSortieManuelle() {
+function ouvrirModaleSortieManuelle(v = null) {
+  propositionEnCours = v && v.proposition ? v.proposition : null;
+  v = v || {};
   ouvrirModale(
     enteteModale('fa-solid fa-plus', '#FF9D66', 'Ajouter une sortie', 'Elle compte dans ton niveau et ta charge') +
     `<div class="space-y-3 mb-4">
-       ${champ('manNom', 'Nom', 'type="text" placeholder="Sortie trail"')}
+       ${champ('manNom', 'Nom', 'type="text" placeholder="Sortie trail"', v.nom || '')}
        <div class="grid grid-cols-2 gap-3">
-         ${champ('manDate', 'Date', 'type="date"', cleJour(new Date()))}
+         ${champ('manDate', 'Date', 'type="date"', v.date || cleJour(new Date()))}
          <div><label class="text-[12px] text-brume block mb-1.5" for="manType">Terrain</label>
-           <select id="manType" class="${CHAMP}"><option value="route">Route</option><option value="trail" selected>Trail</option></select></div>
+           <select id="manType" class="${CHAMP}"><option value="route" ${v.type === 'route' ? 'selected' : ''}>Route</option><option value="trail" ${v.type === 'route' ? '' : 'selected'}>Trail</option></select></div>
        </div>
        <div class="grid grid-cols-3 gap-2">
-         ${champ('manDist', 'Distance (km)', 'type="text" inputmode="decimal" autocomplete="off" placeholder="10"')}
-         ${champ('manDuree', 'Durée', 'type="text" autocomplete="off" placeholder="1:05:00"')}
-         ${champ('manDplus', 'D+ (m)', 'type="text" inputmode="numeric" pattern="[0-9]*" placeholder="250"')}
+         ${champ('manDist', 'Distance (km)', 'type="text" inputmode="decimal" autocomplete="off" placeholder="10"', v.distKm ? fr1(v.distKm) : '')}
+         ${champ('manDuree', 'Durée', 'type="text" autocomplete="off" placeholder="1:05:00"', v.duree || '')}
+         ${champ('manDplus', 'D+ (m)', 'type="text" inputmode="numeric" pattern="[0-9]*" placeholder="250"', v.dplus ? String(v.dplus) : '')}
        </div>
        <label class="flex items-center gap-3 text-[13.5px]"><input id="manMax" type="checkbox" class="w-5 h-5 accent-[#FF9D66]">C’était une course ou un effort maximal</label>
      </div>
@@ -5850,6 +6709,11 @@ function enregistrerSortieManuelle() {
     dplus: lireNombre($('#manDplus').value) || 0, effortMax: $('#manMax').checked, source: 'saisie'
   });
   if (!fusionnerActivites([a])) { toast('Une sortie identique existe déjà ce jour-là.', 'info'); return; }
+  if (propositionEnCours) {                                           // sortie proposée par le coach, vérifiée à la main
+    const r = trouverProposition(propositionEnCours);
+    if (r) { r.p.etat = 'enregistree'; r.p.activiteId = a.id; }
+    propositionEnCours = null;
+  }
   fermerModale();
   apresNouvellesActivites();
   toast('Sortie ajoutée.', 'succes');
@@ -6160,7 +7024,9 @@ async function chargerGpxCourse(fichier) {
     const a = analyserTrace(points);
     if (a.distanceM < 500) throw new Error('trace trop courte');
     const o = ETAT.objectif;
-    o.gpx = { nomFichier: fichier.name, nom, distanceM: a.distanceM, dplus: a.dplus, dmoins: a.dmoins, altMin: a.altMin, altMax: a.altMax, profil: a.profil, troncons: a.troncons };
+    let ravitos = [];
+    try { ravitos = ravitosDepuisGpx(texte, points); } catch (e) { console.warn('Ravitaillements du GPX ignorés :', e); }
+    o.gpx = { nomFichier: fichier.name, nom, distanceM: a.distanceM, dplus: a.dplus, dmoins: a.dmoins, altMin: a.altMin, altMax: a.altMax, profil: a.profil, troncons: a.troncons, ravitos };
     o.distanceKm = Math.round(a.distanceM / 100) / 10;
     o.dplus = a.dplus;
     o.dmoins = a.dmoins;
@@ -6170,7 +7036,8 @@ async function chargerGpxCourse(fichier) {
     if (ETAT.plan && o.date) genererPlan();
     saisieObjectifEnCours = false;
     rendreObjectif();
-    toast('Parcours analysé : ' + km1(a.distanceM) + ' km, ' + a.dplus + ' m D+.' + (a.aAltitude ? '' : ' Pas d’altitude dans ce GPX : profil plat.'), a.aAltitude ? 'succes' : 'alerte');
+    toast('Parcours analysé : ' + km1(a.distanceM) + ' km, ' + a.dplus + ' m D+' + (ravitos.length ? ', ' + nbTexte(ravitos.length, 'ravitaillement repéré', 'ravitaillements repérés') : '') + '.' +
+          (a.aAltitude ? '' : ' Pas d’altitude dans ce GPX : profil plat.'), a.aAltitude ? 'succes' : 'alerte');
   } catch (e) {
     console.error(e);
     toast('GPX illisible : ' + esc(e.message), 'erreur');
@@ -6454,9 +7321,44 @@ const ACTIONS = {
   // Coach
   envoyerChat: () => {
     const t = $('#saisieChat');
+    if (coachOccupe) { toast('Le coach répond encore : patiente un instant.', 'info'); return; }
+    if (!cerveauPret()) { signalerCleManquante(); return; }
+    if (piecesEnAttente.some(p => p.etat === 'prepa')) { toast('Préparation des fichiers en cours…', 'info'); return; }
+    const pieces = piecesEnAttente.filter(p => p.etat === 'pret');
+    if (!t.value.trim() && !pieces.length) return;
+    if (pieces.reduce((n, p) => n + (p.donnees ? p.donnees.length * 0.75 : 0), 0) > POIDS_MAX_ENVOI) {
+      toast('Fichiers trop lourds pour un seul message (15 Mo au maximum).', 'alerte'); return;
+    }
     const q = t.value;
     t.value = '';
     t.style.height = '';
+    piecesEnAttente = [];
+    rendrePieces();
+    poserQuestion(q, { pieces });
+  },
+  joindreFichier: () => $('#inputPieceCoach').click(),
+  retirerPiece: id => { piecesEnAttente = piecesEnAttente.filter(p => p.id !== id); rendrePieces(); },
+  enregistrerProposition: id => enregistrerProposition(id),
+  mettreAJourProposition: id => mettreAJourProposition(id),
+  ignorerProposition: id => { const r = trouverProposition(id); if (r) { r.p.etat = 'ignoree'; sauverEtat(); rendreChat(); } },
+  modifierProposition: id => modifierProposition(id),
+
+  // Déplacer une séance
+  deplacerSeance: id => ouvrirDeplacement(id),
+  choisirJourDeplacement: jour => choisirJourDeplacement(jour),
+  basculerCascadeDeplacement: (arg, el) => { if (deplacement) { deplacement.cascade = !!el.checked; rendreDeplacement(); } },
+  confirmerDeplacement: () => appliquerDeplacement(),
+  proposerDeplacement: arg => { const [id, jour] = String(arg || '').split('|'); ouvrirDeplacement(id, jour); },
+  avisCoachDeplacement: () => {
+    const d = deplacement, s = d && trouverSeance(d.id);
+    if (!s) return;
+    const J = dateCoursePlan();
+    const q = d.cible && d.cible !== s.date
+      ? 'Je voudrais déplacer « ' + s.titre + ' » du ' + dateLongue(depuisCleJour(s.date)) + ' au ' + dateLongue(depuisCleJour(d.cible)) +
+        (J ? ' (J-' + ecartJours(depuisCleJour(d.cible), depuisCleJour(J)) + ' avant ma course)' : '') + (d.cascade ? ', en décalant aussi la suite de la semaine' : '') +
+        '. Est-ce raisonnable, et que dois-je adapter ?'
+      : 'Je dois déplacer « ' + s.titre + ' », prévue le ' + dateLongue(depuisCleJour(s.date)) + '. Quel jour me conseilles-tu' + (J ? ', sachant que ma course approche' : '') + ' ?';
+    ouvrirCoach();
     poserQuestion(q);
   },
   questionRapide: arg => { if (!COUCHES.coach) ouvrirCoach(); poserQuestion(arg); },
@@ -6491,6 +7393,26 @@ const ACTIONS = {
     if (!t) return;
     const r = await partagerOuCopier('Stratégie ' + (ETAT.objectif.nom || 'jour J'), t);
     if (r === 'copie') toast('Stratégie copiée dans le presse-papiers.', 'succes');
+  },
+
+  // Stratégie nutritionnelle
+  reglerNutrition: arg => {
+    const [cle, valeur] = String(arg).split(':');
+    const n = ETAT.objectif.nutrition = Object.assign({ conditions: 'temperee', boisson: 'eau', ravitos: '' }, ETAT.objectif.nutrition || {});
+    if (cle === 'conditions' && CONDITIONS_NUTRITION[valeur]) n.conditions = valeur;
+    if (cle === 'boisson' && ['eau', 'iso'].includes(valeur)) n.boisson = valeur;
+    sauverEtat();
+    rendreNutrition(calculerStrategie());
+  },
+  partagerNutrition: async () => {
+    const t = texteNutrition(planNutrition(calculerStrategie()), true);
+    if (!t) return;
+    const r = await partagerOuCopier('Ravitaillement ' + (ETAT.objectif.nom || 'jour J'), (ETAT.objectif.nom ? ETAT.objectif.nom + '\n\n' : '') + t);
+    if (r === 'copie') toast('Stratégie nutritionnelle copiée dans le presse-papiers.', 'succes');
+  },
+  renseignerPoids: () => {
+    allerA('profil');
+    setTimeout(() => { const c = $('#regPoids'); if (c) { c.scrollIntoView({ block: 'center' }); c.focus(); } }, 350);
   },
 
   // Activités
@@ -6676,6 +7598,17 @@ function brancherEvenements() {
   $('#cleIA').addEventListener('change', e => { APPAREIL.ia.cle = e.target.value.trim(); sauverAppareil(); });
   $('#modeleIA').addEventListener('change', e => { APPAREIL.ia.modele = e.target.value; sauverAppareil(); });
   $('#regEndpointIA').addEventListener('change', e => { APPAREIL.ia.endpoint = e.target.value.trim(); sauverAppareil(); });
+  // Coach : pièces jointes ; fenêtre de déplacement : autre date choisie au calendrier du téléphone
+  $('#inputPieceCoach').addEventListener('change', e => { ajouterPieces(Array.from(e.target.files || [])); e.target.value = ''; });
+  $('#corpsModale').addEventListener('change', e => { if (e.target.id === 'autreDateDeplacement') choisirJourDeplacement(e.target.value); });
+  // Stratégie nutritionnelle : km des ravitaillements saisis à la main
+  $('#contenuNutrition').addEventListener('change', e => {
+    if (e.target.id !== 'nutRavitos') return;
+    const n = ETAT.objectif.nutrition = Object.assign({ conditions: 'temperee', boisson: 'eau', ravitos: '' }, ETAT.objectif.nutrition || {});
+    n.ravitos = String(e.target.value || '').replace(/[^0-9.,;\s]/g, '').slice(0, 200);
+    sauverEtat();
+    rendreNutrition(calculerStrategie());
+  });
   $('#cleGemini').addEventListener('change', e => { APPAREIL.ia.cleGemini = e.target.value.trim(); sauverAppareil(); rendreCoachSiOuvert(); });
   $('#modeleGemini').addEventListener('change', e => {
     if (e.target.value === 'autre') { $('#modeleGeminiLibre').classList.remove('hidden'); $('#modeleGeminiLibre').focus(); return; }
