@@ -110,13 +110,14 @@ if (window.tailwind) tailwind.config = {
     border:1px solid var(--bordure);
     box-shadow:0 1px 2px rgba(16,24,40,.04);
   }
-  .verre-fort{
-    background:rgba(255,255,255,.94);
-    backdrop-filter:blur(16px) saturate(160%);
-    -webkit-backdrop-filter:blur(16px) saturate(160%);
-  }
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){ .verre-fort{ background:#fff; } }
+  /* Fond blanc plein, sans flou : sur iPhone, le flou d'arrière-plan donnait un en-tête « brouillé » */
+  .verre-fort{ background:#fff; }
   header.verre-fort{ border-bottom:1px solid var(--bordure); }
+  /* En-tête et barre d'onglets sur leur propre calque : ils restent fixes, quel que soit l'onglet (Safari iOS) */
+  header.fixed, nav.fixed{ transform:translateZ(0); -webkit-transform:translateZ(0); will-change:transform; }
+  /* Toutes les vues occupent au moins l'écran : la barre de Safari se comporte pareil sur chaque onglet */
+  #contenu{ min-height:100vh; min-height:100dvh; }
+  canvas{ max-width:100%; }
   .filet{ border-top:1px solid #EEF0F3; }
 
   /* ---------- Typo : titres sobres, chiffres condensés ---------- */
