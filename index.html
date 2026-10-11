@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fr" class="dark">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <!-- Zoom désactivé et écran figé : l’app ne bouge plus sous le doigt (complété en JS pour Safari, qui ignore user-scalable) -->
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="color-scheme" content="dark">          <!-- évite l'assombrissement forcé de Samsung Internet et de Chrome -->
+<meta name="color-scheme" content="light only">    <!-- thème clair uniquement : pas d'assombrissement forcé (Samsung Internet, Chrome) -->
 <meta name="format-detection" content="telephone=no"> <!-- les temps et allures ne deviennent pas des numéros de téléphone -->
 <title>RDD, Runner du dimanche</title>
 <meta name="description" content="RDD, le coach running et trail des runners du dimanche : ton niveau, ton plan et tes allures du jour J.">
@@ -12,9 +12,9 @@
 <!-- PWA / iOS : plein écran quand l'app est ajoutée à l'écran d'accueil -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="RDD">
-<meta name="theme-color" content="#10142B">
+<meta name="theme-color" content="#FFFFFF">
 <!-- Installation : fichiers du site (manifest.webmanifest, sw.js, icônes). S’ils manquent, RDD génère un repli. -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -33,21 +33,21 @@
 <script>
 /* Configuration Tailwind : palette « petit matin du dimanche » (protégée si le CDN est injoignable) */
 if (window.tailwind) tailwind.config = {
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        nuit:    '#10142B',   /* fond : le ciel juste avant l'aube */
-        ardoise: '#141934',
-        roche:   '#1A1F3D',   /* surface */
-        granit:  '#262C57',   /* surface élevée */
-        brume:   '#9DA5CA',   /* texte secondaire */
-        neige:   '#F0F2FA',   /* texte principal */
-        ocre:    '#FF9D66',   /* abricot : action principale, montée */
-        azur:    '#7CC8FF',   /* ciel : descente, information */
-        vallee:  '#6BE3B5',   /* menthe : endurance, réussite */
-        braise:  '#FF5F8F',   /* framboise : intensité, alerte */
-        violine: '#B99EFF',   /* lilas : seuil */
+        /* Thème clair (inspiré de Strava) : les noms historiques sont conservés, seules les teintes changent */
+        nuit:    '#EEF1F5',   /* fond des tuiles et des champs */
+        ardoise: '#FFFFFF',
+        roche:   '#FFFFFF',   /* surface */
+        granit:  '#EEF0F4',   /* surface secondaire, puces neutres */
+        brume:   '#6B7280',   /* texte secondaire */
+        neige:   '#1F2430',   /* texte principal */
+        ocre:    '#FC5200',   /* orange : action principale, montée */
+        azur:    '#2F80ED',   /* bleu : descente, information */
+        vallee:  '#16A34A',   /* vert : endurance, réussite */
+        braise:  '#E5484D',   /* rouge : intensité, alerte */
+        violine: '#7C5CFF',   /* violet : seuil */
         papier:  '#F7F3EA',   /* papier du dossard */
         encre:   '#151A36'    /* encre du dossard */
       },
@@ -62,199 +62,209 @@ if (window.tailwind) tailwind.config = {
 </script>
 
 <style>
-  /* ---------- Base ---------- */
+  /* ---------- Base : thème clair unique (le mode sombre a été retiré) ---------- */
   :root{
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bot: env(safe-area-inset-bottom, 0px);
-    --barre: 72px;                              /* barre d'onglets flottante (64 px) + marge */
-    --f-titre: "Big Shoulders Display", "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+    --barre: 72px;                              /* barre d'onglets (64 px) + marge */
+    --f-titre: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    --f-chiffre: "Barlow Condensed", "Big Shoulders Display", "Arial Narrow", sans-serif;
+    --fond: #F4F5F7;
+    --surface: #FFFFFF;
+    --bordure: #E6E8EC;
+    --texte: #1F2430;
+    --texte-2: #6B7280;
+    --orange: #FC5200;
+    color-scheme: light;
   }
   html,body{ height:100%; }
   body{
-    background:
-      radial-gradient(95% 55% at 108% -8%, rgba(255,157,102,.20) 0%, rgba(255,157,102,0) 62%),
-      radial-gradient(85% 50% at -12% 6%, rgba(185,158,255,.15) 0%, rgba(185,158,255,0) 60%),
-      radial-gradient(120% 55% at 50% 118%, rgba(124,200,255,.07) 0%, rgba(124,200,255,0) 60%),
-      #10142B;
-    color:#F0F2FA;
+    background:var(--fond);
+    color:var(--texte);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
     -webkit-font-smoothing:antialiased;
     overscroll-behavior-y:none;
     font-variant-numeric:tabular-nums;
   }
   button,.tapable{ -webkit-tap-highlight-color:transparent; user-select:none; }
-  .tapable{ transition:transform .12s ease, opacity .12s ease; }
+  .tapable{ transition:transform .12s ease, opacity .12s ease, background-color .15s ease; }
   .tapable:active{ transform:scale(.97); }
   button:disabled{ cursor:default; }
   input,textarea,select{ font-size:16px; }           /* évite le zoom automatique d'iOS */
-  :focus-visible{ outline:2px solid #FF9D66; outline-offset:2px; }
-  ::selection{ background:rgba(255,157,102,.35); }
+  input,textarea,select{ color:var(--texte); }
+  input::placeholder, textarea::placeholder{ color:#A0A7B4; }
+  :focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+  ::selection{ background:rgba(252,82,0,.18); }
 
   /* ---------- iPhone et Android : zones sûres, clavier, navigateurs ---------- */
-  :root{ color-scheme:dark; }
   html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
-  button, a, input, select, textarea, label, .tapable{ touch-action:manipulation; }   /* pas de délai ni de zoom au double appui */
+  button, a, input, select, textarea, label, .tapable{ touch-action:manipulation; }
   .gouttieres{ padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
   .gouttieres-barre{ padding-left:max(12px, env(safe-area-inset-left, 0px)); padding-right:max(12px, env(safe-area-inset-right, 0px)); }
-  .hauteur-modale{ max-height:88vh; max-height:88dvh; }            /* dvh : la barre d'adresse mobile n'écrase plus la fenêtre */
-  body.clavier nav{ display:none; }                                 /* clavier ouvert : la barre d'onglets s'efface */
-  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
-    .verre, .verre-fort{ background:rgba(26,31,61,.97); }           /* navigateurs sans flou : fond opaque lisible */
-  }
+  .hauteur-modale{ max-height:88vh; max-height:88dvh; }
+  body.clavier nav{ display:none; }
 
-  /* ---------- Verre dépoli ---------- */
+  /* ---------- Cartes (les noms « verre » sont conservés) ---------- */
   .verre{
-    background:linear-gradient(165deg, rgba(38,44,87,.70) 0%, rgba(26,31,61,.64) 100%);
-    backdrop-filter:blur(18px) saturate(150%);
-    -webkit-backdrop-filter:blur(18px) saturate(150%);
-    border:1px solid rgba(157,165,202,.14);
-    box-shadow:0 1px 0 rgba(255,255,255,.07) inset, 0 20px 44px -30px rgba(3,4,20,.95);
+    background:var(--surface);
+    border:1px solid var(--bordure);
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
   }
   .verre-fort{
-    background:rgba(16,20,43,.84);
-    backdrop-filter:blur(24px) saturate(160%);
-    -webkit-backdrop-filter:blur(24px) saturate(160%);
+    background:rgba(255,255,255,.94);
+    backdrop-filter:blur(16px) saturate(160%);
+    -webkit-backdrop-filter:blur(16px) saturate(160%);
   }
-  .filet{ border-top:1px solid rgba(157,165,202,.12); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){ .verre-fort{ background:#fff; } }
+  header.verre-fort{ border-bottom:1px solid var(--bordure); }
+  .filet{ border-top:1px solid #EEF0F3; }
 
-  /* ---------- Typo : Big Shoulders pour les titres et les chiffres ---------- */
-  .chiffre{ font-family:var(--f-titre); font-weight:800; line-height:.9; font-variant-numeric:tabular-nums lining-nums; }
-  .titre{ font-family:var(--f-titre); font-weight:800; letter-spacing:.01em; }
+  /* ---------- Typo : titres sobres, chiffres condensés ---------- */
+  .chiffre{ font-family:var(--f-chiffre); font-weight:700; line-height:.95; font-variant-numeric:tabular-nums lining-nums; letter-spacing:.005em; }
+  .titre{ font-family:var(--f-titre); font-weight:700; letter-spacing:-.01em; }
+  .surtitre{ font-size:11.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--texte-2); }
 
-  /* ---------- Action principale : la lumière du petit matin ---------- */
-  .bg-ocre{ background-image:linear-gradient(135deg,#FFC98A 0%,#FF9D66 50%,#FF7C70 100%); }
-  button.bg-ocre, a.bg-ocre{ box-shadow:0 12px 26px -14px rgba(255,140,100,.95); }
+  /* ---------- Action principale : orange plein ---------- */
+  .bg-ocre{ background-color:var(--orange); }
+  button.bg-ocre, a.bg-ocre{ box-shadow:0 6px 14px -8px rgba(252,82,0,.7); }
 
   /* ---------- Le dossard : l'élément signature ---------- */
-  .dossard-cadre{ position:relative; transform:rotate(-1.3deg); }
+  .dossard-cadre{ position:relative; transform:rotate(-1deg); }
   .dossard{
     position:relative; overflow:hidden; border-radius:14px;
-    background:#F7F3EA; color:#151A36;
-    box-shadow:0 34px 60px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(21,26,54,.06) inset;
+    background:#FFFDF8; color:#151A36;
+    box-shadow:0 18px 34px -22px rgba(16,24,40,.45), 0 0 0 1px rgba(21,26,54,.07);
   }
-  .dossard::after{ content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.55;
+  .dossard::after{ content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.3;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .38 0 0 0 0 .33 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url%28%23g%29'/%3E%3C/svg%3E"); }
-  .bande-trail{ background:linear-gradient(100deg,#FF7C70 0%,#FF9D66 55%,#FFC98A 100%); }
-  .bande-route{ background:linear-gradient(100deg,#6E86FF 0%,#8F9BFF 50%,#B99EFF 100%); }
-  .bande-vide{ background:#262C57; }
-  .epingle{ position:absolute; top:-8px; width:54px; height:18px; z-index:2; filter:drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
-  .trou{ position:absolute; width:7px; height:7px; border-radius:50%; background:#10142B;
-    box-shadow:inset 0 1px 2px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.8); }
-  .dossard-entre{ animation:dossardIn .8s cubic-bezier(.2,.9,.25,1.12) both; }
-  @keyframes dossardIn{ from{ opacity:0; transform:translateY(24px) rotate(3deg) scale(.95); } to{ opacity:1; transform:rotate(-1.3deg); } }
+  .bande-trail{ background:linear-gradient(100deg,#FC5200 0%,#FF7A2E 60%,#FF9F57 100%); }
+  .bande-route{ background:linear-gradient(100deg,#2F6FED 0%,#4C8DF6 60%,#7AA9FF 100%); }
+  .bande-vide{ background:#9AA1AE; }
+  .epingle{ position:absolute; top:-8px; width:54px; height:18px; z-index:2; filter:drop-shadow(0 2px 2px rgba(0,0,0,.18)); }
+  .trou{ position:absolute; width:7px; height:7px; border-radius:50%; background:var(--fond);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.25); }
+  .dossard-entre{ animation:dossardIn .7s cubic-bezier(.2,.9,.25,1.12) both; }
+  @keyframes dossardIn{ from{ opacity:0; transform:translateY(18px) rotate(2deg) scale(.97); } to{ opacity:1; transform:rotate(-1deg); } }
   .avatar-dossard{
-    width:36px; height:30px; border-radius:7px; background:#F7F3EA; color:#151A36;
+    width:36px; height:30px; border-radius:7px; background:#FFFDF8; color:#151A36;
     display:inline-grid; place-items:center; padding-top:5px; flex-shrink:0;
-    font:900 15px/1 var(--f-titre);
-    box-shadow:inset 0 6px 0 var(--couleur-profil,#FF9D66), 0 6px 14px -8px rgba(0,0,0,.8);
+    font:800 14px/1 var(--f-chiffre);
+    box-shadow:inset 0 6px 0 var(--couleur-profil,#FC5200), 0 0 0 1px rgba(21,26,54,.12), 0 4px 10px -6px rgba(0,0,0,.35);
     transform:rotate(-4deg);
   }
 
   /* ---------- Profils ---------- */
-  .ecran-profils{
-    background:
-      radial-gradient(90% 50% at 100% 0%, rgba(255,157,102,.22) 0%, rgba(255,157,102,0) 60%),
-      radial-gradient(80% 45% at 0% 8%, rgba(185,158,255,.18) 0%, rgba(185,158,255,0) 60%),
-      #10142B;
-  }
-  .dossard-mini{ position:relative; display:block; width:100%; background:#F7F3EA; color:#151A36; border-radius:12px; overflow:hidden;
-    padding-bottom:14px; box-shadow:0 24px 40px -24px rgba(0,0,0,.95); transform:rotate(var(--r,-1.2deg)); }
-  .dossard-mini .bande{ height:16px; background:var(--couleur-profil,#FF9D66); }
-  .dossard-mini .num{ font:900 56px/.9 var(--f-titre); text-align:center; margin-top:14px; }
+  .ecran-profils{ background:var(--fond); }
+  .dossard-mini{ position:relative; display:block; width:100%; background:#FFFDF8; color:#151A36; border-radius:12px; overflow:hidden;
+    padding-bottom:14px; box-shadow:0 14px 26px -18px rgba(16,24,40,.5), 0 0 0 1px rgba(21,26,54,.08); transform:rotate(var(--r,-1.2deg)); }
+  .dossard-mini .bande{ height:16px; background:var(--couleur-profil,#FC5200); }
+  .dossard-mini .num{ font:800 56px/.9 var(--f-chiffre); text-align:center; margin-top:14px; }
   .dossard-mini .nom{ font-size:13.5px; font-weight:600; text-align:center; margin-top:6px; color:rgba(21,26,54,.72);
     padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .dossard-ajout{ background:transparent; color:#9DA5CA; border:2px dashed rgba(157,165,202,.35); box-shadow:none;
+  .dossard-ajout{ background:transparent; color:var(--texte-2); border:2px dashed #CBD0D8; box-shadow:none;
     min-height:128px; display:grid; place-items:center; }
-  .pastille-couleur{ box-shadow:0 0 0 2px #10142B; transition:box-shadow .15s ease; }
-  .pastille-couleur.choisie{ box-shadow:0 0 0 3px #10142B, 0 0 0 5px #F0F2FA; }
-  .touche{ height:62px; border-radius:20px; font:800 28px/1 var(--f-titre); }
+  .pastille-couleur{ box-shadow:0 0 0 2px #fff; transition:box-shadow .15s ease; }
+  .pastille-couleur.choisie{ box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--texte); }
+  .touche{ height:62px; border-radius:20px; font:700 28px/1 var(--f-chiffre); }
   .secoue{ animation:secoue .38s ease; }
   @keyframes secoue{ 0%,100%{ transform:none; } 20%,60%{ transform:translateX(-9px); } 40%,80%{ transform:translateX(9px); } }
 
-  /* ---------- Barre d'onglets flottante ---------- */
-  .barre-onglets{ box-shadow:0 18px 40px -16px rgba(0,0,0,.95), 0 1px 0 rgba(255,255,255,.06) inset; }
-  .onglet{ color:#7F86AE; transition:color .18s ease; }
-  .onglet.actif{ color:#FF9D66; }
+  /* ---------- Barre d'onglets ---------- */
+  .barre-onglets{ background:#fff; box-shadow:0 10px 30px -14px rgba(16,24,40,.25); }
+  .onglet{ color:#8A93A6; transition:color .18s ease; }
+  .onglet.actif{ color:var(--orange); }
   .pastille{ opacity:0; transform:scale(.2); transition:all .25s cubic-bezier(.22,1,.36,1); }
   .onglet.actif .pastille{ opacity:1; transform:none; }
 
   /* ---------- Vues ---------- */
   .vue{ display:none; }
-  .vue.active{ display:block; animation:entre .28s cubic-bezier(.22,1,.36,1); }
-  @keyframes entre{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
+  .vue.active{ display:block; animation:entre .25s cubic-bezier(.22,1,.36,1); }
+  @keyframes entre{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
   @media (prefers-reduced-motion: reduce){
     .vue.active, .dossard-entre, .secoue{ animation:none; }
     *{ transition:none !important; }
   }
 
-  /* ---------- Listes groupées iOS ---------- */
-  .groupe > * + *{ border-top:1px solid rgba(157,165,202,.12); }
+  /* ---------- Listes groupées ---------- */
+  .groupe > * + *{ border-top:1px solid #EEF0F3; }
+
+  /* ---------- Contrôle segmenté (Semaine / Mois / Année…) ---------- */
+  .segments{ display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; padding:4px; border-radius:14px; background:#EEF0F4; }
+  .segments > button{ height:34px; border-radius:10px; font-size:13px; color:var(--texte-2); font-weight:500; }
+  .segments > button.actif{ background:#fff; color:var(--texte); font-weight:600; box-shadow:0 1px 3px rgba(16,24,40,.12); }
+
+  /* ---------- Frise des courses ---------- */
+  .frise{ position:relative; height:44px; }
+  .frise-ligne{ position:absolute; left:0; right:0; top:20px; height:6px; border-radius:99px; background:#E6E8EC; overflow:hidden; display:flex; }
+  .frise-marque{ position:absolute; top:6px; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; }
+  .frise-marque .point{ width:14px; height:14px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
 
   /* ---------- Divers ---------- */
   .scroll-x{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
   .scroll-x::-webkit-scrollbar{ display:none; }
-  .zone-depot.survol{ border-color:#FF9D66; background:rgba(255,157,102,.10); }
-  .bulle-coach{ background:linear-gradient(165deg,rgba(38,44,87,.92),rgba(26,31,61,.92)); }
-  .bulle-moi{ background:linear-gradient(135deg,#FFC98A 0%,#FF9D66 55%,#FF7C70 100%); color:#23120A; }
-  .pulse-vert{ box-shadow:0 0 0 0 rgba(107,227,181,.7); animation:pulseV 2.4s infinite; }
-  @keyframes pulseV{ 70%{ box-shadow:0 0 0 9px rgba(107,227,181,0);} 100%{ box-shadow:0 0 0 0 rgba(107,227,181,0);} }
-  input[type=range]{ -webkit-appearance:none; height:4px; border-radius:99px; background:rgba(157,165,202,.28); }
-  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:26px; height:26px; border-radius:50%; background:#F0F2FA; box-shadow:0 2px 8px rgba(0,0,0,.5); }
-  select{ color:#F0F2FA; }
+  .zone-depot.survol{ border-color:var(--orange); background:rgba(252,82,0,.06); }
+  .bulle-coach{ background:#F1F3F6; }
+  .bulle-moi{ background:var(--orange); color:#fff; }
+  .pulse-vert{ box-shadow:0 0 0 0 rgba(22,163,74,.6); animation:pulseV 2.4s infinite; }
+  @keyframes pulseV{ 70%{ box-shadow:0 0 0 9px rgba(22,163,74,0);} 100%{ box-shadow:0 0 0 0 rgba(22,163,74,0);} }
+  input[type=range]{ -webkit-appearance:none; height:4px; border-radius:99px; background:#DDE1E7; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:26px; height:26px; border-radius:50%; background:#fff; border:1px solid #D5DAE1; box-shadow:0 2px 6px rgba(16,24,40,.2); }
+  select{ color:var(--texte); }
   .toast-entre{ animation:toastIn .3s cubic-bezier(.22,1,.36,1); }
   @keyframes toastIn{ from{ opacity:0; transform:translateY(-14px);} to{opacity:1; transform:none;} }
+  #zoneToasts > div{ background:#fff; box-shadow:0 12px 30px -12px rgba(16,24,40,.35); }
   .modale-entre{ animation:modIn .3s cubic-bezier(.22,1,.36,1); }
   @keyframes modIn{ from{ opacity:0; transform:translateY(24px) scale(.98);} to{opacity:1; transform:none;} }
+  #fondModale .verre-fort, #panneauCoach .verre-fort{ background:#fff; }
   details > summary{ list-style:none; cursor:pointer; }
   details > summary::-webkit-details-marker{ display:none; }
-  details[open] .chevron{ transform:rotate(90deg); }
+  details[open] > summary .chevron{ transform:rotate(90deg); }
   .chevron{ transition:transform .2s ease; }
-  .ligne-sep{ background:linear-gradient(90deg,transparent,rgba(157,165,202,.28),transparent); height:1px; }
-  .saisie span{ display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:50%; background:#9DA5CA; animation:saisie 1.2s infinite ease-in-out; }
+  .ligne-sep{ background:#EEF0F3; height:1px; }
+  .saisie span{ display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:50%; background:#8A93A6; animation:saisie 1.2s infinite ease-in-out; }
   .saisie span:nth-child(2){ animation-delay:.15s; } .saisie span:nth-child(3){ animation-delay:.3s; }
   @keyframes saisie{ 0%,80%,100%{ opacity:.3; transform:none; } 40%{ opacity:1; transform:translateY(-3px); } }
   .bulle-coach ul{ margin-top:.35rem; }
 
   /* ---------- Écran figé : ni zoom ni déplacement accidentel ---------- */
-  html, body{ overscroll-behavior:none; overflow-x:clip; }          /* ni rebond, ni « tirer pour rafraîchir », ni dérive latérale */
+  html, body{ overscroll-behavior:none; overflow-x:clip; }
   @supports not (overflow-x: clip){ body{ overflow-x:hidden; } }
-  *{ touch-action:manipulation; }                                     /* pas de zoom au double appui */
+  *{ touch-action:manipulation; }
   img, svg, canvas, a{ -webkit-user-drag:none; }
   header, nav, button, .tapable, .bulle-flottante{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
-  body.ecran-fige{ position:fixed; left:0; right:0; width:100%; overflow:hidden; }   /* fenêtre ouverte : le fond ne bouge plus */
-  .voile{ touch-action:none; }                                        /* voile derrière une fenêtre : aucun geste ne passe */
+  body.ecran-fige{ position:fixed; left:0; right:0; width:100%; overflow:hidden; }
+  .voile{ touch-action:none; }
 
   /* ---------- Bulle du coach : sur tous les écrans ---------- */
   .bulle-flottante{
-    position:fixed; z-index:41; width:58px; height:58px; border-radius:50%;
+    position:fixed; z-index:41; width:56px; height:56px; border-radius:50%;
     right:max(16px, calc(env(safe-area-inset-right, 0px) + 12px));
     bottom:calc(var(--barre) + var(--safe-bot) + 16px);
-    display:grid; place-items:center; color:#23120A; font-size:23px;
-    background:linear-gradient(135deg,#FFC98A 0%,#FF9D66 50%,#FF7C70 100%);
-    box-shadow:0 14px 30px -10px rgba(255,124,112,.8), 0 0 0 1px rgba(255,255,255,.2) inset;
+    display:grid; place-items:center; color:#fff; font-size:22px;
+    background:var(--orange);
+    box-shadow:0 10px 24px -8px rgba(252,82,0,.6);
     transition:transform .22s cubic-bezier(.22,1,.36,1), opacity .2s ease;
   }
-  @media (min-width:700px){ .bulle-flottante{ right:calc(50% - 320px + 16px); } }   /* tablette : la bulle reste dans la colonne */
+  @media (min-width:700px){ .bulle-flottante{ right:calc(50% - 320px + 16px); } }
   .bulle-flottante.cachee, body.clavier .bulle-flottante{ opacity:0; transform:scale(.6); pointer-events:none; }
   .pastille-bulle{ position:absolute; top:-3px; right:-3px; min-width:20px; height:20px; padding:0 5px; border-radius:99px;
-    background:#FF5F8F; color:#fff; font:700 11px/20px -apple-system,BlinkMacSystemFont,sans-serif; text-align:center; box-shadow:0 0 0 2px #10142B; }
+    background:#E5484D; color:#fff; font:700 11px/20px -apple-system,BlinkMacSystemFont,sans-serif; text-align:center; box-shadow:0 0 0 2px #fff; }
   .bulle-sautille{ animation:sautille .7s cubic-bezier(.3,1.6,.5,1); }
   @keyframes sautille{ 0%{ transform:scale(1);} 35%{ transform:scale(1.15);} 100%{ transform:scale(1);} }
   .astuce-bulle{ position:fixed; z-index:41; max-width:210px; padding:9px 12px; border-radius:14px;
     right:calc(max(16px, calc(env(safe-area-inset-right, 0px) + 12px)) + 68px); bottom:calc(var(--barre) + var(--safe-bot) + 24px);
-    background:#F7F3EA; color:#151A36; font-size:12.5px; font-weight:600; line-height:1.3; box-shadow:0 14px 28px -12px rgba(0,0,0,.85); }
+    background:#1F2430; color:#fff; font-size:12.5px; font-weight:600; line-height:1.3; box-shadow:0 14px 28px -12px rgba(0,0,0,.45); }
   @media (min-width:700px){ .astuce-bulle{ right:calc(50% - 320px + 84px); } }
-  /* Panneau : il suit le clavier (iPhone) et garde la saisie visible */
   .feuille-coach{ bottom:var(--clavier, 0px);
     height:min(88vh, calc(var(--hauteur-visible, 100vh) - var(--safe-top) - 12px));
     height:min(88dvh, calc(var(--hauteur-visible, 100dvh) - var(--safe-top) - 12px)); }
   body.clavier .pied-coach{ padding-bottom:10px !important; }
   .puce-coach{ display:inline-flex; align-items:center; gap:4px; max-width:100%; height:24px; padding:0 9px; border-radius:99px;
-    font-size:11px; background:#262C57; color:#9DA5CA; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    font-size:11px; background:#EEF0F4; color:var(--texte-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* ---------- Déplacement d'une séance : calendrier et glisser-déposer ---------- */
   .pastille-glisser{ touch-action:none; cursor:grab; }
-  .fantome-glisser{ position:fixed; z-index:80; pointer-events:none; transform:translate(-50%,-75%) scale(1.15); box-shadow:0 14px 30px -10px rgba(0,0,0,.85); }
-  .case-jour.survol-glisser{ outline:2px solid #FF9D66; outline-offset:-2px; background:rgba(255,157,102,.18); }
+  .fantome-glisser{ position:fixed; z-index:80; pointer-events:none; transform:translate(-50%,-75%) scale(1.15); box-shadow:0 14px 30px -10px rgba(0,0,0,.4); }
+  .case-jour.survol-glisser{ outline:2px solid var(--orange); outline-offset:-2px; background:rgba(252,82,0,.10); }
 </style>
 </head>
 <body class="font-corps antialiased">
@@ -265,8 +275,8 @@ if (window.tailwind) tailwind.config = {
     <div class="flex items-center gap-2.5">
       <svg width="32" height="26" viewBox="0 0 32 26" aria-hidden="true">
         <g transform="rotate(-6 16 13)">
-          <rect x="2" y="3" width="28" height="20" rx="3.5" fill="#F7F3EA"/>
-          <path d="M2 6.5A3.5 3.5 0 0 1 5.5 3h21A3.5 3.5 0 0 1 30 6.5V9H2z" fill="#FF9D66"/>
+          <rect x="2" y="3" width="28" height="20" rx="3.5" fill="#F7F3EA" stroke="#DED8CA" stroke-width=".8"/>
+          <path d="M2 6.5A3.5 3.5 0 0 1 5.5 3h21A3.5 3.5 0 0 1 30 6.5V9H2z" fill="#FC5200"/>
           <circle cx="6.3" cy="13.5" r="1.4" fill="#10142B"/><circle cx="25.7" cy="13.5" r="1.4" fill="#10142B"/>
           <rect x="10" y="12" width="12" height="2.8" rx="1.4" fill="#151A36"/>
           <rect x="11.5" y="16.6" width="9" height="2.2" rx="1.1" fill="#151A36" opacity=".45"/>
@@ -296,9 +306,9 @@ if (window.tailwind) tailwind.config = {
 <section id="vue-dashboard" class="vue active">
 
   <!-- Salutation -->
-  <div class="px-1 mb-5">
+  <div class="px-1 mb-4">
     <div id="salutationDate" class="text-[12.5px] text-brume"></div>
-    <h1 id="salutation" class="titre text-[34px] leading-none mt-1">Bonjour</h1>
+    <h1 id="salutation" class="titre text-[28px] leading-tight mt-0.5">Bonjour</h1>
   </div>
 
   <!-- Héros : le dossard du jour J, épinglé -->
@@ -337,9 +347,11 @@ if (window.tailwind) tailwind.config = {
       </div>
     </div>
   </div>
-  <div class="flex gap-2 mb-7">
-    <button id="btnHeroCourse" data-act="allerA" data-arg="objectif" class="tapable flex-1 h-12 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14.5px]">Définir la course</button>
-    <button id="btnHeroPlan" data-act="genererPlan" class="tapable flex-1 h-12 rounded-2xl verre text-[14.5px] font-medium">Générer le plan</button>
+  <!-- Les autres courses de la saison, avec leur compte à rebours -->
+  <div id="autresCourses" class="scroll-x flex gap-2 -mx-4 px-4 mb-3 pb-1"></div>
+  <div class="flex gap-2 mb-6">
+    <button id="btnHeroCourse" data-act="allerA" data-arg="objectif" class="tapable flex-1 h-11 rounded-2xl bg-ocre text-white font-semibold text-[14px]">Ajouter une course</button>
+    <button id="btnHeroPlan" data-act="genererPlan" class="tapable flex-1 h-11 rounded-2xl verre text-[14px] font-medium">Générer le plan</button>
   </div>
 
   <!-- Premiers pas (nouvel utilisateur) -->
@@ -347,39 +359,62 @@ if (window.tailwind) tailwind.config = {
   <div id="premiersPas"></div>
 
   <!-- Séance du jour -->
-  <h2 class="titre text-[19px] mb-2 px-1">Aujourd’hui</h2>
-  <div id="carteSeanceJour" class="mb-5"></div>
+  <h2 class="surtitre px-1 mb-2">Aujourd’hui</h2>
+  <div id="carteSeanceJour" class="mb-6"></div>
 
-  <!-- Métriques du coureur -->
+  <!-- Cette semaine -->
   <div class="flex items-baseline justify-between px-1 mb-2">
-    <h2 class="titre text-[19px]">Ton niveau</h2>
-    <button data-act="allerA" data-arg="profil" class="text-[12px] text-ocre tapable">Détail</button>
+    <h2 class="surtitre">Cette semaine</h2>
+    <button data-act="allerA" data-arg="plan" class="text-[12px] text-ocre font-medium tapable">Plan</button>
   </div>
-  <div id="grilleMetriques" class="grid grid-cols-3 gap-2.5 mb-5"></div>
+  <div id="carteSemaine" class="rounded-xl2 verre p-4 mb-6"></div>
 
-  <!-- Charge d'entraînement -->
-  <div class="rounded-xl2 verre p-4 mb-5">
+  <!-- Statistiques : semaine, mois, année -->
+  <h2 class="surtitre px-1 mb-2">Statistiques</h2>
+  <div class="rounded-xl2 verre p-4 mb-6">
+    <div id="choixPeriode" class="segments mb-4">
+      <button data-act="choisirPeriode" data-arg="semaines">Semaines</button>
+      <button data-act="choisirPeriode" data-arg="mois">Mois</button>
+      <button data-act="choisirPeriode" data-arg="annee">Année</button>
+    </div>
+    <div id="resumePeriode"></div>
+    <div class="h-[170px] mt-3"><canvas id="graphStats"></canvas></div>
+    <p id="legendeStats" class="text-[11.5px] text-brume mt-2"></p>
+  </div>
+
+  <!-- Records -->
+  <div class="flex items-baseline justify-between px-1 mb-2">
+    <h2 class="surtitre">Records personnels</h2>
+    <span class="text-[11px] text-brume">sur tes sorties</span>
+  </div>
+  <div id="grilleRecords" class="grid grid-cols-2 gap-2.5 mb-6"></div>
+
+  <!-- Forme et niveau -->
+  <div class="flex items-baseline justify-between px-1 mb-2">
+    <h2 class="surtitre">Forme et niveau</h2>
+    <button data-act="allerA" data-arg="profil" class="text-[12px] text-ocre font-medium tapable">Détail</button>
+  </div>
+  <div id="grilleMetriques" class="grid grid-cols-3 gap-2.5 mb-3"></div>
+  <div class="rounded-xl2 verre p-4 mb-3">
     <div class="flex items-baseline justify-between mb-1">
-      <h3 class="titre text-[17px]">Charge d’entraînement</h3>
+      <h3 class="titre text-[15px]">Charge d’entraînement</h3>
       <span id="etatForme" class="text-[11px] px-2 py-1 rounded-full bg-granit text-brume">—</span>
     </div>
     <p id="legendeCharge" class="text-[12px] text-brume mb-3">Condition (long terme) contre fatigue (7 jours).</p>
-    <div class="h-[168px]"><canvas id="graphCharge"></canvas></div>
+    <div class="h-[150px]"><canvas id="graphCharge"></canvas></div>
   </div>
-
-  <!-- Respect du plan -->
-  <div class="rounded-xl2 verre p-4 mb-5">
+  <div class="rounded-xl2 verre p-4 mb-6">
     <div class="flex items-center gap-4">
-      <div class="relative w-[74px] h-[74px] shrink-0">
+      <div class="relative w-[64px] h-[64px] shrink-0">
         <svg viewBox="0 0 80 80" class="w-full h-full -rotate-90">
-          <circle cx="40" cy="40" r="33" fill="none" stroke="rgba(157,165,202,.18)" stroke-width="8"/>
-          <circle id="anneauRespect" cx="40" cy="40" r="33" fill="none" stroke="#6BE3B5" stroke-width="8"
+          <circle cx="40" cy="40" r="33" fill="none" stroke="#EEF0F4" stroke-width="8"/>
+          <circle id="anneauRespect" cx="40" cy="40" r="33" fill="none" stroke="#16A34A" stroke-width="8"
                   stroke-linecap="round" stroke-dasharray="207.3" stroke-dashoffset="207.3"/>
         </svg>
-        <div id="respectValeur" class="absolute inset-0 grid place-items-center chiffre text-[22px]">0%</div>
+        <div id="respectValeur" class="absolute inset-0 grid place-items-center chiffre text-[20px]">0%</div>
       </div>
       <div class="min-w-0">
-        <div class="titre text-[17px]">Respect du plan</div>
+        <div class="titre text-[15px]">Respect du plan</div>
         <div id="respectDetail" class="text-[12px] text-brume mt-0.5">Aucune séance planifiée pour l’instant.</div>
       </div>
     </div>
@@ -387,36 +422,39 @@ if (window.tailwind) tailwind.config = {
 
   <!-- Journal -->
   <div class="flex items-baseline justify-between px-1 mb-2">
-    <h2 class="titre text-[19px]">Dernières sorties</h2>
-    <div class="flex items-center gap-4">
-      <button data-act="exporterSortiesIcs" class="text-[12px] text-brume tapable"><i class="fa-regular fa-calendar-plus mr-1"></i>Agenda</button>
-      <button data-act="allerA" data-arg="profil" class="text-[12px] text-ocre tapable">Tout voir</button>
-    </div>
+    <h2 class="surtitre">Dernières sorties</h2>
+    <button data-act="allerA" data-arg="activites" class="text-[12px] text-ocre font-medium tapable">Tout voir</button>
   </div>
   <div id="listeJournal" class="rounded-xl2 verre overflow-hidden groupe mb-4"></div>
 </section>
 
 <!-- ------------------------------------------------------------------ -->
-<!-- VUE 3 — PLAN D'ENTRAÎNEMENT                                         -->
+<!-- VUE 2 — PLAN D'ENTRAÎNEMENT (saison multi-courses)                  -->
 <!-- ------------------------------------------------------------------ -->
 <section id="vue-plan" class="vue">
   <div class="flex items-baseline justify-between px-1 mb-3">
-    <h2 class="titre text-[22px]">Plan d’entraînement</h2>
-    <button data-act="genererPlan" class="text-[12px] text-ocre tapable"><i class="fa-solid fa-rotate mr-1"></i>Régénérer</button>
+    <h2 class="titre text-[24px]">Plan</h2>
+    <button data-act="genererPlan" class="text-[12.5px] text-ocre font-medium tapable"><i class="fa-solid fa-rotate mr-1"></i>Régénérer</button>
   </div>
+
+  <!-- La saison : toutes les courses sur une frise -->
+  <div id="saisonCourses" class="mb-4"></div>
 
   <div id="resumePlan" class="mb-4"></div>
 
   <div id="blocVolumePlan" class="rounded-xl2 verre p-4 mb-4 hidden">
-    <h3 class="titre text-[17px] mb-1">Volume hebdomadaire</h3>
-    <p class="text-[12px] text-brume mb-3">Progression, semaines de relâche et affûtage.</p>
+    <h3 class="titre text-[15px] mb-1">Volume hebdomadaire</h3>
+    <p class="text-[12px] text-brume mb-3">Prévu par phase (barres) et réalisé (ligne).</p>
     <div class="h-[160px]"><canvas id="graphVolume"></canvas></div>
   </div>
 
-  <div id="listeSemaines" class="space-y-3"></div>
+  <!-- Méthode : approche d'entraînement et principes -->
+  <div id="carteMethode" class="mb-4"></div>
+
+  <div id="listeSemaines" class="space-y-2.5"></div>
 
   <div id="actionsPlan" class="mt-5 space-y-2 hidden">
-    <button data-act="exporterPlanIcs" class="tapable w-full h-12 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[15px]">
+    <button data-act="exporterPlanIcs" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]">
       <i class="fa-regular fa-calendar-plus mr-2"></i>Ajouter tout le plan au calendrier
     </button>
     <button data-act="exporterPlanJson" class="tapable w-full h-12 rounded-2xl verre text-[15px] font-medium">
@@ -426,11 +464,19 @@ if (window.tailwind) tailwind.config = {
 </section>
 
 <!-- ------------------------------------------------------------------ -->
-<!-- VUE 4 — OBJECTIF & GPX                                              -->
+<!-- VUE 3 — COURSES, GPX ET STRATÉGIE                                   -->
 <!-- ------------------------------------------------------------------ -->
 <section id="vue-objectif" class="vue">
-  <h2 class="titre text-[22px] px-1 mb-3">Ta course</h2>
+  <div class="flex items-baseline justify-between px-1 mb-3">
+    <h2 class="titre text-[24px]">Courses</h2>
+    <button data-act="nouvelleCourse" class="text-[12.5px] text-ocre font-medium tapable"><i class="fa-solid fa-plus mr-1"></i>Ajouter</button>
+  </div>
+  <div id="listeCourses" class="rounded-xl2 verre overflow-hidden groupe mb-5"></div>
 
+  <div class="flex items-baseline justify-between px-1 mb-2">
+    <h3 id="titreFicheCourse" class="surtitre">Nouvelle course</h3>
+    <button id="btnSupprimerCourse" data-act="supprimerCourse" class="hidden text-[12px] text-braise tapable"><i class="fa-solid fa-trash mr-1"></i>Supprimer</button>
+  </div>
   <div class="rounded-xl2 verre p-4 mb-4 space-y-4">
     <div>
       <label class="text-[12px] text-brume block mb-1.5">Nom de la course</label>
@@ -491,7 +537,17 @@ if (window.tailwind) tailwind.config = {
       </div>
     </div>
 
-    <button data-act="enregistrerObjectif" class="tapable w-full h-12 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[15px]">
+    <div>
+      <label class="text-[12px] text-brume block mb-1.5">Importance dans ta saison</label>
+      <div id="choixPriorite" class="segments">
+        <button data-act="setPriorite" data-arg="A">Objectif</button>
+        <button data-act="setPriorite" data-arg="B">Préparation</button>
+        <button data-act="setPriorite" data-arg="C">Entraînement</button>
+      </div>
+      <p id="textePriorite" class="text-[11.5px] text-brume mt-1.5 leading-snug"></p>
+    </div>
+
+    <button data-act="enregistrerObjectif" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]">
       Enregistrer la course
     </button>
   </div>
@@ -542,99 +598,126 @@ if (window.tailwind) tailwind.config = {
 </section>
 
 <!-- ------------------------------------------------------------------ -->
-<!-- VUE 5 — PROFIL & STRAVA                                             -->
+<!-- VUE 4 — ACTIVITÉS (journal, imports, synchro)                       -->
+<!-- ------------------------------------------------------------------ -->
+<section id="vue-activites" class="vue">
+  <div class="flex items-baseline justify-between px-1 mb-3">
+    <h2 class="titre text-[24px]">Activités</h2>
+    <button data-act="ajouterSortieManuelle" class="text-[12.5px] text-ocre font-medium tapable"><i class="fa-solid fa-plus mr-1"></i>Ajouter</button>
+  </div>
+
+  <!-- Sources des sorties : Apple Santé, Samsung Health, fichiers, Strava -->
+  <div class="rounded-xl2 verre p-4 mb-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl grid place-items-center bg-ocre/10">
+        <i class="fa-solid fa-arrows-rotate text-ocre text-[17px]"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="titre text-[15px]">Sources</div>
+        <div id="etatStrava" class="text-[12px] text-brume leading-snug">Non connecté</div>
+      </div>
+      <button id="btnStrava" data-act="ouvrirSync" class="tapable h-9 px-4 rounded-xl bg-ocre text-white text-[13px] font-semibold">Connecter</button>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mt-3">
+      <button data-act="importerFichier" class="tapable h-10 rounded-xl bg-granit text-[13px]"><i class="fa-solid fa-file-import mr-1.5"></i>Importer</button>
+      <button data-act="synchroniser" class="tapable h-10 rounded-xl bg-granit text-[13px]"><i class="fa-solid fa-rotate mr-1.5"></i>Synchroniser</button>
+    </div>
+    <input id="inputActivites" type="file" multiple class="hidden">
+    <label class="flex items-center justify-between mt-3 pt-3 filet">
+      <span class="text-[13.5px]">Synchro automatique des nouvelles sorties</span>
+      <input id="switchAutoSync" type="checkbox" class="w-[50px] h-[30px] appearance-none rounded-full bg-[#DDE1E7] checked:bg-vallee relative transition-colors cursor-pointer
+        before:content-[''] before:absolute before:top-[3px] before:left-[3px] before:w-6 before:h-6 before:rounded-full before:bg-white before:shadow before:transition-transform checked:before:translate-x-5">
+    </label>
+  </div>
+
+  <!-- Filtre et journal groupé par mois -->
+  <div class="flex items-center gap-2 mb-3">
+    <div id="filtreActivites" class="segments flex-1">
+      <button data-act="filtrerActivites" data-arg="tout">Tout</button>
+      <button data-act="filtrerActivites" data-arg="route">Route</button>
+      <button data-act="filtrerActivites" data-arg="trail">Trail</button>
+    </div>
+    <button data-act="exporterSortiesIcs" aria-label="Ajouter les sorties à l’agenda" class="tapable w-[42px] h-[42px] rounded-xl verre grid place-items-center text-brume"><i class="fa-regular fa-calendar-plus"></i></button>
+  </div>
+  <div class="flex items-baseline justify-between px-1 mb-2">
+    <span id="nbActivites" class="text-[12px] text-brume"></span>
+  </div>
+  <div id="listeActivites" class="space-y-4 mb-4"></div>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- VUE 5 — PROFIL (niveau, réglages, coach, données)                   -->
 <!-- ------------------------------------------------------------------ -->
 <section id="vue-profil" class="vue">
-  <h2 class="titre text-[22px] px-1 mb-3">Profil &amp; données</h2>
+  <div id="carteIdentite" class="rounded-xl2 verre p-4 mb-4"></div>
 
   <!-- Installation sur l'écran d'accueil (iPhone : instructions ; Android : bouton natif) -->
   <div id="carteInstallation" class="hidden rounded-xl2 verre p-4 mb-4 flex items-center gap-3">
     <span class="avatar-dossard shrink-0" style="width:44px; height:38px; font-size:14px">RDD</span>
     <div class="flex-1 min-w-0">
-      <div class="titre text-[17px] leading-tight">Installer RDD</div>
+      <div class="titre text-[15px] leading-tight">Installer RDD</div>
       <div id="texteInstallation" class="text-[12.5px] text-brume leading-snug mt-0.5"></div>
     </div>
-    <button id="btnInstaller" data-act="installerApp" class="hidden tapable h-9 px-4 rounded-xl bg-ocre text-[#23120A] text-[13px] font-semibold shrink-0">Installer</button>
+    <button id="btnInstaller" data-act="installerApp" class="hidden tapable h-9 px-4 rounded-xl bg-ocre text-white text-[13px] font-semibold shrink-0">Installer</button>
   </div>
 
-  <!-- Sources des sorties : Apple Santé, Samsung Health, fichiers, Strava -->
-  <div class="rounded-xl2 verre p-4 mb-4">
-    <div class="flex items-center gap-3 mb-3">
-      <div class="w-11 h-11 rounded-xl grid place-items-center bg-azur/15 border border-azur/40">
-        <i class="fa-solid fa-person-running text-azur text-[20px]"></i>
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="titre text-[18px]">Mes sorties</div>
-        <div id="etatStrava" class="text-[12px] text-brume">Non connecté</div>
-      </div>
-      <button id="btnStrava" data-act="ouvrirSync" class="tapable h-9 px-4 rounded-xl bg-ocre text-[#23120A] text-[13px] font-semibold">Connecter</button>
+  <!-- 1. Mon niveau -->
+  <details class="rounded-xl2 verre overflow-hidden mb-3" open>
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-ocre/10 shrink-0"><i class="fa-solid fa-gauge-high text-ocre"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Mon niveau</span><span id="baseMetriques" class="block text-[11.5px] text-brume"></span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div id="detailMetriques" class="groupe border-t border-[#EEF0F3]"></div>
+    <div class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]">
+      <div class="text-[13px] font-semibold mb-0.5">Progression de la VMA</div>
+      <p class="text-[11.5px] text-brume mb-2">Estimée à partir de tes meilleurs efforts, mois par mois.</p>
+      <div class="h-[150px]"><canvas id="graphProgression"></canvas></div>
     </div>
-    <div class="grid grid-cols-2 gap-2">
-      <button data-act="importerFichier" class="tapable h-10 rounded-xl verre text-[13px]"><i class="fa-solid fa-file-import mr-1.5"></i>Importer un fichier</button>
-      <button data-act="synchroniser" class="tapable h-10 rounded-xl verre text-[13px]"><i class="fa-solid fa-rotate mr-1.5"></i>Synchroniser</button>
-    </div>
-    <input id="inputActivites" type="file" multiple class="hidden">
-    <label class="flex items-center justify-between mt-3 pt-3 filet">
-      <span class="text-[13.5px]">Synchro automatique des nouvelles sorties</span>
-      <input id="switchAutoSync" type="checkbox" class="w-[50px] h-[30px] appearance-none rounded-full bg-granit checked:bg-vallee relative transition-colors cursor-pointer
-        before:content-[''] before:absolute before:top-[3px] before:left-[3px] before:w-6 before:h-6 before:rounded-full before:bg-white before:transition-transform checked:before:translate-x-5">
-    </label>
-  </div>
+  </details>
 
-  <!-- Métriques calculées -->
-  <div class="flex items-baseline justify-between px-1 mb-2">
-    <h3 class="titre text-[19px]">Niveau calculé</h3>
-    <span id="baseMetriques" class="text-[11px] text-brume"></span>
-  </div>
-  <div id="detailMetriques" class="rounded-xl2 verre overflow-hidden groupe mb-4"></div>
-
-  <div class="rounded-xl2 verre p-4 mb-4">
-    <h3 class="titre text-[17px] mb-1">Progression</h3>
-    <p class="text-[12px] text-brume mb-3">VMA estimée à partir de tes meilleurs efforts, mois par mois.</p>
-    <div class="h-[160px]"><canvas id="graphProgression"></canvas></div>
-  </div>
-
-  <!-- Réglages coureur -->
-  <h3 class="titre text-[19px] px-1 mb-2">Tes réglages</h3>
-  <div class="rounded-xl2 verre p-4 mb-4 space-y-4">
-    <div class="grid grid-cols-2 gap-3">
-      <div>
-        <label class="text-[12px] text-brume block mb-1.5">Prénom</label>
-        <input id="regPrenom" type="text" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+  <!-- 2. Entraînement : disponibilités -->
+  <details class="rounded-xl2 verre overflow-hidden mb-3">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-azur/10 shrink-0"><i class="fa-regular fa-calendar text-azur"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Disponibilités</span><span id="resumeReglages" class="block text-[11.5px] text-brume truncate"></span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4 pt-1 space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[12px] text-brume block mb-1.5">Prénom</label>
+          <input id="regPrenom" type="text" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+        </div>
+        <div>
+          <label class="text-[12px] text-brume block mb-1.5">Poids (kg)</label>
+          <input id="regPoids" type="text" inputmode="decimal" placeholder="70" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+        </div>
       </div>
       <div>
-        <label class="text-[12px] text-brume block mb-1.5">Poids (kg)</label>
-        <input id="regPoids" type="text" inputmode="decimal" placeholder="70" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+        <label class="text-[12px] text-brume block mb-1.5">Séances par semaine : <span id="valSeances" class="text-neige font-semibold"></span></label>
+        <input id="regSeances" type="range" min="2" max="6" step="1" class="w-full">
       </div>
+      <div>
+        <label class="text-[12px] text-brume block mb-2">Jours disponibles</label>
+        <div id="joursDispo" class="grid grid-cols-7 gap-1.5"></div>
+      </div>
+      <div>
+        <label class="text-[12px] text-brume block mb-1.5">Heure habituelle des séances</label>
+        <input id="regHeure" type="time" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+      </div>
+      <button data-act="enregistrerReglages" class="tapable w-full h-11 rounded-2xl bg-ocre text-white font-semibold text-[14px]">Enregistrer</button>
     </div>
-    <div>
-      <label class="text-[12px] text-brume block mb-1.5">Séances par semaine : <span id="valSeances" class="text-neige"></span></label>
-      <input id="regSeances" type="range" min="2" max="6" step="1" class="w-full">
-    </div>
-    <div>
-      <label class="text-[12px] text-brume block mb-2">Jours disponibles</label>
-      <div id="joursDispo" class="grid grid-cols-7 gap-1.5"></div>
-    </div>
-    <div>
-      <label class="text-[12px] text-brume block mb-1.5">Heure habituelle des séances</label>
-      <input id="regHeure" type="time" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
-    </div>
-    <button data-act="enregistrerReglages" class="tapable w-full h-11 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14px]">Enregistrer</button>
-  </div>
+  </details>
 
-  <!-- Historique -->
-  <div class="flex items-baseline justify-between px-1 mb-2">
-    <h3 class="titre text-[19px]">Historique</h3>
-    <span id="nbActivites" class="text-[11px] text-brume"></span>
-  </div>
-  <div id="listeActivites" class="rounded-xl2 verre overflow-hidden groupe mb-3"></div>
-  <button data-act="ajouterSortieManuelle" class="tapable w-full h-11 rounded-2xl verre text-[14px] mb-4">
-    <i class="fa-solid fa-plus mr-1.5"></i>Ajouter une sortie à la main
-  </button>
-
-  <!-- Intégration IA -->
-  <h3 class="titre text-[20px] px-1 mb-2">Cerveau du coach</h3>
-  <div class="rounded-xl2 verre p-4 mb-6">
+  <!-- 3. Coach IA -->
+  <details id="sectionCoachIA" class="rounded-xl2 verre overflow-hidden mb-3">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-violine/10 shrink-0"><i class="fa-solid fa-comment-dots text-violine"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Coach IA</span><span class="block text-[11.5px] text-brume">Gemini, Claude ou relais</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4 pt-1">
     <div id="choixModeIA" class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-nuit/60 mb-3">
       <button data-act="modeIA" data-arg="gemini" class="tapable h-9 rounded-xl text-[13px] text-brume">Gemini</button>
       <button data-act="modeIA" data-arg="claude" class="tapable h-9 rounded-xl text-[13px] text-brume">Claude</button>
@@ -666,11 +749,17 @@ if (window.tailwind) tailwind.config = {
       <label for="regEndpointIA" class="text-[12px] text-brume block mb-1.5">Adresse du relais</label>
       <input id="regEndpointIA" type="url" placeholder="https://mon-relais.exemple/api/coach" class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
     </div>
-  </div>
+    </div>
+  </details>
 
-  <!-- Données -->
-  <h3 class="titre text-[19px] px-1 mb-2">Données</h3>
-  <div class="rounded-xl2 verre overflow-hidden groupe mb-6">
+  <!-- 4. Données et appareil -->
+  <details class="rounded-xl2 verre overflow-hidden mb-4">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-granit shrink-0"><i class="fa-solid fa-database text-brume"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Données et profils</span><span class="block text-[11.5px] text-brume">Sauvegarde, restauration, coureurs</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="groupe border-t border-[#EEF0F3]">
     <button data-act="ouvrirMenuProfils" class="tapable w-full text-left px-4 py-3.5 flex items-center justify-between">
       <span class="text-[14.5px]"><i class="fa-solid fa-user-group w-5 text-brume mr-2"></i>Profils sur cet appareil</span>
       <i class="fa-solid fa-chevron-right text-[11px] text-brume"></i>
@@ -687,32 +776,39 @@ if (window.tailwind) tailwind.config = {
     <button data-act="reinitialiser" class="tapable w-full text-left px-4 py-3.5 text-braise">
       <span class="text-[14.5px]"><i class="fa-solid fa-trash w-5 mr-2"></i>Effacer les données de ce profil</span>
     </button>
-  </div>
-  <p id="pieDePage" class="text-center text-[11px] text-brume/60 pb-4"></p>
+    </div>
+  </details>
+  <p id="pieDePage" class="text-center text-[11px] text-brume/70 pb-4"></p>
 </section>
+
 
 </main>
 
 <!-- ============================ BARRE D'ONGLETS ============================ -->
 <nav class="fixed bottom-0 inset-x-0 z-40 gouttieres-barre" style="padding-bottom:calc(var(--safe-bot) + 8px)">
-  <div class="barre-onglets verre-fort grid grid-cols-4 h-[calc(var(--barre)-8px)] rounded-[24px] border border-brume/15 max-w-[640px] mx-auto">
+  <div class="barre-onglets grid grid-cols-5 h-[calc(var(--barre)-8px)] rounded-[22px] border border-[#E6E8EC] max-w-[640px] mx-auto">
     <button data-act="allerA" data-arg="dashboard" data-onglet="dashboard" class="onglet actif tapable flex flex-col items-center justify-center gap-[3px]">
-      <i class="fa-solid fa-house text-[19px]"></i>
+      <i class="fa-solid fa-house text-[18px]"></i>
       <span class="text-[10px] font-medium">Accueil</span>
       <span class="pastille w-1 h-1 rounded-full bg-ocre"></span>
     </button>
     <button data-act="allerA" data-arg="plan" data-onglet="plan" class="onglet tapable flex flex-col items-center justify-center gap-[3px]">
-      <i class="fa-regular fa-calendar-days text-[19px]"></i>
+      <i class="fa-regular fa-calendar-days text-[18px]"></i>
       <span class="text-[10px] font-medium">Plan</span>
       <span class="pastille w-1 h-1 rounded-full bg-ocre"></span>
     </button>
     <button data-act="allerA" data-arg="objectif" data-onglet="objectif" class="onglet tapable flex flex-col items-center justify-center gap-[3px]">
-      <i class="fa-solid fa-flag-checkered text-[19px]"></i>
-      <span class="text-[10px] font-medium">Course</span>
+      <i class="fa-solid fa-flag-checkered text-[18px]"></i>
+      <span class="text-[10px] font-medium">Courses</span>
+      <span class="pastille w-1 h-1 rounded-full bg-ocre"></span>
+    </button>
+    <button data-act="allerA" data-arg="activites" data-onglet="activites" class="onglet tapable flex flex-col items-center justify-center gap-[3px]">
+      <i class="fa-solid fa-person-running text-[18px]"></i>
+      <span class="text-[10px] font-medium">Activités</span>
       <span class="pastille w-1 h-1 rounded-full bg-ocre"></span>
     </button>
     <button data-act="allerA" data-arg="profil" data-onglet="profil" class="onglet tapable flex flex-col items-center justify-center gap-[3px]">
-      <i class="fa-solid fa-user text-[19px]"></i>
+      <i class="fa-solid fa-user text-[18px]"></i>
       <span class="text-[10px] font-medium">Profil</span>
       <span class="pastille w-1 h-1 rounded-full bg-ocre"></span>
     </button>
@@ -733,7 +829,7 @@ if (window.tailwind) tailwind.config = {
     <div class="shrink-0 gouttieres pt-2.5 pb-2.5 border-b border-brume/10">
       <div class="w-10 h-1 rounded-full bg-brume/40 mx-auto mb-2.5"></div>
       <div class="flex items-center gap-2.5">
-        <div class="w-10 h-10 rounded-full bg-ocre grid place-items-center shrink-0"><i class="fa-solid fa-person-running text-[#23120A] text-[16px]"></i></div>
+        <div class="w-10 h-10 rounded-full bg-ocre grid place-items-center shrink-0"><i class="fa-solid fa-person-running text-white text-[16px]"></i></div>
         <div class="min-w-0 flex-1">
           <div class="titre text-[20px] leading-none">Ton coach</div>
           <div id="enteteCoach" class="flex items-center gap-1.5 mt-1.5 min-w-0"></div>
@@ -751,7 +847,7 @@ if (window.tailwind) tailwind.config = {
         <input id="inputPieceCoach" type="file" multiple class="hidden">
         <textarea id="saisieChat" rows="1" placeholder="Pose ta question au coach…" enterkeyhint="send"
           class="flex-1 bg-transparent resize-none outline-none px-2 py-2 text-[16px] placeholder:text-brume/70 max-h-32"></textarea>
-        <button data-act="envoyerChat" aria-label="Envoyer" class="tapable w-10 h-10 rounded-xl bg-ocre text-[#23120A] grid place-items-center shrink-0">
+        <button data-act="envoyerChat" aria-label="Envoyer" class="tapable w-10 h-10 rounded-xl bg-ocre text-white grid place-items-center shrink-0">
           <i class="fa-solid fa-arrow-up text-[15px]"></i>
         </button>
       </div>
@@ -765,8 +861,8 @@ if (window.tailwind) tailwind.config = {
     <div class="flex items-center gap-3 mb-9">
       <svg width="46" height="37" viewBox="0 0 32 26" aria-hidden="true">
         <g transform="rotate(-6 16 13)">
-          <rect x="2" y="3" width="28" height="20" rx="3.5" fill="#F7F3EA"/>
-          <path d="M2 6.5A3.5 3.5 0 0 1 5.5 3h21A3.5 3.5 0 0 1 30 6.5V9H2z" fill="#FF9D66"/>
+          <rect x="2" y="3" width="28" height="20" rx="3.5" fill="#F7F3EA" stroke="#DED8CA" stroke-width=".8"/>
+          <path d="M2 6.5A3.5 3.5 0 0 1 5.5 3h21A3.5 3.5 0 0 1 30 6.5V9H2z" fill="#FC5200"/>
           <circle cx="6.3" cy="13.5" r="1.4" fill="#10142B"/><circle cx="25.7" cy="13.5" r="1.4" fill="#10142B"/>
           <rect x="10" y="12" width="12" height="2.8" rx="1.4" fill="#151A36"/>
           <rect x="11.5" y="16.6" width="9" height="2.2" rx="1.1" fill="#151A36" opacity=".45"/>
@@ -816,6 +912,7 @@ const $$ = (sel, racine = document) => Array.from(racine.querySelectorAll(sel));
 const JOURS_COURTS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const JOURS_LONGS  = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
 const MOIS_COURTS  = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const MOIS_LONGS   = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
 /** Bornage d'une valeur entre deux limites. */
 const borner = (v, min, max) => Math.min(max, Math.max(min, v));
@@ -1144,7 +1241,7 @@ function majInvitationInstallation() {
       <div class="flex-1 min-w-0"><div class="titre text-[16px] leading-tight">Installer RDD</div>
         <div class="text-[12px] text-brume leading-snug mt-0.5">${esc(texte)}</div></div>
       <div class="flex flex-col items-end gap-1.5 shrink-0">
-        ${invitationInstallation ? '<button data-act="installerApp" class="tapable h-9 px-3.5 rounded-xl bg-ocre text-[#23120A] text-[13px] font-semibold">Installer</button>' : ''}
+        ${invitationInstallation ? '<button data-act="installerApp" class="tapable h-9 px-3.5 rounded-xl bg-ocre text-white text-[13px] font-semibold">Installer</button>' : ''}
         <button data-act="masquerInstallation" aria-label="Masquer" class="tapable w-8 h-8 rounded-full grid place-items-center text-brume"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>`;
@@ -1181,7 +1278,7 @@ function installerManifeste(icone192, icone512, iconeMasquable) {
       id: location.pathname, name: 'RDD, Runner du dimanche', short_name: 'RDD', lang: 'fr',
       description: 'Coach running et trail : ton niveau, ton plan et tes allures du jour J.',
       start_url: location.origin + location.pathname, scope: location.origin + location.pathname.replace(/[^/]*$/, ''),
-      display: 'standalone', orientation: 'portrait', background_color: '#10142B', theme_color: '#10142B',
+      display: 'standalone', orientation: 'portrait', background_color: '#FFFFFF', theme_color: '#FFFFFF',
       icons: [{ src: icone192, sizes: '192x192', type: 'image/png', purpose: 'any' },
               { src: icone512, sizes: '512x512', type: 'image/png', purpose: 'any' },
               { src: iconeMasquable, sizes: '512x512', type: 'image/png', purpose: 'maskable' }]
@@ -1278,10 +1375,40 @@ function effacerCle(cle) {
   try { localStorage.removeItem(cle); } catch (e) { /* rien à effacer */ }
 }
 
+/** Une course vide : mêmes champs que l'ancien « objectif » unique, plus un identifiant et une priorité. */
+function courseParDefaut() {
+  return {
+    id: idUnique('crs'), priorite: 'A',          // A : objectif principal, B : course de préparation, C : course d'entraînement
+    nom: '', type: 'trail', distanceKm: null, dplus: null, dmoins: null,
+    date: '', heure: '09:00', tempsVise: '', technicite: 'moyen', gpx: null,
+    nutrition: { conditions: 'temperee', boisson: 'eau', ravitos: '' }    // ravitos : km saisis à la main (« 5 ; 12,5 »)
+  };
+}
+
+/**
+ * Plusieurs courses par profil : ETAT.courses (liste) et ETAT.courseActive (celle qu'on affiche ou calcule).
+ * ETAT.objectif reste disponible pour tout le code existant : c'est un accès (non enregistré) à la course active,
+ * ou à un brouillon tant qu'aucune course n'existe.
+ */
+let brouillonCourse = null;
+function equiperEtat(e) {
+  Object.defineProperty(e, 'objectif', {
+    configurable: true, enumerable: false,
+    get() {
+      const c = (this.courses || []).find(x => x.id === this.courseActive);
+      if (c) return c;
+      if (!brouillonCourse) brouillonCourse = courseParDefaut();
+      return brouillonCourse;
+    },
+    set(v) { if (v && typeof v === 'object') Object.assign(this.objectif, v); }
+  });
+  return e;
+}
+
 /** État d'un nouvel utilisateur : aucune donnée personnelle, réglages génériques modifiables. */
 function etatParDefaut() {
-  return {
-    version: 2,
+  return equiperEtat({
+    version: 3,
     creeLe: new Date().toISOString(),
     profil: {
       prenom: '',
@@ -1290,19 +1417,17 @@ function etatParDefaut() {
       joursDispo: [2, 4, 0],           // mardi, jeudi, dimanche
       heureSeance: '18:00',
       vmaManuelle: null,               // km/h, court-circuite le calcul si renseignée
-      reference: null                  // { distanceM, tempsS, dplus, libelle }
+      reference: null,                 // { distanceM, tempsS, dplus, libelle }
+      approche: 'equilibree'           // philosophie d'entraînement du plan (voir APPROCHES)
     },
     strava: { mode: 'aucun', connecte: false, athlete: '', dernierSync: null, autoSync: false, clientId: '', clientSecret: '', jeton: null },
     activites: [],
     metriques: null,
-    objectif: {
-      nom: '', type: 'trail', distanceKm: null, dplus: null, dmoins: null,
-      date: '', heure: '09:00', tempsVise: '', technicite: 'moyen', gpx: null,
-      nutrition: { conditions: 'temperee', boisson: 'eau', ravitos: '' }    // ravitos : km saisis à la main (« 5 ; 12,5 »)
-    },
+    courses: [],
+    courseActive: null,
     plan: null,
     chat: []
-  };
+  });
 }
 
 let ETAT = etatParDefaut();
@@ -1313,11 +1438,31 @@ let APPAREIL = { ia: { mode: 'gemini', cle: '', modele: '', endpoint: '', cleGem
 /** Complète un état lu (éventuellement d'une version précédente) avec les valeurs par défaut. */
 function fusionnerEtat(lu) {
   const objet = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
-  const source = objet(lu);
+  const source = Object.assign({}, objet(lu));
+  const ancienObjectif = source.objectif;          // version 2 : une seule course, migrée dans la liste
+  delete source.objectif;
   const e = Object.assign(etatParDefaut(), source);
   e.profil   = Object.assign(etatParDefaut().profil, objet(source.profil));
   e.strava   = Object.assign(etatParDefaut().strava, objet(source.strava));
-  e.objectif = Object.assign(etatParDefaut().objectif, objet(source.objectif));
+  e.courses  = (Array.isArray(source.courses) ? source.courses : []).filter(c => c && typeof c === 'object')
+                 .map(c => Object.assign(courseParDefaut(), c));
+  const ao = objet(ancienObjectif);
+  if (!e.courses.length && (ao.date || ao.distanceKm || ao.nom || ao.gpx)) {
+    e.courses.push(Object.assign(courseParDefaut(), ao, { priorite: 'A' }));
+  }
+  const vus = new Set();
+  e.courses.forEach(c => {
+    if (!c.id || vus.has(c.id)) c.id = idUnique('crs');
+    vus.add(c.id);
+    if (!['A', 'B', 'C'].includes(c.priorite)) c.priorite = 'A';
+    if (c.date && !/^\d{4}-\d{2}-\d{2}$/.test(c.date)) c.date = '';
+    c.nutrition = Object.assign({ conditions: 'temperee', boisson: 'eau', ravitos: '' }, objet(c.nutrition));
+  });
+  if (!e.courses.some(c => c.id === e.courseActive)) {
+    const proch = coursesTriees(e.courses).find(c => c.date >= cleJour(new Date()));
+    e.courseActive = (proch || e.courses[e.courses.length - 1] || {}).id || null;
+  }
+  if (!APPROCHES[e.profil.approche]) e.profil.approche = 'equilibree';
   delete e.ia;                                    // le cerveau du coach se règle désormais pour l'appareil
   // Contrôle de cohérence : une donnée abîmée ne doit jamais bloquer l'app.
   e.activites = (Array.isArray(e.activites) ? e.activites : []).filter(a => a && typeof a === 'object' &&
@@ -1327,9 +1472,36 @@ function fusionnerEtat(lu) {
   if (!Array.isArray(e.profil.joursDispo) || !e.profil.joursDispo.length) e.profil.joursDispo = etatParDefaut().profil.joursDispo.slice();
   const n = parseInt(e.profil.seancesSemaine, 10);
   e.profil.seancesSemaine = n >= 1 && n <= 7 ? n : etatParDefaut().profil.seancesSemaine;
-  if (e.objectif.date && !/^\d{4}-\d{2}-\d{2}$/.test(e.objectif.date)) e.objectif.date = '';
   return e;
 }
+/* ---------- Courses : accès à la liste ---------- */
+const PRIORITES = {
+  A: { libelle: 'Objectif', court: 'A', couleur: '#FC5200', texte: 'Course principale : tout le plan converge vers elle (affûtage complet).' },
+  B: { libelle: 'Préparation', court: 'B', couleur: '#2F80ED', texte: 'Course de préparation : mini-affûtage de quelques jours, sans casser le bloc.' },
+  C: { libelle: 'Entraînement', court: 'C', couleur: '#8A93A6', texte: 'Course plaisir ou séance déguisée : aucun affûtage, juste un footing la veille.' }
+};
+function coursesTriees(liste) {
+  return (liste || ETAT.courses || []).slice().sort((a, b) => (a.date || '9999-99').localeCompare(b.date || '9999-99'));
+}
+function courseParId(id) { return (ETAT.courses || []).find(c => c.id === id) || null; }
+function courseComplete(c) { return !!(c && c.date && c.distanceKm > 0); }
+/** Courses à venir (date et distance connues), de la plus proche à la plus lointaine. */
+function coursesAVenir() {
+  const k = cleJour(new Date());
+  return coursesTriees().filter(c => courseComplete(c) && c.date >= k);
+}
+function prochaineCourse() { return coursesAVenir()[0] || null; }
+function nomCourse(c) {
+  if (!c) return 'Ta course';
+  return c.nom || ((c.type === 'trail' ? 'Trail ' : 'Course ') + (c.distanceKm ? String(c.distanceKm).replace('.', ',') + ' km' : ''));
+}
+/** Exécute fn avec une autre course active (calculs de stratégie, séance du jour J…), puis rétablit l'ancienne. */
+function avecCourse(id, fn) {
+  const avant = ETAT.courseActive;
+  ETAT.courseActive = id;
+  try { return fn(); } finally { ETAT.courseActive = avant; }
+}
+
 function sauverIndex() { ecrireJson(CLE_INDEX, INDEX); }
 function sauverAppareil() { ecrireJson(CLE_APPAREIL, APPAREIL); }
 function profilActif() { return INDEX.liste.find(p => p.id === INDEX.actif) || null; }
@@ -1368,6 +1540,7 @@ function chargerIndex() {
 /** Charge l'état du profil actif. */
 function chargerEtat() {
   const p = profilActif();
+  brouillonCourse = null;
   ETAT = fusionnerEtat(p ? lireJson(PREFIXE_PROFIL + p.id) : null);
   if (p) ETAT.profil.prenom = p.prenom;
   return !!p;
@@ -2627,8 +2800,7 @@ function apresNouvellesActivites(nbNouvelles = 0) {
   lierActivitesAuxSeances();
   const m = rafraichirMetriques();
   // Gros import (historique Strava) : le volume de départ change, le plan est recalé.
-  const recale = nbNouvelles >= 5 && !!ETAT.plan && !!ETAT.objectif.date &&
-                 ecartJours(new Date(), depuisCleJour(ETAT.objectif.date)) >= 2 && genererPlan();
+  const recale = nbNouvelles >= 5 && !!ETAT.plan && coursesAVenir().some(c => ecartJours(new Date(), depuisCleJour(c.date)) >= 2) && genererPlan();
   if (avant && Math.abs(m.vma - avant) >= 0.2) {
     toast('Niveau mis à jour : VMA ' + String(avant).replace('.', ',') + ' → ' + String(m.vma).replace('.', ',') + ' km/h. ' +
           (recale ? 'Plan recalé sur ton historique.' : 'Les allures du plan suivent automatiquement.'), 'info');
@@ -2834,10 +3006,10 @@ function vdotPourTemps(deff, tempsS) {
 
 function verdictObjectif(rapport) {
   if (rapport == null) return null;
-  if (rapport < 0.93)  return { cle: 'tres-ambitieux', texte: 'Très ambitieux', couleur: '#FF5F8F' };
-  if (rapport < 0.985) return { cle: 'ambitieux', texte: 'Ambitieux', couleur: '#FF9D66' };
-  if (rapport <= 1.03) return { cle: 'realiste', texte: 'Réaliste', couleur: '#6BE3B5' };
-  return { cle: 'confortable', texte: 'Confortable', couleur: '#7CC8FF' };
+  if (rapport < 0.93)  return { cle: 'tres-ambitieux', texte: 'Très ambitieux', couleur: '#E5484D' };
+  if (rapport < 0.985) return { cle: 'ambitieux', texte: 'Ambitieux', couleur: '#FC5200' };
+  if (rapport <= 1.03) return { cle: 'realiste', texte: 'Réaliste', couleur: '#16A34A' };
+  return { cle: 'confortable', texte: 'Confortable', couleur: '#2F80ED' };
 }
 
 function consigneKm(k, idx, n, trail, technicite, vma) {
@@ -2887,7 +3059,7 @@ function calculerStrategieBrute(base) {
   const dplusManquant = trail && !o.gpx && !(o.dplus > 0);
   const niveauInconnu = !!m.parDefaut;
   const verdict = (dplusManquant || niveauInconnu) && tempsVise > 0
-    ? { cle: 'a-confirmer', texte: 'À confirmer', couleur: '#9DA5CA' }
+    ? { cle: 'a-confirmer', texte: 'À confirmer', couleur: '#8A93A6' }
     : verdictObjectif(rapport);
   const choix = base || o.baseStrategie || 'auto';
   const surObjectif = tempsVise > 0 && (choix === 'objectif' || (choix === 'auto' && (niveauInconnu || rapport >= 0.93)));
@@ -3158,7 +3330,7 @@ function rendreNutrition(st) {
   if (!p) return;
   const reglage = (cle, valeur, libelle) => {
     const actif = (cle === 'conditions' ? p.conditions : p.boisson) === valeur;
-    return `<button data-act="reglerNutrition" data-arg="${cle}:${valeur}" aria-pressed="${actif}" class="tapable h-8 rounded-lg text-[12px] ${actif ? 'bg-ocre text-[#23120A] font-semibold' : 'text-brume'}">${libelle}</button>`;
+    return `<button data-act="reglerNutrition" data-arg="${cle}:${valeur}" aria-pressed="${actif}" class="tapable h-8 rounded-lg text-[12px] ${actif ? 'bg-ocre text-white font-semibold' : 'text-brume'}">${libelle}</button>`;
   };
   const stat = (titre, valeur, detail) => `<div class="rounded-xl bg-nuit/50 p-2.5"><div class="text-[10.5px] text-brume">${titre}</div><div class="chiffre text-[20px] leading-tight mt-0.5">${valeur}</div><div class="text-[10.5px] text-brume">${detail}</div></div>`;
   const icone = q => q === 'barre' ? 'fa-cookie-bite' : q === 'gel caféiné' ? 'fa-mug-hot' : 'fa-droplet';
@@ -3237,16 +3409,16 @@ function ravitosDepuisGpx(texte, points) {
    ================================================================================== */
 
 const TYPES_SEANCE = {
-  ef:         { libelle: 'Endurance fondamentale', icone: 'fa-person-running', couleur: '#6BE3B5' },
-  recup:      { libelle: 'Récupération',           icone: 'fa-feather',        couleur: '#9DA5CA' },
-  sl:         { libelle: 'Sortie longue',          icone: 'fa-route',          couleur: '#7CC8FF' },
-  vma:        { libelle: 'VMA',                    icone: 'fa-bolt',           couleur: '#FF5F8F' },
-  seuil:      { libelle: 'Seuil',                  icone: 'fa-wave-square',    couleur: '#B99EFF' },
-  specifique: { libelle: 'Allure spécifique',      icone: 'fa-bullseye',       couleur: '#FF9D66' },
-  cotes:      { libelle: 'Côtes',                  icone: 'fa-mountain',       couleur: '#FF9D66' },
-  fartlek:    { libelle: 'Fartlek',                icone: 'fa-shuffle',        couleur: '#B99EFF' },
-  deblocage:  { libelle: 'Déblocage',              icone: 'fa-wind',           couleur: '#6BE3B5' },
-  course:     { libelle: 'Jour J',                 icone: 'fa-flag-checkered', couleur: '#FF9D66' }
+  ef:         { libelle: 'Endurance fondamentale', icone: 'fa-person-running', couleur: '#16A34A' },
+  recup:      { libelle: 'Récupération',           icone: 'fa-feather',        couleur: '#8A93A6' },
+  sl:         { libelle: 'Sortie longue',          icone: 'fa-route',          couleur: '#2F80ED' },
+  vma:        { libelle: 'VMA',                    icone: 'fa-bolt',           couleur: '#E5484D' },
+  seuil:      { libelle: 'Seuil',                  icone: 'fa-wave-square',    couleur: '#7C5CFF' },
+  specifique: { libelle: 'Allure spécifique',      icone: 'fa-bullseye',       couleur: '#FC5200' },
+  cotes:      { libelle: 'Côtes',                  icone: 'fa-mountain',       couleur: '#FC5200' },
+  fartlek:    { libelle: 'Fartlek',                icone: 'fa-shuffle',        couleur: '#7C5CFF' },
+  deblocage:  { libelle: 'Déblocage',              icone: 'fa-wind',           couleur: '#16A34A' },
+  course:     { libelle: 'Jour J',                 icone: 'fa-flag-checkered', couleur: '#FC5200' }
 };
 const INTENSITE_TYPE = { recup: 0.1, ef: 0.25, sl: 0.35, deblocage: 0.3, fartlek: 0.6, seuil: 0.75, specifique: 0.8, cotes: 0.8, vma: 0.9, course: 1 };
 const LIBELLE_ZONE = {
@@ -3254,10 +3426,11 @@ const LIBELLE_ZONE = {
   tempo: 'allure 10 km', vmaLongue: 'VMA longue', vmaCourte: 'VMA courte', course: 'allure course'
 };
 const PHASES = {
-  foncier:       { libelle: 'Foncier',        couleur: '#6BE3B5' },
-  developpement: { libelle: 'Développement',  couleur: '#7CC8FF' },
-  specifique:    { libelle: 'Spécifique',     couleur: '#FF9D66' },
-  affutage:      { libelle: 'Affûtage',       couleur: '#B99EFF' }
+  recuperation:  { libelle: 'Récupération',   couleur: '#8A93A6' },
+  foncier:       { libelle: 'Foncier',        couleur: '#16A34A' },
+  developpement: { libelle: 'Développement',  couleur: '#2F80ED' },
+  specifique:    { libelle: 'Spécifique',     couleur: '#FC5200' },
+  affutage:      { libelle: 'Affûtage',       couleur: '#7C5CFF' }
 };
 
 /** Fabrique d'étapes : nature, zone, mesure {dureeS | distanceM}, options {pente, dpk}. */
@@ -3424,6 +3597,16 @@ const BIBLIO = {
         : (fin ? 'Les ' + fin + ' dernières minutes à allure course : apprends à la tenir fatigué.' : 'Allure facile et régulière, hydrate-toi si ça dépasse 75 min.')
     };
   },
+  seuilCourt: (reps, distanceM = 1000, recupS = 60) => ({
+    type: 'seuil', titre: 'Seuil fractionné ' + reps + ' × ' + distanceLisible(distanceM), terrain: 'route',
+    blocs: [ech(20), R(reps, [E('travail', 'seuil', { distanceM }), E('recup', 'recup', { dureeS: recupS })]), rac(10)],
+    conseil: 'Méthode norvégienne : au seuil, jamais au-dessus. Tu dois finir en te disant que tu pouvais en faire 2 de plus.'
+  }),
+  moyenneLongue: (minutes, trail) => ({
+    type: 'ef', titre: 'Sortie moyenne-longue', terrain: trail ? 'trail' : 'route',
+    blocs: [E('continu', 'ef', { dureeS: minutes * 60 }, trail ? { dpk: 18 } : {})],
+    conseil: 'La séance clé de Pfitzinger en milieu de semaine : endurance facile mais longue, pour l’endurance musculaire sans la fatigue d’une sortie longue.'
+  }),
   deblocage: () => ({
     type: 'deblocage', titre: 'Déblocage de veille', terrain: 'route',
     blocs: [E('continu', 'ef', { dureeS: 15 * 60 }), R(3, [E('travail', 'tempo', { dureeS: 20 }), E('recup', 'recup', { dureeS: 60 })]), rac(5)],
@@ -3436,45 +3619,102 @@ const BIBLIO = {
   })
 };
 
-/** Séance du jour J. */
+/** Séance du jour J (de la course active). */
 function seanceCourse() {
   const o = ETAT.objectif;
   const e = effortCourse();
   const trail = o.type === 'trail';
+  const secondaire = o.priorite && o.priorite !== 'A';
   return {
     type: 'course', titre: o.nom || (trail ? 'Trail' : 'Course') + ' ' + o.distanceKm + ' km', terrain: trail ? 'trail' : 'route',
+    courseId: o.id || null, priorite: o.priorite || 'A',
     blocs: [ech(e && e.distM > 25000 ? 8 : 15),
             E('travail', 'course', { distanceM: e ? e.distM : o.distanceKm * 1000 }, trail && e ? { dpk: e.dplus / (e.distM / 1000) } : {})],
-    conseil: 'Suis la stratégie kilomètre par kilomètre de l’onglet Course. Départ retenu, effort régulier.'
+    conseil: secondaire
+      ? (o.priorite === 'B'
+        ? 'Course de préparation : vise un effort juste, sans te mettre dans le rouge. Teste ton matériel, ton ravitaillement et ton allure.'
+        : 'Course d’entraînement : profite, cours à l’effort d’une séance de qualité, pas d’une course à fond.')
+      : 'Suis la stratégie kilomètre par kilomètre de l’onglet Courses. Départ retenu, effort régulier.'
   };
 }
 
 /* ==================================================================================
-   7. GÉNÉRATION DU PLAN D'ENTRAÎNEMENT
-   Périodisation : foncier → développement → spécifique → affûtage,
-   progression ≈ +8 %/semaine, semaine allégée toutes les 4 semaines,
-   ~80 % du volume en endurance (logique polarisée).
+   7. GÉNÉRATION DU PLAN D'ENTRAÎNEMENT : plusieurs courses, une saison
+   La saison est découpée en macrocycles, un par course principale (priorité A).
+   Chaque macrocycle suit la périodisation classique, avec ce qui fait consensus
+   chez les entraîneurs dont les méthodes ont fait leurs preuves :
+   - Lydiard, Maffetone : base aérobie d'abord (foncier), côtes avant la vitesse ;
+   - Daniels : intensités calées sur le niveau mesuré (VDOT), qualité avant quantité ;
+   - Seiler, Fitzgerald : environ 80 % du temps en endurance facile (polarisé) ;
+   - Canova, Pfitzinger, Hanson : spécificité croissante (allure course, sortie longue
+     avec fin à allure, sortie moyenne-longue), fatigue cumulée maîtrisée ;
+   - méthode norvégienne : seuil fractionné contrôlé plutôt que des séances à bloc ;
+   - Mujika & Padilla : affûtage de 1 à 3 semaines, volume -40 à -60 %, intensité gardée ;
+   - récupération après chaque course (inverse de l'affûtage, Pfitzinger).
+   Progression ≈ +8 %/semaine au plus, semaine allégée toutes les 4 semaines.
+   Les courses B (préparation) et C (entraînement) s'insèrent dans le bloc en cours.
    ================================================================================== */
 
-function signatureObjectif() {
-  const o = ETAT.objectif;
-  return [o.type, o.distanceKm, o.dplus, o.date, o.gpx ? o.gpx.distanceM : 0].join('|');
+/** Philosophies d'entraînement proposées : la synthèse par défaut, ou une méthode plus marquée. */
+const APPROCHES = {
+  equilibree: {
+    libelle: 'Synthèse', icone: 'fa-scale-balanced',
+    sources: 'Daniels, Lydiard, Pfitzinger, Canova, Seiler',
+    texte: 'Le meilleur de chaque méthode : base aérobie, VMA et seuil en développement, allure course en fin de bloc, 80 % du temps en endurance.'
+  },
+  polarisee: {
+    libelle: 'Polarisée 80/20', icone: 'fa-arrows-left-right',
+    sources: 'Seiler, Fitzgerald',
+    texte: 'Très facile ou vraiment dur, presque rien entre les deux : une grosse séance intense par semaine, tout le reste en endurance.'
+  },
+  seuil: {
+    libelle: 'Seuil (norvégienne)', icone: 'fa-wave-square',
+    sources: 'Bakken, Ingebrigtsen, Canova',
+    texte: 'Beaucoup de seuil fractionné contrôlé (jamais à bloc), puis un travail spécifique très proche de l’allure course.'
+  },
+  volume: {
+    libelle: 'Volume et longues', icone: 'fa-road',
+    sources: 'Lydiard, Pfitzinger, Hanson',
+    texte: 'Long foncier, côtes, sortie moyenne-longue en semaine et sorties longues avec fin à allure : idéal pour marathon et trail long.'
+  }
+};
+
+/** Signature d'une course : si elle change, le plan doit être recalculé. */
+function signatureCourse(c) {
+  return [c.type, c.distanceKm, c.dplus, c.date, c.gpx ? c.gpx.distanceM : 0, c.priorite || 'A'].join('|');
+}
+function signatureObjectif() { return signatureCourse(ETAT.objectif); }
+/** Signature de la saison : toutes les courses datées et l'approche choisie. */
+function signatureCourses() {
+  return coursesTriees().filter(courseComplete).map(signatureCourse).join(';') + '#' + (ETAT.profil.approche || 'equilibree') +
+    '#' + (ETAT.profil.seancesSemaine || 3) + '#' + (ETAT.profil.joursDispo || []).slice().sort().join(',');
 }
 
-function decouperPhases(n, distanceKm) {
+function decouperPhases(n, distanceKm, approche) {
+  if (n <= 0) return [];
   const affutage = n <= 2 ? 1 : (distanceKm <= 12.5 ? 1 : distanceKm <= 45 ? 2 : 3);
   const reste = n - affutage;
+  const partSpe = approche === 'volume' ? 0.3 : 0.35, partDev = approche === 'volume' ? 0.25 : 0.3;
   let spe = 0, dev = 0, fon = 0;
   if (reste > 0 && reste <= 2) spe = reste;
   else if (reste > 2 && reste <= 4) { spe = 2; dev = reste - 2; }
   else if (reste > 4) {
-    spe = Math.max(2, Math.round(reste * 0.35));
-    dev = Math.max(1, Math.round(reste * 0.3));
+    // Blocs longs (deux courses éloignées) : spécifique et développement plafonnés à 10 semaines, le reste en foncier.
+    spe = Math.min(10, Math.max(2, Math.round(reste * partSpe)));
+    dev = Math.min(10, Math.max(1, Math.round(reste * partDev)));
     fon = reste - spe - dev;
     if (fon < 1) { fon = 1; dev = reste - spe - fon; }
   }
   return [].concat(Array(fon).fill('foncier'), Array(dev).fill('developpement'),
                    Array(spe).fill('specifique'), Array(affutage).fill('affutage'));
+}
+
+/** Semaines de récupération après une course principale, selon sa longueur (≈ 1 jour facile par 3 à 4 km couru). */
+function semainesRecuperation(c) {
+  if (!c) return 0;
+  const km = c.distanceKm || 0, dplus = c.type === 'trail' ? (c.dplus || 0) : 0;
+  const eqKm = km + dplus / 100;
+  return eqKm <= 13 ? 0 : eqKm <= 30 ? 1 : eqKm <= 60 ? 2 : 3;
 }
 
 function volumePlafond(distanceKm, seances) {
@@ -3536,9 +3776,10 @@ function repartirSeances(jours, nbQualites) {
   return types;
 }
 
-/** Séance de qualité principale selon la phase et la progression. */
+/** Séance de qualité principale selon la phase et la progression (approche « synthèse »). */
 function qualitePrincipale(phase, k, trail, distanceKm, dplusKm, f, relache) {
   const r = (n, min = 3) => Math.max(min, Math.round(n * f));
+  if (phase === 'recuperation') return k >= 1 ? BIBLIO.ef(40, { trail, lignes: 6, titre: 'Footing + lignes droites' }) : null;
   if (relache) return trail ? BIBLIO.cotesCourtes(r(6), 30) : BIBLIO.fartlek(r(5));
   if (trail) {
     const pente = borner(dplusKm / 1000 * 2.4, 0.05, 0.12);
@@ -3563,29 +3804,67 @@ function qualitePrincipale(phase, k, trail, distanceKm, dplusKm, f, relache) {
 
 /** Seconde séance de qualité (plans à 4 séances et plus). */
 function qualiteSecondaire(phase, k, trail) {
+  if (phase === 'recuperation') return null;
   if (phase === 'foncier') return BIBLIO.ef(40, { trail, lignes: 6 });
   if (phase === 'developpement') return trail ? BIBLIO.seuilContinu(20 + 5 * Math.min(k, 2), true) : BIBLIO.seuil(3, 8 + 2 * Math.min(k, 2), 2);
   if (phase === 'specifique') return trail ? BIBLIO.cotesLongues(4, 4, 0.08) : BIBLIO.seuil(2, 12 + 2 * Math.min(k, 3), 3);
   return BIBLIO.ef(35, { trail, lignes: 4 });
 }
 
-/** Génère (ou régénère) le plan complet jusqu'au jour J. */
-function genererPlan() {
-  const o = ETAT.objectif;
-  if (!o.date || !(o.distanceKm > 0)) {
-    toast('Renseigne d’abord la distance et la date de ta course.', 'alerte');
-    allerA('objectif');
-    return false;
+/**
+ * Variante d'une séance de qualité selon l'approche choisie (rang 1 : principale, rang 2 : secondaire).
+ * Renvoie undefined pour garder la séance de la synthèse.
+ */
+function qualiteApproche(approche, rang, phase, k, trail, distanceKm, f, relache) {
+  if (!approche || approche === 'equilibree' || relache || phase === 'recuperation' || phase === 'affutage') return undefined;
+  const r = (n, min = 3) => Math.max(min, Math.round(n * f));
+  const longue = distanceKm > 25;
+  if (approche === 'polarisee') {
+    // Une vraie séance dure, le reste vraiment facile : pas de seuil.
+    if (rang === 2) return BIBLIO.ef(45, { trail, lignes: 6, titre: 'Footing + lignes droites' });
+    if (phase === 'foncier') return trail ? BIBLIO.cotesCourtes(r(8 + 2 * k), 40) : BIBLIO.vmaCourte(r(10 + 2 * k), 30, 30);
+    if (phase === 'developpement') return trail ? BIBLIO.cotesLongues(r(4 + k), 3, 0.08) : BIBLIO.vmaLongue(r(5 + k), distanceKm <= 12.5 ? 800 : 1000, 150);
+    return undefined;
   }
-  const auj = depuisCleJour(cleJour(new Date()));
-  const jourJ = depuisCleJour(o.date);
-  if (ecartJours(auj, jourJ) < 2) {
-    toast('La course est trop proche ou déjà passée : choisis une date au moins 2 jours plus tard.', 'alerte');
-    return false;
+  if (approche === 'seuil') {
+    // Seuil fractionné « sous contrôle » (méthode norvégienne), puis spécifique (Canova).
+    if (phase === 'foncier') return rang === 1 ? BIBLIO.seuil(r(4 + k), 6, 1) : BIBLIO.seuilCourt(r(8 + 2 * k), 400, 45);
+    if (phase === 'developpement') return rang === 1 ? BIBLIO.seuilCourt(r(6 + k), 1000, 60) : BIBLIO.seuil(r(3 + k), 8, 1);
+    if (phase === 'specifique') return rang === 2 ? BIBLIO.seuilCourt(r(5 + k), longue ? 2000 : 1000, 60) : undefined;
+    return undefined;
   }
+  if (approche === 'volume') {
+    // Lydiard : côtes et fartlek sur une grosse base ; Pfitzinger : tempo au seuil et sortie moyenne-longue.
+    if (rang === 2) return BIBLIO.moyenneLongue(longue ? 80 + 5 * Math.min(k, 3) : 60 + 5 * Math.min(k, 2), trail);
+    if (phase === 'foncier') return trail ? BIBLIO.cotesLongues(r(4 + k), 3, 0.07) : (k % 2 === 0 ? BIBLIO.cotesCourtes(r(8 + 2 * k), 40) : BIBLIO.fartlek(r(6 + k)));
+    if (phase === 'developpement') return BIBLIO.seuilContinu(20 + 5 * Math.min(k, 3), trail);
+    return undefined;
+  }
+  return undefined;
+}
 
-  const m = rafraichirMetriques();
+/** Copie une séance de la bibliothèque en séance du plan. */
+function seancePlan(base, date, phase) {
+  return Object.assign(JSON.parse(JSON.stringify(base)), { date, id: idUnique('sea'), phase, statut: 'prevu', realise: null });
+}
+/** Transforme une séance prévue en une autre, sans changer son identifiant ni sa date. */
+function remplacerContenu(s, base, ajuste) {
+  Object.assign(s, { type: base.type, titre: base.titre, blocs: JSON.parse(JSON.stringify(base.blocs)), conseil: base.conseil, terrain: base.terrain });
+  if (ajuste) s.ajuste = ajuste;
+}
+
+/**
+ * Macrocycle vers une course (la course active pendant l'appel).
+ * opts : { auj (Date de départ), recupSemaines, volDepart, m }
+ * Renvoie { semaines, volPic }.
+ */
+function genererSegment(opts) {
+  const o = ETAT.objectif;
+  const m = opts.m;
   const p = ETAT.profil;
+  const approche = APPROCHES[p.approche] ? p.approche : 'equilibree';
+  const auj = opts.auj;
+  const jourJ = depuisCleJour(o.date);
   const trail = o.type === 'trail';
   const e = effortCourse();
   const distanceKm = e.distM / 1000;
@@ -3593,35 +3872,34 @@ function genererPlan() {
   const lundi0 = lundiDe(auj);
   const lundiJ = lundiDe(jourJ);
   const nbSemaines = Math.round((lundiJ - lundi0) / (7 * 86400000)) + 1;
-  const phases = decouperPhases(nbSemaines, distanceKm);
+  const recup = Math.max(0, Math.min(opts.recupSemaines || 0, nbSemaines - 3));
+  const phases = Array(recup).fill('recuperation').concat(decouperPhases(nbSemaines - recup, distanceKm, approche));
   const nbSeances = borner(p.seancesSemaine || 3, 2, 6);
   const jours = joursEntrainement(nbSeances, p.joursDispo);
   const z = m.zones;
 
   // Volumes cibles (km/semaine)
-  const v0 = Math.max(m.kmParSemaine || 0, nbSeances * 6);
-  const plafond = Math.max(volumePlafond(distanceKm, nbSeances), v0);
+  const v0 = Math.max(opts.volDepart != null ? opts.volDepart : (m.kmParSemaine || 0), nbSeances * 6);
+  const plafond = Math.max(volumePlafond(distanceKm, nbSeances) * (approche === 'volume' ? 1.1 : 1), v0);
   const facteurReps = borner(v0 / 30, 0.7, 1.15);
   const pic = [];
-  let v = v0;
-  phases.forEach((ph, i) => {
-    if (ph !== 'affutage') { if (i > 0) v = Math.min(plafond, v * 1.08); pic.push(v); }
+  let v = v0, premiere = true;
+  phases.forEach(ph => {
+    if (ph === 'affutage' || ph === 'recuperation') return;
+    if (premiere) { v = recup ? v0 * 0.9 : v0; premiere = false; } else v = Math.min(plafond, v * 1.08);
+    pic.push(v);
   });
   const volMax = pic.length ? Math.max(...pic) : v0;
   const nbAff = phases.filter(x => x === 'affutage').length;
   const partsAff = { 1: [0.55], 2: [0.75, 0.55], 3: [0.85, 0.7, 0.55] }[nbAff] || [0.55];
+  const partsRecup = [0.55, 0.7, 0.85];
 
-  // Sortie longue maximale
+  // Sortie longue maximale (Hanson la plafonne plus bas, compensée par le volume de semaine)
   const strat = calculerStrategie();
   const allureEfTerrain = z.ef * (1 + (trail ? borner(dplusKm, 10, 60) : 0) * 0.0075);
   const slMaxKm = trail
     ? (borner((strat ? strat.tempsModele : 5400) / 60 * 0.8, 75, 240) * 60) / allureEfTerrain
     : (distanceKm <= 12.5 ? 16 : distanceKm <= 25 ? 22 : distanceKm <= 45 ? 32 : 35);
-
-  // Conserver les séances passées si l'objectif n'a pas changé.
-  const ancien = ETAT.plan && ETAT.plan.signature === signatureObjectif() ? ETAT.plan : null;
-  const cleAuj = cleJour(auj);
-  const conservees = ancien ? toutesSeances().filter(s => s.date < cleAuj) : [];
 
   const semaines = [];
   const compteurPhase = {};
@@ -3631,9 +3909,10 @@ function genererPlan() {
     const k = compteurPhase[phase] = (compteurPhase[phase] == null ? 0 : compteurPhase[phase] + 1);
     const lundi = ajouterJours(lundi0, 7 * w);
     const derniere = w === nbSemaines - 1;
-    const relache = !derniere && phase !== 'affutage' && nbSemaines > 5 && w % 4 === 3;
+    const relache = !derniere && phase !== 'affutage' && phase !== 'recuperation' && nbSemaines > 5 && w % 4 === 3;
     let volumeCible;
     if (phase === 'affutage') volumeCible = volMax * partsAff[partsAff.length - (nbSemaines - w)] || volMax * 0.55;
+    else if (phase === 'recuperation') volumeCible = v0 * partsRecup[k] || v0 * 0.8;
     else { volumeCible = pic[indexVol++] * (relache ? 0.72 : 1); }
 
     const seances = [];
@@ -3642,7 +3921,6 @@ function genererPlan() {
     if (derniere) {
       // ---- Semaine de course : rappel, footing, déblocage, jour J ----
       const avant = joursSemaine.filter(d => d >= auj && d < jourJ);
-      // Dernière sortie longue (semaine précédente) : pas de séance intense le lendemain.
       const derniereSl = ajouterJours(lundi, -7 + ((jours[jours.length - 1] + 6) % 7));
       let rappelPose = false;
       avant.forEach(d => {
@@ -3660,13 +3938,20 @@ function genererPlan() {
       const partSemaine = joursSemaine.length ? actifs.length / joursSemaine.length : 1;
       const n = joursSemaine.length;
       const motif = repartirSeances(joursSemaine, n <= 3 ? 1 : 2);
-      const progressionPhase = phase === 'foncier' ? 0.55 + 0.1 * k : phase === 'developpement' ? 0.75 + 0.08 * k : phase === 'affutage' ? 0.6 : 0.95;
+      const progressionPhase = phase === 'recuperation' ? 0.45 : phase === 'foncier' ? 0.55 + 0.1 * k : phase === 'developpement' ? 0.75 + 0.08 * k : phase === 'affutage' ? 0.6 : 0.95;
       const dpkSl = trail ? borner(dplusKm, 10, 70) * borner(0.55 + 0.15 * (w / Math.max(1, nbSemaines - 1)) * 3, 0.55, 1) : 0;
 
-      // 1. Qualités
-      const brouillon = motif.map((t, idx) => {
-        if (t === 'q1') return qualitePrincipale(phase, k, trail, distanceKm, dplusKm, facteurReps, relache);
-        if (t === 'q2') return relache ? null : qualiteSecondaire(phase, k, trail);
+      // 1. Qualités (synthèse, ou variante de l'approche choisie)
+      const brouillon = motif.map(t => {
+        if (t === 'q1') {
+          const v = qualiteApproche(approche, 1, phase, k, trail, distanceKm, facteurReps, relache);
+          return v !== undefined ? v : qualitePrincipale(phase, k, trail, distanceKm, dplusKm, facteurReps, relache);
+        }
+        if (t === 'q2') {
+          if (relache || phase === 'recuperation') return null;
+          const v = qualiteApproche(approche, 2, phase, k, trail, distanceKm, facteurReps, relache);
+          return v !== undefined ? v : qualiteSecondaire(phase, k, trail);
+        }
         if (t === 'recup') return BIBLIO.recup(30);
         return null;
       });
@@ -3681,7 +3966,7 @@ function genererPlan() {
       const sl = BIBLIO.sl(slMin, { trail, dpk: Math.round(dpkSl), finMin: Math.min(finSl, Math.round(slMin * 0.35)) });
 
       // 3. Footings pour compléter le volume
-      const nbEf = motif.filter((t, idx) => (t === 'ef') || (t === 'q2' && !brouillon[idx])).length;
+      const nbEf = motif.filter((t, idx) => (t === 'ef') || ((t === 'q1' || t === 'q2') && !brouillon[idx])).length;
       const resteKm = Math.max(0, volumeCible - kmQualite - mesurerSeance(sl).distanceM / 1000);
       const efMin = nbEf ? borner(arrondi5((resteKm / nbEf) * z.ef / 60), 30, 70) : 0;
 
@@ -3690,7 +3975,9 @@ function genererPlan() {
         if (!d || d < auj) return;
         let s = brouillon[idx];
         if (t === 'sl') s = sl;
-        if (!s) s = BIBLIO.ef(efMin, { trail: trail && idx % 2 === 1, dpk: 12, lignes: phase === 'foncier' && idx === 1 ? 5 : 0 });
+        if (!s) s = phase === 'recuperation' && k === 0
+          ? BIBLIO.recup(Math.min(40, efMin || 30))
+          : BIBLIO.ef(efMin, { trail: trail && idx % 2 === 1, dpk: 12, lignes: phase === 'foncier' && idx === 1 ? 5 : 0 });
         // Course en début de semaine suivante : rien d'intense dans les 3 jours qui précèdent.
         const avantCourse = ecartJours(d, jourJ);
         if (avantCourse >= 1 && avantCourse <= 3) s = avantCourse === 1 ? BIBLIO.deblocage() : BIBLIO.ef(30, { lignes: 4, titre: 'Footing + lignes droites' });
@@ -3699,26 +3986,95 @@ function genererPlan() {
       volumeCible *= partSemaine;
     }
 
-    // Séances passées conservées de la semaine courante (même objectif)
-    const passeesSemaine = conservees.filter(s => s.date >= cleJour(lundi) && s.date < cleJour(ajouterJours(lundi, 7)));
-    const finales = passeesSemaine.concat(seances.map(s => Object.assign(s, {
-      id: idUnique('sea'), phase, statut: 'prevu', realise: null
-    }))).sort((a, b) => a.date.localeCompare(b.date));
-
     semaines.push({
-      numero: w + 1, lundi: cleJour(lundi), phase, relache, derniere,
+      lundi: cleJour(lundi), phase, relache, derniere, courseId: o.id || null,
       volumeCibleKm: Math.round(volumeCible * 10) / 10,
-      seances: finales
+      seances: seances.map(s => Object.assign(s, { id: idUnique('sea'), phase, statut: 'prevu', realise: null }))
+                      .sort((a, b) => a.date.localeCompare(b.date))
     });
   }
+  return { semaines, volPic: volMax };
+}
 
-  // Semaines entières antérieures conservées (même objectif)
-  const semainesAnterieures = ancien ? ancien.semaines.filter(s => s.lundi < cleJour(lundi0)) : [];
+/**
+ * Course B ou C au milieu d'un bloc : la course remplace la séance du jour,
+ * les jours d'avant s'allègent (mini-affûtage pour une B) et les jours d'après servent à récupérer.
+ */
+function placerCourseSecondaire(semaines, c) {
+  const d = c.date;
+  const sem = semaines.find(w => w.lundi <= d && cleJour(ajouterJours(depuisCleJour(w.lundi), 7)) > d);
+  if (!sem) return;
+  const B = c.priorite === 'B';
+  const avant = B ? 3 : 1;
+  const apres = B ? (c.distanceKm > 25 ? 4 : 2) : 1;
+  const dureOuLongue = s => (INTENSITE_TYPE[s.type] || 0) >= 0.6 || s.type === 'sl';
+  semaines.forEach(w => {
+    w.seances = w.seances.filter(s => s.date !== d);
+    w.seances.forEach(s => {
+      if (s.statut !== 'prevu' || s.type === 'course') return;
+      const ec = ecartJours(depuisCleJour(d), depuisCleJour(s.date));     // > 0 : après la course
+      const trail = s.terrain === 'trail';
+      if (ec === -1) remplacerContenu(s, B ? BIBLIO.deblocage() : BIBLIO.ef(30, { titre: 'Footing de veille' }), 'course');
+      else if (ec < 0 && -ec <= avant && dureOuLongue(s)) remplacerContenu(s, BIBLIO.ef(35, { trail, lignes: 4, titre: 'Footing + lignes droites' }), 'course');
+      else if (ec > 0 && ec <= apres && dureOuLongue(s)) remplacerContenu(s, BIBLIO.recup(ec === 1 ? 30 : 40), 'récup');
+    });
+  });
+  const course = avecCourse(c.id, () => seanceCourse());
+  sem.seances.push(Object.assign(course, { date: d, id: idUnique('sea'), phase: sem.phase, statut: 'prevu', realise: null }));
+  sem.seances.sort((a, b) => a.date.localeCompare(b.date));
+  sem.courseSecondaire = c.id;
+}
+
+/** Génère (ou régénère) le plan de la saison : de aujourd'hui à la dernière course. */
+function genererPlan() {
+  const auj = depuisCleJour(cleJour(new Date()));
+  const futures = coursesTriees().filter(c => courseComplete(c) && ecartJours(auj, depuisCleJour(c.date)) >= 2);
+  if (!futures.length) {
+    const o = ETAT.objectif;
+    if (courseComplete(o) && ecartJours(auj, depuisCleJour(o.date)) < 2)
+      toast('La course est trop proche ou déjà passée : choisis une date au moins 2 jours plus tard.', 'alerte');
+    else {
+      toast('Ajoute d’abord une course avec sa distance et sa date.', 'alerte');
+      allerA('objectif');
+    }
+    return false;
+  }
+
+  // Fins de macrocycle : les courses A, et la dernière course de la saison quelle que soit sa priorité.
+  const fins = futures.filter(c => c.priorite === 'A');
+  const derniere = futures[futures.length - 1];
+  if (!fins.includes(derniere)) fins.push(derniere);
+
+  const m = rafraichirMetriques();
+  const ancien = ETAT.plan;
+  const cleAuj = cleJour(auj), lundiAuj = cleJour(lundiDe(auj));
+  const passees = ancien ? toutesSeances().filter(s => s.date < cleAuj && s.date >= lundiAuj) : [];
+  const semainesAnterieures = ancien ? ancien.semaines.filter(w => w.lundi < lundiAuj) : [];
+
+  const semaines = [];
+  let debut = auj, volDepart = null, precedente = null;
+  fins.forEach(fin => {
+    if (ecartJours(debut, depuisCleJour(fin.date)) < 1) return;
+    const secondaires = futures.filter(c => !fins.includes(c) && c.date < fin.date && (!precedente || c.date > precedente.date));
+    const r = avecCourse(fin.id, () => genererSegment({ auj: debut, recupSemaines: semainesRecuperation(precedente), volDepart, m }));
+    secondaires.forEach(c => placerCourseSecondaire(r.semaines, c));
+    semaines.push(...r.semaines);
+    volDepart = r.volPic * 0.85;
+    precedente = fin;
+    debut = ajouterJours(lundiDe(depuisCleJour(fin.date)), 7);
+  });
+
+  // Séances déjà passées de la semaine en cours : conservées telles quelles (historique).
+  if (passees.length && semaines.length && semaines[0].lundi === lundiAuj) {
+    semaines[0].seances = passees.concat(semaines[0].seances).sort((a, b) => a.date.localeCompare(b.date));
+  }
 
   ETAT.plan = {
     genereLe: new Date().toISOString(),
-    signature: signatureObjectif(),
-    nbSemaines,
+    signature: signatureCourses(),
+    approche: ETAT.profil.approche || 'equilibree',
+    courses: fins.map(c => c.id),
+    nbSemaines: semaines.length,
     semaines: semainesAnterieures.concat(semaines).map((s, i) => Object.assign(s, { numero: i + 1 }))
   };
   lierActivitesAuxSeances();
@@ -3797,12 +4153,12 @@ function comparerSeance(s) {
   const dDist = prevu.distanceM ? (r.distanceM - prevu.distanceM) / prevu.distanceM : 0;
   const facile = ['ef', 'recup', 'sl', 'deblocage'].includes(s.type);
   let verdict;
-  if (facile && dAllure < -12) verdict = { texte: 'Trop rapide pour une séance facile', couleur: '#FF9D66', icone: 'fa-gauge-high' };
-  else if (Math.abs(dAllure) <= 10 && Math.abs(dDist) <= 0.12) verdict = { texte: 'Conforme au plan', couleur: '#6BE3B5', icone: 'fa-circle-check' };
-  else if (dDist < -0.2) verdict = { texte: 'Plus courte que prévu', couleur: '#9DA5CA', icone: 'fa-scissors' };
-  else if (dDist > 0.2) verdict = { texte: 'Plus longue que prévu', couleur: '#7CC8FF', icone: 'fa-arrows-left-right' };
-  else if (dAllure > 10) verdict = { texte: 'Plus lente que prévu', couleur: '#7CC8FF', icone: 'fa-hourglass-half' };
-  else verdict = { texte: 'Plus rapide que prévu', couleur: '#FF9D66', icone: 'fa-forward' };
+  if (facile && dAllure < -12) verdict = { texte: 'Trop rapide pour une séance facile', couleur: '#FC5200', icone: 'fa-gauge-high' };
+  else if (Math.abs(dAllure) <= 10 && Math.abs(dDist) <= 0.12) verdict = { texte: 'Conforme au plan', couleur: '#16A34A', icone: 'fa-circle-check' };
+  else if (dDist < -0.2) verdict = { texte: 'Plus courte que prévu', couleur: '#8A93A6', icone: 'fa-scissors' };
+  else if (dDist > 0.2) verdict = { texte: 'Plus longue que prévu', couleur: '#2F80ED', icone: 'fa-arrows-left-right' };
+  else if (dAllure > 10) verdict = { texte: 'Plus lente que prévu', couleur: '#2F80ED', icone: 'fa-hourglass-half' };
+  else verdict = { texte: 'Plus rapide que prévu', couleur: '#FC5200', icone: 'fa-forward' };
   return { prevu, realise: { distanceM: r.distanceM, dureeS: r.tempsS, allure: allureR, dplus: r.dplus }, dAllure, dDist, verdict };
 }
 
@@ -3857,7 +4213,8 @@ function ajusterPlan(mode) {
     const manquee = toutesSeances().filter(s => statutSeance(s) === 'manque' && qualites.includes(s.type) && s.date >= limite)
                                    .sort((a, b) => b.date.localeCompare(a.date))[0];
     // Jamais de séance intense dans les 3 jours qui précèdent la course.
-    const limiteCourse = ETAT.objectif.date ? cleJour(ajouterJours(depuisCleJour(ETAT.objectif.date), -3)) : '9999-12-31';
+    const Jproche = dateCoursePlan(auj);
+    const limiteCourse = Jproche ? cleJour(ajouterJours(depuisCleJour(Jproche), -3)) : '9999-12-31';
     const cible = toutesSeances().find(s => s.statut === 'prevu' && s.date >= auj && s.date <= dans7 && s.date < limiteCourse && (s.type === 'ef' || s.type === 'recup'));
     if (!manquee) toast('Aucune séance clé manquée ces 4 derniers jours.', 'info');
     else if (!cible) toast('Pas de créneau facile pour la replacer : on laisse filer, c’est la bonne décision.', 'info');
@@ -3890,8 +4247,9 @@ function suivantesDansLaSemaine(s) {
   return w ? w.seances.filter(x => x !== s && x.date > s.date && x.type !== 'course' && ['prevu', 'aujourdhui'].includes(statutSeance(x))) : [];
 }
 /** Jour de la course, s'il figure au plan (sinon, pas de contrainte d'affûtage). */
-function dateCoursePlan() {
-  const c = toutesSeances().find(x => x.type === 'course');
+function dateCoursePlan(depuis) {
+  const k = depuis || cleJour(new Date());
+  const c = toutesSeances().filter(x => x.type === 'course' && x.date >= k).sort((a, b) => a.date.localeCompare(b.date))[0];
   return c ? c.date : null;
 }
 
@@ -3903,7 +4261,7 @@ function verifierDeplacement(s, cible, cascade = false) {
   const msgs = [];
   const ajouter = (niveau, texte) => msgs.push({ niveau, texte });
   const auj = cleJour(new Date());
-  const J = dateCoursePlan();
+  const J = dateCoursePlan(s.date);
   if (!s) return { bloquant: true, messages: [{ niveau: 'bloque', texte: 'Séance introuvable.' }] };
   if (s.type === 'course') ajouter('bloque', 'Le jour J ne se déplace pas ici : change la date de la course dans l’onglet Course.');
   else if (statutSeance(s) === 'fait') ajouter('bloque', 'Cette séance est déjà réalisée.');
@@ -3967,7 +4325,7 @@ function htmlDeplacement() {
   const d = deplacement, s = d && trouverSeance(d.id);
   if (!s) return '';
   const t = TYPES_SEANCE[s.type] || TYPES_SEANCE.ef;
-  const auj = cleJour(new Date()), J = dateCoursePlan(), cible = d.cible;
+  const auj = cleJour(new Date()), cible = d.cible, J = dateCoursePlan(s.date);
   const depart = s.date < auj ? auj : s.date;
   // Raccourcis : le lendemain, deux jours plus tard, le prochain jour libre sans contre-indication
   const rapides = [];
@@ -3981,10 +4339,10 @@ function htmlDeplacement() {
     if (!v.bloquant && !v.messages.some(m => m.niveau === 'alerte')) { if (!rapides.some(r => r[0] === jour)) rapides.push([jour, 'Prochain jour libre']); break; }
   }
   const puces = rapides.filter(r => r[0] >= auj && (!J || r[0] < J)).map(([jour, libelle]) =>
-    `<button data-act="choisirJourDeplacement" data-arg="${jour}" class="tapable h-9 px-3 rounded-full ${jour === cible ? 'bg-ocre text-[#23120A] font-semibold' : 'verre'} text-[12.5px]">${libelle} <span class="opacity-70">${dateCourte(depuisCleJour(jour))}</span></button>`).join('');
+    `<button data-act="choisirJourDeplacement" data-arg="${jour}" class="tapable h-9 px-3 rounded-full ${jour === cible ? 'bg-ocre text-white font-semibold' : 'verre'} text-[12.5px]">${libelle} <span class="opacity-70">${dateCourte(depuisCleJour(jour))}</span></button>`).join('');
   // Calendrier : 4 semaines à partir de la semaine de la séance (ou de la semaine en cours)
   const debut = lundiDe(depuisCleJour(s.date < auj ? s.date : auj));
-  const pastille = `<span id="pastilleDeplacement" class="pastille-glisser absolute inset-x-0.5 bottom-0.5 h-[17px] rounded-md text-[9.5px] font-semibold grid place-items-center text-[#23120A] overflow-hidden" style="background:${t.couleur}">${ABREGES_TYPE[s.type] || 'Séance'}</span>`;
+  const pastille = `<span id="pastilleDeplacement" class="pastille-glisser absolute inset-x-0.5 bottom-0.5 h-[17px] rounded-md text-[9.5px] font-semibold grid place-items-center text-white overflow-hidden" style="background:${t.couleur}">${ABREGES_TYPE[s.type] || 'Séance'}</span>`;
   let cases = '';
   for (let i = 0; i < 28; i++) {
     const date = ajouterJours(debut, i), jour = cleJour(date);
@@ -4021,7 +4379,7 @@ function htmlDeplacement() {
       <div class="text-[11.5px] text-brume uppercase tracking-wide mb-1.5">Logique du coach${cible && cible !== s.date ? ' · ' + dateLongue(depuisCleJour(cible)) : ''}</div>
       <div class="space-y-1.5">${messages}</div>
     </div>
-    ${suivantes.length ? `<label class="flex items-center gap-3 text-[13px] mb-3"><input type="checkbox" data-act="basculerCascadeDeplacement" ${d.cascade ? 'checked' : ''} class="w-5 h-5 accent-[#FF9D66]">Décaler aussi ${suivantes.length > 1 ? 'les ' + suivantes.length + ' séances suivantes' : 'la séance suivante'} de la semaine</label>` : ''}
+    ${suivantes.length ? `<label class="flex items-center gap-3 text-[13px] mb-3"><input type="checkbox" data-act="basculerCascadeDeplacement" ${d.cascade ? 'checked' : ''} class="w-5 h-5 accent-[#FC5200]">Décaler aussi ${suivantes.length > 1 ? 'les ' + suivantes.length + ' séances suivantes' : 'la séance suivante'} de la semaine</label>` : ''}
     <div class="mb-3"><label for="autreDateDeplacement" class="text-[12px] text-brume block mb-1.5">Ou une autre date</label>
       <input id="autreDateDeplacement" type="date" min="${auj}" ${J ? `max="${cleJour(ajouterJours(depuisCleJour(J), -1))}"` : ''} value="${cible || ''}" class="${CHAMP}"></div>
     <button data-act="confirmerDeplacement" ${ok ? '' : 'disabled'} class="${BTN_PRINCIPAL} ${ok ? '' : 'opacity-40'} mb-2">${cible && cible !== s.date ? 'Déplacer au ' + dateCourte(depuisCleJour(cible)) : 'Choisis un jour'}</button>
@@ -4039,7 +4397,7 @@ function brancherGlisser() {
     e.stopPropagation();
     const fantome = pastille.cloneNode(true);
     fantome.removeAttribute('id');
-    fantome.className = 'fantome-glisser h-[22px] px-2 rounded-md text-[11px] font-semibold grid place-items-center text-[#23120A]';
+    fantome.className = 'fantome-glisser h-[22px] px-2 rounded-md text-[11px] font-semibold grid place-items-center text-white';
     fantome.style.background = pastille.style.background;
     document.body.appendChild(fantome);
     let survol = null;
@@ -4152,7 +4510,7 @@ const sequenceIcs = () => Math.floor(Date.now() / 60000) % 1000000000;
 /** Séance planifiée → événement. Heures en UTC (suffixe Z) : format universel, lu à l'heure locale par tous les agendas. */
 function evenementIcs(s, uid) {
   const m = mesurerSeance(s);
-  const heure = s.type === 'course' ? (ETAT.objectif.heure || '09:00') : (ETAT.profil.heureSeance || '18:00');
+  const heure = s.type === 'course' ? ((courseParId(s.courseId) || ETAT.objectif).heure || '09:00') : (ETAT.profil.heureSeance || '18:00');
   const [h, mn] = String(heure).split(':').map(Number);
   const debut = depuisCleJour(s.date);
   debut.setHours(isFinite(h) ? h : 18, isFinite(mn) ? mn : 0, 0, 0);
@@ -4354,7 +4712,7 @@ function ouvrirModaleMontre(id) {
       <span class="text-[11px] text-brume">${{ warmup: 'Échauffement', work: 'Effort', recovery: 'Récup', cooldown: 'Retour au calme' }[st.purpose]}</span>
     </div>`;
   let corps = '';
-  if (w.warmup) corps += puce(w.warmup, '#6BE3B5');
+  if (w.warmup) corps += puce(w.warmup, '#16A34A');
   w.blocks.forEach(b => {
     corps += `<div class="rounded-xl bg-nuit/50 px-3 my-2"><div class="text-[12px] text-ocre pt-2">${b.iterations > 1 ? 'Répéter ' + b.iterations + ' fois' : 'Bloc continu'}</div>`;
     const vus = new Set();
@@ -4362,11 +4720,11 @@ function ouvrirModaleMontre(id) {
       const cle = st.purpose + JSON.stringify(st.goal) + (st.alert ? st.alert.label : '');
       if (b.iterations > 1 && vus.has(cle)) return;
       vus.add(cle);
-      corps += puce(st, st.purpose === 'recovery' ? '#9DA5CA' : '#FF5F8F');
+      corps += puce(st, st.purpose === 'recovery' ? '#8A93A6' : '#E5484D');
     });
     corps += '</div>';
   });
-  if (w.cooldown) corps += puce(w.cooldown, '#7CC8FF');
+  if (w.cooldown) corps += puce(w.cooldown, '#2F80ED');
 
   ouvrirModale(`
     <div class="flex items-center gap-3 mb-3">
@@ -4382,7 +4740,7 @@ function ouvrirModaleMontre(id) {
       <button data-act="copierMontre" data-arg="${s.id}" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-regular fa-copy mr-1.5"></i>Copier les étapes</button>
       <button data-act="partagerMontre" data-arg="${s.id}" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-solid fa-share-from-square mr-1.5"></i>Fichier séance</button>
     </div>
-    <button data-act="icsSeance" data-arg="${s.id}" class="tapable w-full h-12 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14.5px]"><i class="fa-regular fa-calendar-plus mr-2"></i>Ajouter au calendrier</button>`);
+    <button data-act="icsSeance" data-arg="${s.id}" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[14.5px]"><i class="fa-regular fa-calendar-plus mr-2"></i>Ajouter au calendrier</button>`);
 }
 
 async function partagerFichierSeance(id) {
@@ -4429,7 +4787,7 @@ function contexteCoach() {
 
 /* ---------- Lecture de l'écran : ce que le coureur a sous les yeux ---------- */
 
-const LIBELLES_VUES = { dashboard: 'Accueil', plan: 'Plan', objectif: 'Course', profil: 'Profil' };
+const LIBELLES_VUES = { dashboard: 'Accueil', plan: 'Plan', objectif: 'Courses', activites: 'Activités', profil: 'Profil' };
 const HORS_LECTURE = 'script,style,svg,canvas,noscript,[aria-hidden="true"],#btnCoachModale';
 const CHAMPS_PRIVES = /cle|secret|code|pin|token|pass|endpoint|relais/i;     // clés API et codes : jamais lus
 
@@ -4648,7 +5006,12 @@ function contexteIA() {
       parKm: s ? s.kms.filter((k, i) => s.kms.length <= 30 || i % Math.ceil(s.kms.length / 30) === 0 || i === s.kms.length - 1)
                   .map(k => ({ km: k.km, allure: formaterAllure(k.allure), dplus: Math.round(k.dplus), dmoins: Math.round(k.dmoins), consigne: k.consigne.texte })) : null
     } : null,
+    saison: coursesTriees().filter(courseComplete).map(x => ({
+      nom: nomCourse(x), date: x.date, distanceKm: x.distanceKm, type: x.type, dplus: (x.gpx ? x.gpx.dplus : x.dplus) || null,
+      priorite: (PRIORITES[x.priorite] || PRIORITES.A).libelle, tempsVise: x.tempsVise || null,
+      joursRestants: ecartJours(new Date(), depuisCleJour(x.date)), affichee: x.id === ETAT.courseActive })),
     plan: ETAT.plan ? {
+      approche: (APPROCHES[ETAT.profil.approche] || APPROCHES.equilibree).libelle,
       semaines: ETAT.plan.semaines.length,
       semaineEnCours: c.semaine ? { numero: c.semaine.numero, phase: PHASES[c.semaine.phase].libelle, allegee: !!c.semaine.relache, seances: c.semaine.seances.map(resume) } : null,
       prochaineSeance: c.prochaine ? resume(c.prochaine) : null,
@@ -5433,10 +5796,11 @@ let nbActivitesVisibles = 30;
 let joursBrouillon = [];
 let saisieObjectifEnCours = false;   // champs de la course modifiés, pas encore enregistrés
 let saisieReglagesEnCours = false;   // réglages modifiés, pas encore enregistrés
-let brouillonType = null, brouillonTech = null;
+let brouillonType = null, brouillonTech = null, brouillonPriorite = null;
+let afficherSemainesPassees = false;
 
 const CHAMP = 'w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]';   // 16 px : iOS ne zoome pas au toucher
-const BTN_PRINCIPAL = 'tapable w-full h-12 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[15px]';
+const BTN_PRINCIPAL = 'tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]';
 const BTN_SECONDAIRE = 'tapable w-full h-11 rounded-2xl verre text-[14px]';
 
 function allerA(nom) {
@@ -5450,7 +5814,7 @@ function allerA(nom) {
 }
 
 function rendreVue(nom) {
-  const f = { dashboard: rendreDashboard, plan: rendrePlan, objectif: rendreObjectif, profil: rendreProfil }[nom];
+  const f = { dashboard: rendreDashboard, plan: rendrePlan, objectif: rendreObjectif, activites: rendreActivites, profil: rendreProfil }[nom];
   if (!f) return;
   try { f(); } catch (e) { console.error('Rendu ' + nom, e); }
 }
@@ -5465,7 +5829,7 @@ function majEntete() {
   const p = profilActif(), bouton = $('#btnAvatar');
   if (!bouton) return;
   $('#avatarInitiales').textContent = p ? initiales(p.prenom) : '?';
-  bouton.style.setProperty('--couleur-profil', p ? p.couleur : '#FF9D66');
+  bouton.style.setProperty('--couleur-profil', p ? p.couleur : '#FC5200');
   bouton.setAttribute('aria-label', p ? 'Profil de ' + p.prenom + ', changer de profil' : 'Profils');
 }
 
@@ -5494,15 +5858,15 @@ function majBadgeSync(etat) {
 const GRAPHS = {};
 function configurerGraphiques() {
   if (typeof Chart === 'undefined') return;
-  Chart.defaults.color = '#9DA5CA';
+  Chart.defaults.color = '#8A93A6';
   Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, sans-serif';
   Chart.defaults.font.size = 11;
-  Chart.defaults.borderColor = 'rgba(157,165,202,.12)';
+  Chart.defaults.borderColor = 'rgba(138,147,166,.12)';
   Chart.defaults.maintainAspectRatio = false;
   Chart.defaults.plugins.legend.display = false;
   Object.assign(Chart.defaults.plugins.tooltip, {
-    backgroundColor: 'rgba(16,20,43,.95)', borderColor: 'rgba(157,165,202,.25)', borderWidth: 1,
-    padding: 10, cornerRadius: 10, titleColor: '#F0F2FA', bodyColor: '#F0F2FA', displayColors: false
+    backgroundColor: 'rgba(255,255,255,.98)', borderColor: 'rgba(138,147,166,.25)', borderWidth: 1,
+    padding: 10, cornerRadius: 10, titleColor: '#1F2430', bodyColor: '#1F2430', displayColors: false
   });
 }
 function graphique(id, config) {
@@ -5537,7 +5901,7 @@ function carteVide(icone, titre, texte, act, libelle, arg) {
     <div class="w-12 h-12 rounded-2xl bg-granit grid place-items-center mx-auto mb-3"><i class="fa-solid ${icone} text-ocre text-[18px]"></i></div>
     <div class="titre text-[19px] mb-1">${titre}</div>
     <p class="text-[13px] text-brume mb-4">${texte}</p>
-    ${act ? `<button data-act="${act}" ${arg ? `data-arg="${arg}"` : ''} class="tapable h-11 px-6 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14px]">${libelle}</button>` : ''}
+    ${act ? `<button data-act="${act}" ${arg ? `data-arg="${arg}"` : ''} class="tapable h-11 px-6 rounded-2xl bg-ocre text-white font-semibold text-[14px]">${libelle}</button>` : ''}
   </div>`;
 }
 
@@ -5548,7 +5912,7 @@ function joursLisibles(jours) {
 }
 
 const PUCE = 'text-[10.5px] px-1.5 py-0.5 rounded-md';
-const AVATAR_COACH = '<div class="w-7 h-7 rounded-full bg-ocre grid place-items-center shrink-0 mt-0.5"><i class="fa-solid fa-person-running text-[#23120A] text-[12px]"></i></div>';
+const AVATAR_COACH = '<div class="w-7 h-7 rounded-full bg-ocre grid place-items-center shrink-0 mt-0.5"><i class="fa-solid fa-person-running text-white text-[12px]"></i></div>';
 
 function blocComparaison(c) {
   const col = (titre, prevu, realise) => `<div>
@@ -5588,7 +5952,7 @@ function carteSeance(s, opts = {}) {
   const btnValider = `<button data-act="validerSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl ${st === 'fait' ? 'verre' : 'bg-vallee/20 text-vallee border border-vallee/30'} text-[12.5px]"><i class="fa-solid ${st === 'fait' ? 'fa-pen' : 'fa-check'} mr-1"></i>${st === 'fait' ? 'Modifier' : 'Valider'}</button>`;
   const btnMontre = `<button data-act="montreSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-stopwatch mr-1"></i>Montre</button>`;
   const btnAgenda = `<button data-act="icsSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-regular fa-calendar-plus mr-1"></i>Agenda</button>`;
-  const btnStrategie = `<button data-act="allerA" data-arg="objectif" class="tapable h-9 rounded-xl bg-ocre/20 text-ocre border border-ocre/30 text-[12.5px]"><i class="fa-solid fa-route mr-1"></i>Stratégie</button>`;
+  const btnStrategie = `<button data-act="voirCourse" data-arg="${s.courseId || ''}" class="tapable h-9 rounded-xl bg-ocre/20 text-ocre border border-ocre/30 text-[12.5px]"><i class="fa-solid fa-route mr-1"></i>Stratégie</button>`;
   const btnDeplacer = `<button data-act="deplacerSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-calendar-day mr-1"></i>${st === 'manque' ? 'Reporter' : 'Déplacer'}</button>`;
   let choix = course ? (s.date <= cleJour(new Date()) ? [btnValider, btnStrategie] : [btnStrategie, btnAgenda])
                      : [btnValider].concat(seanceDeplacable(s) ? [btnDeplacer] : [], [btnMontre, btnAgenda]);
@@ -5629,8 +5993,8 @@ function ligneActivite(a) {
   const c = s ? comparerSeance(s) : null;
   const trail = a.type === 'trail';
   return `<button data-act="ouvrirActivite" data-arg="${a.id}" class="tapable w-full text-left px-4 py-3 flex items-center gap-3">
-    <div class="w-9 h-9 rounded-xl grid place-items-center shrink-0" style="background:${trail ? 'rgba(255,157,102,.14)' : 'rgba(124,200,255,.14)'}">
-      <i class="fa-solid ${trail ? 'fa-mountain' : 'fa-road'} text-[13px]" style="color:${trail ? '#FF9D66' : '#7CC8FF'}"></i>
+    <div class="w-9 h-9 rounded-xl grid place-items-center shrink-0" style="background:${trail ? 'rgba(252,82,0,.14)' : 'rgba(47,128,237,.14)'}">
+      <i class="fa-solid ${trail ? 'fa-mountain' : 'fa-road'} text-[13px]" style="color:${trail ? '#FC5200' : '#2F80ED'}"></i>
     </div>
     <div class="flex-1 min-w-0">
       <div class="text-[14px] truncate">${esc(a.nom)}${a.effortMax ? ' <i class="fa-solid fa-trophy text-ocre text-[10px] ml-0.5"></i>' : ''}</div>
@@ -5647,9 +6011,10 @@ function ligneActivite(a) {
 /* ---------- Vue 1 : tableau de bord ---------- */
 
 function rendreDashboard() {
-  const o = ETAT.objectif;
+  const proch = prochaineCourse();
+  const o = proch || ETAT.objectif;
   const m = metriques();
-  const strat = calculerStrategie();
+  const strat = proch ? avecCourse(proch.id, () => calculerStrategie()) : null;
 
   // Salutation (le dimanche, c'est le jour des runners)
   const maintenant = new Date(), heure = maintenant.getHours(), dimanche = maintenant.getDay() === 0;
@@ -5659,10 +6024,13 @@ function rendreDashboard() {
 
   // Héros : le dossard de la course cible
   const btnCourse = $('#btnHeroCourse'), btnPlan = $('#btnHeroPlan');
-  const avecCourse = !!(o.date && o.distanceKm);
-  $('#heroBande').className = 'px-4 h-10 flex items-center justify-between text-white ' + (avecCourse ? (o.type === 'route' ? 'bande-route' : 'bande-trail') : 'bande-vide');
+  const coursePrete = !!proch;
+  $('#heroBande').className = 'px-4 h-10 flex items-center justify-between text-white ' + (coursePrete ? (o.type === 'route' ? 'bande-route' : 'bande-trail') : 'bande-vide');
   $('#heroPuceGauche').textContent = prenom || 'Runner du dimanche';
-  if (avecCourse) {
+  const hero = $('#heroDossard');
+  if (coursePrete) { hero.dataset.act = 'voirCourse'; hero.dataset.arg = o.id; hero.classList.add('cursor-pointer'); }
+  else { delete hero.dataset.act; delete hero.dataset.arg; }
+  if (coursePrete) {
     const j = ecartJours(new Date(), depuisCleJour(o.date));
     const jourCourse = depuisCleJour(o.date);
     const dplus = o.gpx ? o.gpx.dplus : o.dplus;
@@ -5678,34 +6046,47 @@ function rendreDashboard() {
       if (strat.dplusManquant) detail += '<br><span class="font-semibold text-[#B8431A]">D+ à renseigner pour un pronostic fiable</span>';
     }
     $('#heroDetail').innerHTML = detail;
-    $('#heroPuceDroite').textContent = o.tempsVise ? 'Objectif ' + formaterDuree(lireDuree(o.tempsVise)) : 'Objectif libre';
+    $('#heroPuceDroite').textContent = (o.priorite && o.priorite !== 'A' ? PRIORITES[o.priorite].libelle + ', ' : '') + (o.tempsVise ? 'objectif ' + formaterDuree(lireDuree(o.tempsVise)) : 'objectif libre');
   } else {
     $('#heroObjectifNom').textContent = 'Ton prochain dossard';
     $('#heroDate').textContent = '';
     $('#heroCompteur').textContent = '?';
     $('#heroCompteurLabel').textContent = 'Pas encore de course';
-    $('#heroSousLabel').textContent = 'Choisis-la pour lancer ton plan';
+    $('#heroSousLabel').textContent = 'Ajoute-la pour lancer ton plan';
     $('#heroDetail').textContent = '';
     $('#heroPuceDroite').textContent = '';
   }
-  btnCourse.textContent = o.date ? 'Modifier la course' : 'Définir la course';
+
+  // Les autres courses de la saison : compte à rebours en un coup d'œil
+  const autres = coursesAVenir().filter(c => !proch || c.id !== proch.id);
+  $('#autresCourses').innerHTML = autres.map(c => {
+    const j = ecartJours(new Date(), depuisCleJour(c.date)), d = depuisCleJour(c.date), pr = PRIORITES[c.priorite] || PRIORITES.A;
+    return `<button data-act="voirCourse" data-arg="${c.id}" class="tapable shrink-0 rounded-2xl verre pl-3 pr-3.5 py-2.5 text-left flex items-center gap-2.5 max-w-[240px]">
+      <span class="w-1.5 self-stretch rounded-full" style="background:${pr.couleur}"></span>
+      <span class="min-w-0"><span class="block text-[13px] font-semibold truncate">${esc(nomCourse(c))}</span>
+        <span class="block text-[11.5px] text-brume">${d.getDate()} ${MOIS_COURTS[d.getMonth()]} ${d.getFullYear()}, ${String(c.distanceKm).replace('.', ',')} km</span></span>
+      <span class="chiffre text-[22px] ml-1 shrink-0">J-${j}</span>
+    </button>`;
+  }).join('');
+  $('#autresCourses').classList.toggle('hidden', !autres.length);
+  btnCourse.textContent = ETAT.courses.length ? 'Mes courses' : 'Ajouter une course';
   if (ETAT.plan) { btnPlan.textContent = 'Voir le plan'; btnPlan.dataset.act = 'allerA'; btnPlan.dataset.arg = 'plan'; }
   else { btnPlan.textContent = 'Générer le plan'; btnPlan.dataset.act = 'genererPlan'; delete btnPlan.dataset.arg; }
 
   // Premiers pas : guide tant que niveau, course et plan ne sont pas en place.
-  const courseDefinie = !!(o.date && o.distanceKm);
+  const courseDefinie = !!proch;
   const etapes = [
     { fait: !m.parDefaut, titre: 'Ton niveau', texte: 'Importe tes sorties Strava ou indique une course récente.',
       boutons: [['ouvrirSync', '', 'Strava'], ['saisirReference', '', 'Référence']] },
-    { fait: courseDefinie, titre: 'Ta course', texte: 'Distance, dénivelé, date et temps visé.', boutons: [['allerA', 'objectif', 'Définir']] },
-    { fait: !!ETAT.plan, titre: 'Ton plan', texte: 'Construit jusqu’au jour J selon tes disponibilités.',
+    { fait: courseDefinie, titre: 'Tes courses', texte: 'Une ou plusieurs : distance, dénivelé, date, temps visé.', boutons: [['allerA', 'objectif', 'Ajouter']] },
+    { fait: !!ETAT.plan, titre: 'Ton plan', texte: 'Construit course après course selon tes disponibilités.',
       boutons: [['genererPlan', '', 'Générer']], bloque: !courseDefinie }
   ];
   const nbFaites = etapes.filter(e => e.fait).length;
   $('#premiersPas').innerHTML = nbFaites === 3 ? '' : `<div class="rounded-xl2 verre p-4 mb-5">
-      <div class="flex items-baseline justify-between mb-1"><h3 class="titre text-[18px]">Pour démarrer</h3><span class="text-[12px] text-brume">${nbFaites}/3</span></div>
+      <div class="flex items-baseline justify-between mb-1"><h3 class="titre text-[16px]">Pour démarrer</h3><span class="text-[12px] text-brume">${nbFaites}/3</span></div>
       ${etapes.map((e, i) => `<div class="flex items-center gap-3 py-2.5 ${i ? 'filet' : ''}">
-          <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 text-[12px] font-semibold ${e.fait ? 'bg-vallee text-nuit' : 'bg-granit text-brume'}">${e.fait ? '<i class="fa-solid fa-check"></i>' : i + 1}</div>
+          <div class="w-7 h-7 rounded-full grid place-items-center shrink-0 text-[12px] font-semibold ${e.fait ? 'bg-vallee text-white' : 'bg-granit text-brume'}">${e.fait ? '<i class="fa-solid fa-check"></i>' : i + 1}</div>
           <div class="flex-1 min-w-0"><div class="text-[14px] ${e.fait ? 'text-brume line-through' : ''}">${e.titre}</div>${e.fait ? '' : `<div class="text-[12px] text-brume">${e.texte}</div>`}</div>
           ${e.fait ? '' : `<div class="flex gap-1.5 shrink-0">${e.boutons.map(([act, arg, lib]) =>
             `<button data-act="${act}" ${arg ? `data-arg="${arg}"` : ''} ${e.bloque ? 'disabled' : ''} class="tapable h-8 px-3 rounded-lg text-[12.5px] ${e.bloque ? 'bg-granit text-brume/50' : 'bg-ocre/15 text-ocre border border-ocre/30'}">${lib}</button>`).join('')}</div>`}
@@ -5722,19 +6103,19 @@ function rendreDashboard() {
     const auj = seancesDuJour();
     if (auj.length) cible.innerHTML = auj.map(s => carteSeance(s)).join('<div class="h-2"></div>');
     else if (!prochaineSeance()) {
-      cible.innerHTML = carteVide('fa-flag-checkered', 'Plan terminé', 'Fixe ton prochain objectif : le nouveau plan partira de ton niveau actuel.', 'allerA', 'Nouvel objectif', 'objectif');
+      cible.innerHTML = carteVide('fa-flag-checkered', 'Plan terminé', 'Ajoute ta prochaine course : le nouveau plan partira de ton niveau actuel.', 'nouvelleCourse', 'Ajouter une course');
     } else {
       const p = prochaineSeance();
       cible.innerHTML = `<div class="rounded-xl2 verre p-4 mb-2 flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-granit grid place-items-center"><i class="fa-solid fa-bed text-brume"></i></div>
-          <div><div class="titre text-[18px]">Repos</div><div class="text-[12.5px] text-brume">La récupération fait partie du plan. ${p ? 'Prochaine séance ' + JOURS_LONGS[depuisCleJour(p.date).getDay()] + '.' : ''}</div></div>
+          <div><div class="titre text-[16px]">Repos</div><div class="text-[12.5px] text-brume">La récupération fait partie du plan. ${p ? 'Prochaine séance ' + JOURS_LONGS[depuisCleJour(p.date).getDay()] + '.' : ''}</div></div>
         </div>` + (p ? carteSeance(p, { detail: true }) : '');
     }
   }
 
   // Métriques
   const fiab = fiabiliteNiveau();
-  const couleurFiab = { bonne: '#6BE3B5', moyenne: '#FF9D66', faible: '#FF5F8F' }[fiab.niveau];
+  const couleurFiab = { bonne: '#16A34A', moyenne: '#FC5200', faible: '#E5484D' }[fiab.niveau];
   const tuile = (titre, valeur, unite, point) => `<div class="rounded-2xl verre px-3 py-3">
       <div class="text-[11px] text-brume flex items-center gap-1.5">${titre}${point ? `<span class="w-1.5 h-1.5 rounded-full" style="background:${point}"></span>` : ''}</div>
       <div class="chiffre text-[30px] mt-1">${valeur}</div>
@@ -5774,9 +6155,9 @@ function rendreDashboard() {
       data: {
         labels: serie.map(p => p.date.slice(8, 10) + '/' + p.date.slice(5, 7)),
         datasets: [
-          { type: 'line', label: 'Condition', data: serie.map(p => p.condition), borderColor: '#FF9D66', backgroundColor: degrade('255,157,102'), fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
-          { type: 'line', label: 'Fatigue', data: serie.map(p => p.fatigue), borderColor: '#7CC8FF', borderDash: [4, 3], tension: 0.35, pointRadius: 0, borderWidth: 1.6, fill: false, yAxisID: 'y' },
-          { type: 'bar', label: 'Charge du jour', data: serie.map(p => p.charge), backgroundColor: 'rgba(157,165,202,.28)', borderRadius: 3, barPercentage: 0.55, yAxisID: 'y2' }
+          { type: 'line', label: 'Condition', data: serie.map(p => p.condition), borderColor: '#FC5200', backgroundColor: degrade('252,82,0'), fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
+          { type: 'line', label: 'Fatigue', data: serie.map(p => p.fatigue), borderColor: '#2F80ED', borderDash: [4, 3], tension: 0.35, pointRadius: 0, borderWidth: 1.6, fill: false, yAxisID: 'y' },
+          { type: 'bar', label: 'Charge du jour', data: serie.map(p => p.charge), backgroundColor: 'rgba(138,147,166,.28)', borderRadius: 3, barPercentage: 0.55, yAxisID: 'y2' }
         ]
       },
       options: {
@@ -5804,10 +6185,14 @@ function rendreDashboard() {
     const anneau = $('#anneauRespect');
     anneau.style.transition = 'stroke-dashoffset .8s cubic-bezier(.22,1,.36,1)';
     anneau.style.strokeDashoffset = circonference * (1 - r.pct);
-    anneau.setAttribute('stroke', r.pct >= 0.8 ? '#6BE3B5' : r.pct >= 0.5 ? '#FF9D66' : '#FF5F8F');
+    anneau.setAttribute('stroke', r.pct >= 0.8 ? '#16A34A' : r.pct >= 0.5 ? '#FC5200' : '#E5484D');
     $('#respectDetail').textContent = r.faites + ' séance' + (r.faites > 1 ? 's' : '') + ' réalisée' + (r.faites > 1 ? 's' : '') + ' sur ' + r.echues +
       (r.faites ? ', dont ' + r.conformes + ' conforme' + (r.conformes > 1 ? 's' : '') + ' au plan.' : '.');
   }
+
+  rendreSemaineDashboard();
+  rendreStatistiques();
+  rendreRecords();
 
   // Journal
   const dernieres = ETAT.activites.slice(0, 5);
@@ -5815,6 +6200,204 @@ function rendreDashboard() {
     ? dernieres.map(ligneActivite).join('')
     : `<div class="px-4 py-5 text-center text-[13px] text-brume">Aucune sortie pour l’instant.<br>
         <button data-act="ouvrirSync" class="text-ocre mt-1 tapable">Connecter Strava ou importer un fichier</button></div>`;
+}
+
+/* ---------- Tableau de bord : semaine, statistiques, records ---------- */
+
+let periodeStats = 'semaines';           // 'semaines' | 'mois' | 'annee'
+let filtreActivites = 'tout';            // 'tout' | 'route' | 'trail'
+
+/** Totaux d'une liste de sorties. */
+function totaux(liste) {
+  return liste.reduce((t, a) => ({ km: t.km + a.distanceM / 1000, temps: t.temps + a.tempsS, dplus: t.dplus + (a.dplus || 0), n: t.n + 1 }),
+                      { km: 0, temps: 0, dplus: 0, n: 0 });
+}
+/** Sorties dont la date est dans [debut, fin[. */
+function sortiesEntre(debut, fin) {
+  const a = debut.getTime(), b = fin.getTime();
+  return ETAT.activites.filter(x => { const t = new Date(x.date).getTime(); return t >= a && t < b; });
+}
+const fr1d = v => String(Math.round(v * 10) / 10).replace('.', ',');
+const dureeCourte = s => { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min'; };
+function ecartTexte(actuel, avant, unite) {
+  if (!(avant > 0)) return '';
+  const d = actuel - avant;
+  const cls = d >= 0 ? 'text-vallee' : 'text-brume';
+  return `<span class="${cls}"><i class="fa-solid ${d >= 0 ? 'fa-arrow-up' : 'fa-arrow-down'} text-[9px] mr-0.5"></i>${fr1d(Math.abs(d))} ${unite}</span>`;
+}
+const statBloc = (titre, valeur, unite, sous = '') => `<div class="min-w-0">
+    <div class="text-[11px] text-brume">${titre}</div>
+    <div class="chiffre text-[26px] mt-0.5 whitespace-nowrap">${valeur}${unite ? `<span class="text-[12px] text-brume font-sans font-normal ml-0.5">${unite}</span>` : ''}</div>
+    ${sous ? `<div class="text-[11px] mt-0.5">${sous}</div>` : ''}
+  </div>`;
+
+/** « Cette semaine » : kilomètres jour par jour, comparés à la semaine dernière et au plan. */
+function rendreSemaineDashboard() {
+  const cible = $('#carteSemaine');
+  if (!cible) return;
+  const lundi = lundiDe(new Date());
+  const t = totaux(sortiesEntre(lundi, ajouterJours(lundi, 7)));
+  const avant = totaux(sortiesEntre(ajouterJours(lundi, -7), new Date(Date.now() - 7 * 86400000)));
+  const w = semaineCourante();
+  const prevuKm = w ? w.seances.reduce((s, x) => s + mesurerSeance(x).distanceM, 0) / 1000 : 0;
+  const parJour = [0, 1, 2, 3, 4, 5, 6].map(i => {
+    const d = ajouterJours(lundi, i), k = cleJour(d);
+    const km = sortiesEntre(d, ajouterJours(d, 1)).reduce((s, a) => s + a.distanceM / 1000, 0);
+    const prevues = w ? w.seances.filter(s => s.date === k) : [];
+    return { d, k, km, prevues };
+  });
+  const max = Math.max(5, ...parJour.map(j => j.km), ...parJour.map(j => j.prevues.reduce((s, x) => s + mesurerSeance(x).distanceM / 1000, 0)));
+  const auj = cleJour(new Date());
+  const barres = parJour.map(j => {
+    const prevuKm = j.prevues.reduce((s, x) => s + mesurerSeance(x).distanceM / 1000, 0);
+    const h = Math.round(j.km / max * 64), hp = Math.round(prevuKm / max * 64);
+    const course = j.prevues.some(x => x.type === 'course');
+    return `<div class="flex flex-col items-center gap-1 flex-1">
+      <div class="relative w-full h-[64px] flex items-end justify-center">
+        ${hp && !j.km ? `<div class="absolute bottom-0 w-[60%] max-w-[22px] rounded-md border-2 border-dashed border-[#CBD0D8]" style="height:${Math.max(6, hp)}px"></div>` : ''}
+        ${j.km ? `<div class="w-[60%] max-w-[22px] rounded-md bg-ocre" style="height:${Math.max(5, h)}px"></div>` : ''}
+        ${course ? '<i class="fa-solid fa-flag-checkered absolute -top-1 text-[11px] text-ocre"></i>' : ''}
+      </div>
+      <div class="text-[10.5px] ${j.k === auj ? 'text-ocre font-bold' : 'text-brume'}">${'LMMJVSD'[(j.d.getDay() + 6) % 7]}</div>
+    </div>`;
+  }).join('');
+  const pct = prevuKm > 0 ? Math.min(1, t.km / prevuKm) : null;
+  cible.innerHTML = `
+    <div class="grid grid-cols-3 gap-3">
+      ${statBloc('Distance', fr1d(t.km), 'km', ecartTexte(t.km, avant.km, 'km') ? ecartTexte(t.km, avant.km, 'km') + ' <span class="text-brume">vs S-1</span>' : '')}
+      ${statBloc('Temps', t.temps ? dureeCourte(t.temps) : '0 min', '')}
+      ${statBloc('Dénivelé', Math.round(t.dplus), 'm', `<span class="text-brume">${nbTexte(t.n, 'sortie', 'sorties')}</span>`)}
+    </div>
+    <div class="flex items-end gap-1 mt-4">${barres}</div>
+    ${pct != null ? `<div class="mt-3">
+      <div class="flex justify-between text-[11.5px] text-brume mb-1"><span>Plan : ${fr1d(prevuKm)} km prévus${w && w.phase ? ', ' + PHASES[w.phase].libelle.toLowerCase() : ''}</span><span>${Math.round(pct * 100)} %</span></div>
+      <div class="h-1.5 rounded-full bg-granit overflow-hidden"><div class="h-full rounded-full bg-ocre" style="width:${Math.round(pct * 100)}%"></div></div>
+    </div>` : ''}`;
+}
+
+/** Statistiques par semaines (12), par mois (12) ou année en cours vs année précédente. */
+function rendreStatistiques() {
+  $$('#choixPeriode button').forEach(b => b.classList.toggle('actif', b.dataset.arg === periodeStats));
+  const resume = $('#resumePeriode'), legende = $('#legendeStats');
+  if (!resume) return;
+  const maintenant = new Date();
+  if (periodeStats === 'semaines' || periodeStats === 'mois') {
+    const parSemaines = periodeStats === 'semaines';
+    const series = [];
+    for (let i = 11; i >= 0; i--) {
+      let debut, fin, label;
+      if (parSemaines) {
+        debut = ajouterJours(lundiDe(maintenant), -7 * i); fin = ajouterJours(debut, 7);
+        label = debut.getDate() + '/' + (debut.getMonth() + 1);
+      } else {
+        debut = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1); fin = new Date(debut.getFullYear(), debut.getMonth() + 1, 1);
+        label = MOIS_COURTS[debut.getMonth()];
+      }
+      series.push(Object.assign({ label }, totaux(sortiesEntre(debut, fin))));
+    }
+    const actuel = series[series.length - 1], precedent = series[series.length - 2];
+    const passees = series.slice(0, -1).filter(x => x.n);
+    const moyenne = passees.length ? passees.reduce((s, x) => s + x.km, 0) / passees.length : 0;
+    const meilleur = series.reduce((b, x) => (x.km > b.km ? x : b), series[0]);
+    resume.innerHTML = `<div class="grid grid-cols-3 gap-3">
+      ${statBloc(parSemaines ? 'Cette semaine' : 'Ce mois', fr1d(actuel.km), 'km', ecartTexte(actuel.km, precedent.km, 'km'))}
+      ${statBloc('Moyenne', fr1d(moyenne), 'km', `<span class="text-brume">par ${parSemaines ? 'semaine' : 'mois'}</span>`)}
+      ${statBloc('Record', fr1d(meilleur.km), 'km', `<span class="text-brume">${meilleur.km ? esc(meilleur.label) : '—'}</span>`)}
+    </div>`;
+    legende.textContent = parSemaines ? '12 dernières semaines, en kilomètres.' : '12 derniers mois, en kilomètres.';
+    graphique('graphStats', {
+      type: 'bar',
+      data: { labels: series.map(x => x.label), datasets: [{ data: series.map(x => Math.round(x.km * 10) / 10),
+        backgroundColor: series.map((x, i) => i === series.length - 1 ? '#FC5200' : 'rgba(252,82,0,.35)'), borderRadius: 5, barPercentage: 0.72 }] },
+      options: {
+        scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: parSemaines ? 6 : 12 } },
+                  y: { beginAtZero: true, ticks: { maxTicksLimit: 4, callback: v => v + ' km' } } },
+        plugins: { tooltip: { callbacks: { label: i => { const x = series[i.dataIndex]; return fr1d(x.km) + ' km, ' + dureeCourte(x.temps) + ', ' + Math.round(x.dplus) + ' m D+, ' + nbTexte(x.n, 'sortie', 'sorties'); } } } }
+      }
+    });
+    return;
+  }
+  // Année : cumul mois par mois, comparé à l'an dernier à la même date
+  const an = maintenant.getFullYear();
+  const debutAn = new Date(an, 0, 1);
+  const tAn = totaux(sortiesEntre(debutAn, ajouterJours(maintenant, 1)));
+  const memeDateAvant = new Date(an - 1, maintenant.getMonth(), maintenant.getDate() + 1);
+  const tAvant = totaux(sortiesEntre(new Date(an - 1, 0, 1), memeDateAvant));
+  const jourAn = ecartJours(debutAn, maintenant) + 1;
+  const projection = tAn.km / jourAn * (((an % 4 === 0 && an % 100 !== 0) || an % 400 === 0) ? 366 : 365);
+  resume.innerHTML = `<div class="grid grid-cols-3 gap-3">
+      ${statBloc(String(an), fr1d(tAn.km), 'km', ecartTexte(tAn.km, tAvant.km, 'km') ? ecartTexte(tAn.km, tAvant.km, 'km') + ' <span class="text-brume">vs ' + (an - 1) + '</span>' : '')}
+      ${statBloc('Temps', tAn.temps ? Math.round(tAn.temps / 3600) : 0, 'h', `<span class="text-brume">${nbTexte(tAn.n, 'sortie', 'sorties')}</span>`)}
+      ${statBloc('Dénivelé', Math.round(tAn.dplus).toLocaleString('fr-FR'), 'm', `<span class="text-brume">projection ${Math.round(projection)} km</span>`)}
+    </div>`;
+  legende.textContent = 'Kilomètres cumulés depuis le 1er janvier : ' + an + ' en orange, ' + (an - 1) + ' en gris.';
+  const cumul = (annee, jusquA) => {
+    let c = 0;
+    return MOIS_COURTS.map((_, mo) => {
+      const debut = new Date(annee, mo, 1), fin = new Date(annee, mo + 1, 1);
+      if (jusquA && debut > jusquA) return null;
+      c += totaux(sortiesEntre(debut, fin)).km;
+      return Math.round(c);
+    });
+  };
+  graphique('graphStats', {
+    type: 'line',
+    data: { labels: MOIS_COURTS, datasets: [
+      { label: String(an), data: cumul(an, maintenant), borderColor: '#FC5200', backgroundColor: degrade('252,82,0', 0.22), fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2.4 },
+      { label: String(an - 1), data: cumul(an - 1), borderColor: '#B4BAC5', borderDash: [4, 3], pointRadius: 0, borderWidth: 1.6, tension: 0.3, fill: false }
+    ] },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+                y: { beginAtZero: true, ticks: { maxTicksLimit: 4, callback: v => v + ' km' } } },
+      plugins: { tooltip: { displayColors: true, callbacks: { label: i => i.dataset.label + ' : ' + (i.parsed.y == null ? '—' : i.parsed.y + ' km') } } }
+    }
+  });
+}
+
+/** Records : meilleurs temps sur les distances classiques (sorties entières), plus longues sorties, plus grosses semaines. */
+const DISTANCES_RECORDS = [
+  { libelle: '5 km', m: 5000 }, { libelle: '10 km', m: 10000 },
+  { libelle: 'Semi-marathon', m: 21097.5 }, { libelle: 'Marathon', m: 42195 }
+];
+function calculerRecords() {
+  const acts = ETAT.activites.filter(a => a.distanceM > 0 && a.tempsS > 0);
+  const recs = DISTANCES_RECORDS.map(d => {
+    let best = null;
+    acts.forEach(a => {
+      if (a.distanceM < d.m * 0.98 || a.distanceM > d.m * 1.06) return;
+      if ((a.dplus || 0) / (a.distanceM / 1000) > 15) return;            // pas de record « route » sur un parcours très vallonné
+      const t = a.tempsS * d.m / a.distanceM;
+      if (!best || t < best.t) best = { t, a };
+    });
+    return { libelle: d.libelle, valeur: best ? formaterDuree(best.t) : null, sous: best ? formaterAllure(best.t / (d.m / 1000)) + '/km, ' + dateCourte(best.a.date) : '', id: best ? best.a.id : null };
+  });
+  const maxi = (f) => acts.reduce((b, a) => (!b || f(a) > f(b) ? a : b), null);
+  const longue = maxi(a => a.distanceM), haute = maxi(a => a.dplus || 0), duree = maxi(a => a.tempsS);
+  // Plus grosse semaine
+  const semaines = new Map();
+  acts.forEach(a => { const k = cleJour(lundiDe(new Date(a.date))); semaines.set(k, (semaines.get(k) || 0) + a.distanceM / 1000); });
+  let grosse = null;
+  semaines.forEach((km, k) => { if (!grosse || km > grosse.km) grosse = { k, km }; });
+  return recs.concat([
+    { libelle: 'Plus longue sortie', valeur: longue ? fr1d(longue.distanceM / 1000) + ' km' : null, sous: longue ? dateCourte(longue.date) : '', id: longue && longue.id },
+    { libelle: 'Plus gros dénivelé', valeur: haute && haute.dplus > 0 ? haute.dplus + ' m' : null, sous: haute && haute.dplus > 0 ? fr1d(haute.distanceM / 1000) + ' km, ' + dateCourte(haute.date) : '', id: haute && haute.dplus > 0 ? haute.id : null },
+    { libelle: 'Plus longue durée', valeur: duree ? dureeCourte(duree.tempsS) : null, sous: duree ? dateCourte(duree.date) : '', id: duree && duree.id },
+    { libelle: 'Plus grosse semaine', valeur: grosse ? fr1d(grosse.km) + ' km' : null, sous: grosse ? 'semaine du ' + dateCourte(depuisCleJour(grosse.k)) : '', id: null }
+  ]);
+}
+function rendreRecords() {
+  const cible = $('#grilleRecords');
+  if (!cible) return;
+  if (!ETAT.activites.length) {
+    cible.innerHTML = `<div class="col-span-2 rounded-xl2 verre p-4 text-[13px] text-brume text-center">Tes records apparaîtront ici dès tes premières sorties importées.</div>`;
+    return;
+  }
+  cible.innerHTML = calculerRecords().map(r => `<${r.id ? `button data-act="ouvrirActivite" data-arg="${r.id}"` : 'div'} class="${r.id ? 'tapable ' : ''}text-left rounded-2xl verre px-3.5 py-3">
+      <div class="text-[11.5px] text-brume flex items-center gap-1.5">${r.valeur && /km|Semi|Marathon/.test(r.libelle) && !/Plus/.test(r.libelle) ? '<i class="fa-solid fa-trophy text-[10px] text-[#E0A100]"></i>' : ''}${r.libelle}</div>
+      <div class="chiffre text-[24px] mt-1 ${r.valeur ? '' : 'text-brume/50'}">${r.valeur || '—'}</div>
+      <div class="text-[11px] text-brume truncate">${r.sous || 'pas encore de sortie'}</div>
+    </${r.id ? 'button' : 'div'}>`).join('');
 }
 
 /* ---------- Vue 2 : coach ---------- */
@@ -5950,7 +6533,7 @@ function carteCleCoach() {
     return `<div class="rounded-2xl bg-ocre/10 border border-ocre/30 p-3.5">
       <div class="titre text-[17px] leading-tight">Active ton coach</div>
       <p class="text-[12.5px] text-brume leading-relaxed mt-1">${ia.mode === 'claude' ? 'Il manque ta clé API Anthropic.' : 'Il manque l’adresse de ton relais.'} Tu peux aussi revenir à Gemini, gratuit.</p>
-      <button data-act="reglagesCoach" class="tapable w-full h-11 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14.5px] mt-2.5">Ouvrir les réglages</button></div>`;
+      <button data-act="reglagesCoach" class="tapable w-full h-11 rounded-2xl bg-ocre text-white font-semibold text-[14.5px] mt-2.5">Ouvrir les réglages</button></div>`;
   }
   return `<div id="carteCleCoach" class="rounded-2xl bg-ocre/10 border border-ocre/30 p-3.5">
     <div class="titre text-[17px] leading-tight">Active ton coach en 1 minute</div>
@@ -5958,7 +6541,7 @@ function carteCleCoach() {
     <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="tapable block text-center h-11 leading-[44px] rounded-2xl verre text-[14px] mt-2.5"><i class="fa-brands fa-google mr-1.5"></i>Obtenir ma clé gratuite</a>
     <input id="cleGeminiPanneau" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Colle ta clé ici (AIza…)"
       class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px] mt-2">
-    <button data-act="enregistrerCleCoach" class="tapable w-full h-11 rounded-2xl bg-ocre text-[#23120A] font-semibold text-[14.5px] mt-2">Activer le coach</button>
+    <button data-act="enregistrerCleCoach" class="tapable w-full h-11 rounded-2xl bg-ocre text-white font-semibold text-[14.5px] mt-2">Activer le coach</button>
   </div>`;
 }
 /** Pas de clé : message d'aide, et la carte d'activation passe au premier plan. */
@@ -6079,34 +6662,131 @@ function executerActionDemarrage() {
 
 /* ---------- Vue 3 : plan ---------- */
 
+/* ---------- Vue 2 : plan, saison et méthode ---------- */
+
+/** La saison : frise de aujourd'hui à la dernière course, puis la liste des courses avec leur compte à rebours. */
+function rendreSaison() {
+  const cible = $('#saisonCourses');
+  if (!cible) return;
+  const avenir = coursesAVenir();
+  if (!avenir.length) {
+    cible.innerHTML = `<div class="rounded-xl2 verre p-4 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-ocre/10 grid place-items-center shrink-0"><i class="fa-solid fa-flag-checkered text-ocre"></i></div>
+      <div class="flex-1 min-w-0"><div class="titre text-[15px]">Aucune course à venir</div><div class="text-[12px] text-brume">Ajoute une ou plusieurs courses : le plan s’organise autour d’elles.</div></div>
+      <button data-act="nouvelleCourse" class="tapable h-9 px-3.5 rounded-xl bg-ocre text-white text-[13px] font-semibold shrink-0">Ajouter</button>
+    </div>`;
+    return;
+  }
+  const debut = depuisCleJour(cleJour(new Date())).getTime();
+  const fin = depuisCleJour(avenir[avenir.length - 1].date).getTime();
+  const total = Math.max(1, fin - debut);
+  const pos = d => Math.round(((depuisCleJour(d).getTime() - debut) / total) * 1000) / 10;
+  // Bandes de phases, d'après le plan
+  let bandes = '';
+  if (ETAT.plan) {
+    const sem = ETAT.plan.semaines.filter(w => cleJour(ajouterJours(depuisCleJour(w.lundi), 7)) > cleJour(new Date()));
+    bandes = sem.map(w => {
+      const a = Math.max(0, pos(w.lundi)), b = Math.min(100, pos(cleJour(ajouterJours(depuisCleJour(w.lundi), 7))));
+      return b > a ? `<span style="position:absolute;left:${a}%;width:${b - a}%;top:0;bottom:0;background:${PHASES[w.phase].couleur};opacity:${w.relache ? 0.45 : 0.85}"></span>` : '';
+    }).join('');
+  }
+  const marques = avenir.map(c => {
+    const pr = PRIORITES[c.priorite] || PRIORITES.A;
+    return `<span class="frise-marque" style="left:${Math.min(97, Math.max(3, pos(c.date)))}%"><span class="point" style="background:${pr.couleur}"></span></span>`;
+  }).join('');
+  const premierMois = new Date(debut), dernierMois = new Date(fin);
+  cible.innerHTML = `<div class="rounded-xl2 verre p-4">
+    <div class="flex items-baseline justify-between mb-1">
+      <h3 class="titre text-[15px]">Ta saison</h3>
+      <button data-act="nouvelleCourse" class="text-[12px] text-ocre font-medium tapable"><i class="fa-solid fa-plus mr-1"></i>Course</button>
+    </div>
+    <div class="frise"><div class="frise-ligne" style="position:absolute">${bandes}</div>${marques}</div>
+    <div class="flex justify-between text-[10.5px] text-brume -mt-1 mb-2"><span>Aujourd’hui</span><span>${MOIS_COURTS[dernierMois.getMonth()]} ${dernierMois.getFullYear()}</span></div>
+    <div class="groupe">
+      ${avenir.map(c => {
+        const pr = PRIORITES[c.priorite] || PRIORITES.A, d = depuisCleJour(c.date), j = ecartJours(new Date(), d);
+        const sem = Math.floor(j / 7);
+        return `<button data-act="voirCourse" data-arg="${c.id}" class="tapable w-full text-left py-2.5 flex items-center gap-3">
+          <span class="w-8 h-8 rounded-lg grid place-items-center text-[12px] font-bold text-white shrink-0" style="background:${pr.couleur}">${pr.court}</span>
+          <span class="flex-1 min-w-0"><span class="block text-[14px] font-semibold truncate">${esc(nomCourse(c))}</span>
+            <span class="block text-[11.5px] text-brume truncate">${JOURS_COURTS[d.getDay()]} ${d.getDate()} ${MOIS_COURTS[d.getMonth()]} ${d.getFullYear()}, ${String(c.distanceKm).replace('.', ',')} km${c.type === 'trail' && (c.gpx ? c.gpx.dplus : c.dplus) ? ', ' + (c.gpx ? c.gpx.dplus : c.dplus) + ' m D+' : ''}</span></span>
+          <span class="text-right shrink-0"><span class="block chiffre text-[20px]">J-${j}</span><span class="block text-[10.5px] text-brume">${sem >= 2 ? sem + ' sem.' : pr.libelle.toLowerCase()}</span></span>
+        </button>`;
+      }).join('')}
+    </div>
+  </div>`;
+  void premierMois;
+}
+
+/** Méthode : approche choisie et principes appliqués, avec leurs sources. */
+function rendreMethode() {
+  const cible = $('#carteMethode');
+  if (!cible) return;
+  const actuelle = ETAT.profil.approche || 'equilibree';
+  const a = APPROCHES[actuelle] || APPROCHES.equilibree;
+  const principes = [
+    ['fa-seedling', 'Foncier', 'Base aérobie, côtes et lignes droites avant la vitesse.', 'Lydiard, Maffetone'],
+    ['fa-bolt', 'Développement', 'VMA et seuil aux allures calculées sur ton niveau (VDOT).', 'Daniels, méthode norvégienne'],
+    ['fa-bullseye', 'Spécifique', 'Allure course, sortie longue avec fin à allure, sortie moyenne-longue.', 'Canova, Pfitzinger, Hanson'],
+    ['fa-feather', 'Affûtage', 'Volume -40 à -60 % sur 1 à 3 semaines, intensité gardée.', 'Mujika & Padilla'],
+    ['fa-bed', 'Récupération', 'Après chaque course, semaines faciles avant de relancer un bloc.', 'Pfitzinger'],
+    ['fa-scale-balanced', 'Équilibre', '≈ 80 % du temps facile, +8 %/semaine au plus, une semaine allégée sur quatre.', 'Seiler, Fitzgerald']
+  ];
+  cible.innerHTML = `<details class="rounded-xl2 verre overflow-hidden">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-violine/10 shrink-0"><i class="fa-solid ${a.icone} text-violine"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Méthode : ${esc(a.libelle)}</span><span class="block text-[11.5px] text-brume truncate">${esc(a.sources)}</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4">
+      <div class="grid grid-cols-2 gap-2">
+        ${Object.entries(APPROCHES).map(([cle, x]) => `<button data-act="choisirApproche" data-arg="${cle}" class="tapable text-left rounded-xl p-2.5 border ${cle === actuelle ? 'border-ocre bg-ocre/5' : 'border-[#E6E8EC]'}">
+          <div class="text-[13px] font-semibold"><i class="fa-solid ${x.icone} mr-1.5 ${cle === actuelle ? 'text-ocre' : 'text-brume'}"></i>${esc(x.libelle)}</div>
+          <div class="text-[11px] text-brume mt-0.5 leading-snug">${esc(x.sources)}</div>
+        </button>`).join('')}
+      </div>
+      <p class="text-[12.5px] leading-relaxed mt-3">${esc(a.texte)}</p>
+      <div class="ligne-sep my-3"></div>
+      <div class="space-y-2.5">
+        ${principes.map(([ic, t, d, src]) => `<div class="flex gap-3">
+          <i class="fa-solid ${ic} text-brume mt-[3px] w-4 text-center"></i>
+          <div class="min-w-0"><div class="text-[13px]"><span class="font-semibold">${t}.</span> ${d}</div><div class="text-[11px] text-brume">${src}</div></div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </details>`;
+}
+
 function rendrePlan() {
   const resume = $('#resumePlan'), liste = $('#listeSemaines');
   const plan = ETAT.plan;
+  rendreSaison();
+  rendreMethode();
   $('#blocVolumePlan').classList.toggle('hidden', !plan);
   $('#actionsPlan').classList.toggle('hidden', !plan);
   if (!plan) {
-    const o = ETAT.objectif;
-    resume.innerHTML = carteVide('fa-calendar-days', 'Aucun plan pour l’instant',
-      o.date ? 'Ton plan sera construit jusqu’au ' + dateLongue(depuisCleJour(o.date)) + ', calé sur ton niveau et tes ' + ETAT.profil.seancesSemaine + ' séances par semaine.'
-             : 'Commence par définir ta course cible : distance, dénivelé, date.',
-      o.date ? 'genererPlan' : 'allerA', o.date ? 'Générer le plan' : 'Définir la course', o.date ? '' : 'objectif');
+    const av = coursesAVenir();
+    resume.innerHTML = av.length ? carteVide('fa-calendar-days', 'Aucun plan pour l’instant',
+      'Ton plan sera construit course après course jusqu’au ' + dateLongue(depuisCleJour(av[av.length - 1].date)) + ', calé sur ton niveau et tes ' + ETAT.profil.seancesSemaine + ' séances par semaine.',
+      'genererPlan', 'Générer le plan') : '';
     liste.innerHTML = '';
     effacerGraphique('graphVolume');
     return;
   }
 
-  const o = ETAT.objectif;
   const w = semaineCourante();
+  const o = (w && courseParId(w.courseId)) || prochaineCourse() || ETAT.objectif;
   const r = respectPlan();
-  const obsolete = plan.signature !== signatureObjectif();
+  const obsolete = plan.signature !== signatureCourses();
   const kmSemaine = w ? w.seances.reduce((s, x) => s + mesurerSeance(x).distanceM, 0) / 1000 : 0;
   const faitesSemaine = w ? w.seances.filter(s => statutSeance(s) === 'fait').length : 0;
   const stat = (titre, valeur, unite) => `<div class="rounded-xl bg-nuit/50 p-3"><div class="text-[11px] text-brume">${titre}</div><div class="chiffre text-[24px] mt-0.5">${valeur}<span class="text-[11px] text-brume ml-1">${unite}</span></div></div>`;
   resume.innerHTML = `<div class="rounded-xl2 verre p-4">
     <div class="flex items-start justify-between gap-3 mb-3">
       <div class="min-w-0">
-        <div class="text-[12px] text-brume">Vers ${esc(o.nom || 'ta course')}</div>
-        <div class="titre text-[21px] leading-tight">${o.date ? dateLongue(depuisCleJour(o.date)) : ''}</div>
+        <div class="text-[12px] text-brume">Bloc en cours vers</div>
+        <div class="titre text-[18px] leading-tight">${esc(nomCourse(o))}</div>
+        <div class="text-[12px] text-brume">${o.date ? dateLongue(depuisCleJour(o.date)) : ''}</div>
       </div>
       ${w ? `<span class="text-[11px] px-2 py-1 rounded-full shrink-0" style="background:${PHASES[w.phase].couleur}22;color:${PHASES[w.phase].couleur}">${PHASES[w.phase].libelle}${w.relache ? ', allégée' : ''}</span>` : ''}
     </div>
@@ -6118,7 +6798,7 @@ function rendrePlan() {
     <div class="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-[11px] text-brume">
       ${Object.values(PHASES).map(p => `<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full" style="background:${p.couleur}"></span>${p.libelle}</span>`).join('')}
     </div>
-    ${obsolete ? `<div class="mt-3 rounded-xl border border-ocre/40 bg-ocre/10 p-3 text-[12.5px]">Ta course a changé depuis la création du plan.
+    ${obsolete ? `<div class="mt-3 rounded-xl border border-ocre/40 bg-ocre/10 p-3 text-[12.5px]">Tes courses ou tes réglages ont changé depuis la création du plan.
         <button data-act="genererPlan" class="text-ocre font-semibold tapable ml-1">Mettre le plan à jour</button></div>` : ''}
     <div class="grid grid-cols-2 gap-2 mt-3">
       <button data-act="ajusterPlan" data-arg="alleger" class="tapable h-10 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-feather mr-1.5"></i>Alléger 7 jours</button>
@@ -6149,7 +6829,7 @@ function rendrePlan() {
       labels,
       datasets: [
         { type: 'bar', label: 'Prévu', data: prevus, backgroundColor: couleurs, borderRadius: 6, barPercentage: 0.7 },
-        { type: 'line', label: 'Réalisé', data: realises, borderColor: '#F0F2FA', backgroundColor: '#F0F2FA', pointRadius: 3, borderWidth: 1.5, tension: 0.3, spanGaps: false }
+        { type: 'line', label: 'Réalisé', data: realises, borderColor: '#1F2430', backgroundColor: '#1F2430', pointRadius: 3, borderWidth: 1.5, tension: 0.3, spanGaps: false }
       ]
     },
     options: {
@@ -6160,7 +6840,11 @@ function rendrePlan() {
   });
 
   // Semaines
-  liste.innerHTML = plan.semaines.map(sem => {
+  // Semaines regroupées par bloc (une course principale = un bloc) ; les semaines terminées sont repliées.
+  const lundiAuj = cleJour(lundiDe(new Date()));
+  const passees = plan.semaines.filter(x => x.lundi < lundiAuj);
+  let blocPrecedent = null;
+  const carteSemaine = sem => {
     const debut = depuisCleJour(sem.lundi), fin = ajouterJours(debut, 6);
     const km = sem.seances.reduce((s, x) => s + mesurerSeance(x).distanceM, 0);
     const faites = sem.seances.filter(s => statutSeance(s) === 'fait').length;
@@ -6170,9 +6854,9 @@ function rendrePlan() {
       <summary class="px-4 py-3.5 flex items-center gap-3">
         <span class="w-1.5 h-10 rounded-full shrink-0" style="background:${ph.couleur};${sem.relache ? 'opacity:.45' : ''}"></span>
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2"><span class="titre text-[17px]">Semaine ${sem.numero}</span>
+          <div class="flex items-center gap-2 min-w-0"><span class="titre text-[15px] shrink-0">Semaine ${sem.numero}</span>
             ${courante ? `<span class="${PUCE} bg-ocre/15 text-ocre">en cours</span>` : ''}
-            ${sem.derniere ? `<span class="${PUCE} bg-ocre/15 text-ocre"><i class="fa-solid fa-flag-checkered mr-1"></i>course</span>` : ''}</div>
+            ${sem.derniere || sem.courseSecondaire ? `<span class="${PUCE} bg-ocre/15 text-ocre truncate max-w-[150px]"><i class="fa-solid fa-flag-checkered mr-1"></i>${esc(nomCourse(courseParId(sem.derniere ? sem.courseId : sem.courseSecondaire)) || 'course')}</span>` : ''}</div>
           <div class="text-[11.5px] text-brume truncate">${debut.getDate()} ${MOIS_COURTS[debut.getMonth()]} au ${fin.getDate()} ${MOIS_COURTS[fin.getMonth()]}, ${ph.libelle.toLowerCase()}${sem.relache ? ' (allégée)' : ''}</div>
         </div>
         <div class="text-right shrink-0">
@@ -6183,7 +6867,23 @@ function rendrePlan() {
       </summary>
       <div class="px-3 pb-3 space-y-2">${sem.seances.map(s => carteSeance(s, { compact: true })).join('') || '<div class="text-[12.5px] text-brume px-1 pb-1">Semaine de repos.</div>'}</div>
     </details>`;
-  }).join('');
+  };
+  liste.innerHTML = (passees.length ? `<button data-act="basculerSemainesPassees" class="tapable w-full h-10 rounded-xl bg-granit text-[12.5px] text-brume">
+      <i class="fa-solid ${afficherSemainesPassees ? 'fa-chevron-up' : 'fa-clock-rotate-left'} mr-1.5"></i>${afficherSemainesPassees ? 'Masquer' : 'Afficher'} ${nbTexte(passees.length, 'semaine passée', 'semaines passées')}</button>` : '') +
+    plan.semaines.filter(x => afficherSemainesPassees || x.lundi >= lundiAuj).map(sem => {
+      let entete = '';
+      if (sem.courseId !== blocPrecedent) {
+        const c = courseParId(sem.courseId);
+        const d = c && c.date ? depuisCleJour(c.date) : null;
+        entete = `<div class="flex items-center gap-2 px-1 ${blocPrecedent === null ? 'pt-1' : 'pt-4'}">
+          <i class="fa-solid fa-flag-checkered text-ocre text-[12px]"></i>
+          <span class="surtitre !text-neige truncate">Bloc vers ${esc(nomCourse(c))}</span>
+          ${d ? `<span class="text-[11.5px] text-brume shrink-0 ml-auto">${d.getDate()} ${MOIS_COURTS[d.getMonth()]} ${d.getFullYear()}</span>` : ''}
+        </div>`;
+        blocPrecedent = sem.courseId;
+      }
+      return entete + carteSemaine(sem);
+    }).join('');
 }
 
 /* ---------- Vue 4 : course, GPX et stratégie ---------- */
@@ -6192,19 +6892,52 @@ function majBoutonsObjectif() {
   const o = ETAT.objectif;
   const type = brouillonType || o.type;
   const tech = brouillonTech || o.technicite || 'moyen';
-  const actif = ['bg-ocre', 'text-[#23120A]', 'font-semibold'];
+  const actif = ['bg-ocre', 'text-white', 'font-semibold'];
   const regler = (el, on) => { el.classList.toggle('verre', !on); actif.forEach(c => el.classList.toggle(c, on)); };
   regler($('#btnTypeRoute'), type === 'route');
   regler($('#btnTypeTrail'), type === 'trail');
   $('#blocTechnicite').classList.toggle('hidden', type !== 'trail');
   $$('.btnTech').forEach(el => regler(el, el.dataset.arg === tech));
+  const prio = brouillonPriorite || o.priorite || 'A';
+  $$('#choixPriorite button').forEach(b => b.classList.toggle('actif', b.dataset.arg === prio));
+  $('#textePriorite').textContent = PRIORITES[prio].texte;
+}
+
+/** Liste des courses (passées et à venir) en tête de l'onglet Courses. */
+function rendreListeCourses() {
+  const cible = $('#listeCourses');
+  const liste = coursesTriees();
+  const k = cleJour(new Date());
+  if (!liste.length) {
+    cible.innerHTML = `<div class="px-4 py-4 text-[13px] text-brume">Aucune course pour l’instant. Remplis la fiche ci-dessous : tu pourras en ajouter d’autres (une en novembre, une en mars…), le plan s’organisera autour de toutes.</div>`;
+    return;
+  }
+  cible.innerHTML = liste.map(c => {
+    const pr = PRIORITES[c.priorite] || PRIORITES.A;
+    const d = c.date ? depuisCleJour(c.date) : null;
+    const passee = c.date && c.date < k;
+    const j = d ? ecartJours(new Date(), d) : null;
+    const active = c.id === ETAT.courseActive;
+    return `<button data-act="choisirCourse" data-arg="${c.id}" class="tapable w-full text-left px-4 py-3 flex items-center gap-3 ${active ? 'bg-ocre/5' : ''} ${passee ? 'opacity-60' : ''}">
+      <span class="w-8 h-8 rounded-lg grid place-items-center text-[12px] font-bold text-white shrink-0" style="background:${passee ? '#B4BAC5' : pr.couleur}">${pr.court}</span>
+      <span class="flex-1 min-w-0"><span class="block text-[14px] font-semibold truncate">${esc(nomCourse(c))}</span>
+        <span class="block text-[11.5px] text-brume truncate">${d ? JOURS_COURTS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURTS[d.getMonth()] + ' ' + d.getFullYear() : 'date à définir'}${c.distanceKm ? ', ' + String(c.distanceKm).replace('.', ',') + ' km' : ''}${c.gpx ? ', GPX' : ''}</span></span>
+      <span class="text-right shrink-0">${j != null ? (passee ? '<span class="text-[11.5px] text-brume">passée</span>' : `<span class="chiffre text-[19px]">J-${j}</span>`) : ''}</span>
+      ${active ? '<i class="fa-solid fa-pen text-[11px] text-ocre"></i>' : '<i class="fa-solid fa-chevron-right text-[11px] text-brume"></i>'}
+    </button>`;
+  }).join('');
 }
 
 function rendreObjectif(remplirChamps = true) {
   const o = ETAT.objectif;
+  const enregistree = !!courseParId(o.id);
+  rendreListeCourses();
+  $('#titreFicheCourse').textContent = enregistree ? 'Fiche de ' + nomCourse(o) : 'Nouvelle course';
+  $('#btnSupprimerCourse').classList.toggle('hidden', !enregistree);
   if (remplirChamps && !saisieObjectifEnCours) {
     brouillonType = null;
     brouillonTech = null;
+    brouillonPriorite = null;
     $('#objNom').value = o.nom || '';
     $('#objKm').value = o.distanceKm ? String(o.distanceKm).replace('.', ',') : '';
     $('#objDplus').value = o.dplus != null ? o.dplus : '';
@@ -6228,8 +6961,8 @@ function rendreObjectif(remplirChamps = true) {
         datasets: [{
           data: g.profil.map(([x, y]) => ({ x, y })),
           borderWidth: 2, pointRadius: 0, tension: 0.15, fill: true,
-          backgroundColor: degrade('157,165,202', 0.28),
-          segment: { borderColor: ctx => ctx.p1.parsed.y > ctx.p0.parsed.y + 0.3 ? '#FF9D66' : ctx.p1.parsed.y < ctx.p0.parsed.y - 0.3 ? '#7CC8FF' : '#9DA5CA' }
+          backgroundColor: degrade('138,147,166', 0.28),
+          segment: { borderColor: ctx => ctx.p1.parsed.y > ctx.p0.parsed.y + 0.3 ? '#FC5200' : ctx.p1.parsed.y < ctx.p0.parsed.y - 0.3 ? '#2F80ED' : '#8A93A6' }
         }]
       },
       options: {
@@ -6253,8 +6986,8 @@ function rendreObjectif(remplirChamps = true) {
   const verdict = s.verdict ? `<span class="text-[11.5px] px-2.5 py-1 rounded-full shrink-0" style="background:${s.verdict.couleur}22;color:${s.verdict.couleur}">${s.verdict.texte}</span>` : '';
   const choixBase = s.tempsVise ? `
     <div class="grid grid-cols-2 gap-2 mt-3">
-      <button data-act="baseStrategie" data-arg="objectif" class="tapable h-9 rounded-xl text-[12.5px] ${s.surObjectif ? 'bg-ocre text-[#23120A] font-semibold' : 'verre'}">Allures sur mon objectif</button>
-      <button data-act="baseStrategie" data-arg="niveau" class="tapable h-9 rounded-xl text-[12.5px] ${!s.surObjectif ? 'bg-ocre text-[#23120A] font-semibold' : 'verre'}">Allures sur mon niveau</button>
+      <button data-act="baseStrategie" data-arg="objectif" class="tapable h-9 rounded-xl text-[12.5px] ${s.surObjectif ? 'bg-ocre text-white font-semibold' : 'verre'}">Allures sur mon objectif</button>
+      <button data-act="baseStrategie" data-arg="niveau" class="tapable h-9 rounded-xl text-[12.5px] ${!s.surObjectif ? 'bg-ocre text-white font-semibold' : 'verre'}">Allures sur mon niveau</button>
     </div>` : '';
   const alertes = [];
   if (s.dplusManquant) alertes.push('D+ non renseigné : le calcul considère un parcours plat. Ajoute le D+ ou le GPX.');
@@ -6295,7 +7028,7 @@ function rendreObjectif(remplirChamps = true) {
       labels: s.kms.map(k => k.km),
       datasets: [{
         data: s.kms.map(k => Math.round(k.allure)),
-        backgroundColor: s.kms.map(k => k.pente > 0.045 ? '#FF9D66CC' : k.pente < -0.055 ? '#7CC8FFCC' : '#6BE3B5CC'),
+        backgroundColor: s.kms.map(k => k.pente > 0.045 ? '#FC5200CC' : k.pente < -0.055 ? '#2F80EDCC' : '#16A34ACC'),
         borderRadius: 4, barPercentage: 0.8
       }]
     },
@@ -6361,20 +7094,77 @@ function rendreJours() {
   const lettres = { 1: 'L', 2: 'M', 3: 'M', 4: 'J', 5: 'V', 6: 'S', 0: 'D' };
   $('#joursDispo').innerHTML = ordre.map(j => {
     const on = joursBrouillon.includes(j);
-    return `<button data-act="basculerJour" data-arg="${j}" aria-label="${JOURS_LONGS[j]}" class="tapable h-10 rounded-xl text-[13px] font-semibold ${on ? 'bg-ocre text-[#23120A]' : 'bg-granit text-brume'}">${lettres[j]}</button>`;
+    return `<button data-act="basculerJour" data-arg="${j}" aria-label="${JOURS_LONGS[j]}" class="tapable h-10 rounded-xl text-[13px] font-semibold ${on ? 'bg-ocre text-white' : 'bg-granit text-brume'}">${lettres[j]}</button>`;
   }).join('');
 }
 
-function rendreProfil() {
-  const p = ETAT.profil, st = ETAT.strava, m = metriques(), fiab = fiabiliteNiveau();
+/* ---------- Vue 4 : activités ---------- */
 
-  // Strava
-  const modes = { api: 'Connecté' + (st.athlete ? ' : ' + st.athlete : ''), simulation: 'Mode simulation', fichier: 'Importées' + (st.derniereSource ? ' (' + st.derniereSource + ')' : ' par fichier'), aucun: 'Aucune source pour l’instant' };
+function rendreActivites() {
+  const st = ETAT.strava;
+  const modes = { api: 'Strava connecté' + (st.athlete ? ' : ' + st.athlete : ''), simulation: 'Mode simulation', fichier: 'Importées' + (st.derniereSource ? ' (' + st.derniereSource + ')' : ' par fichier'), aucun: 'Aucune source pour l’instant' };
   const d = st.dernierSync ? new Date(st.dernierSync) : null;
   $('#etatStrava').innerHTML = esc(modes[st.mode || 'aucun']) +
     (d ? '<br>Mise à jour ' + dateCourte(d) + ' à ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '');
-  $('#btnStrava').textContent = st.mode && st.mode !== 'aucun' ? 'Sources' : 'Ajouter';
+  $('#btnStrava').textContent = st.mode && st.mode !== 'aucun' ? 'Sources' : 'Connecter';
   $('#switchAutoSync').checked = !!st.autoSync;
+  $$('#filtreActivites button').forEach(b => b.classList.toggle('actif', b.dataset.arg === filtreActivites));
+
+  // Journal groupé par mois, avec le total de chaque mois (comme un carnet d'entraînement)
+  const liste = ETAT.activites.filter(a => filtreActivites === 'tout' || a.type === filtreActivites);
+  const t = totaux(liste);
+  $('#nbActivites').textContent = nbTexte(liste.length, 'sortie', 'sorties') + (liste.length ? ', ' + fr1d(t.km) + ' km au total' : '');
+  if (!liste.length) {
+    $('#listeActivites').innerHTML = `<div class="rounded-xl2 verre px-4 py-6 text-center text-[13px] text-brume">${ETAT.activites.length ? 'Aucune sortie de ce type.' : 'Aucune sortie enregistrée.<br><button data-act="ouvrirSync" class="text-ocre mt-1 tapable">Connecter une source ou importer un fichier</button>'}</div>`;
+    return;
+  }
+  const visibles = liste.slice(0, nbActivitesVisibles);
+  const groupes = [];
+  visibles.forEach(a => {
+    const dt = new Date(a.date), cle = dt.getFullYear() + '-' + dt.getMonth();
+    let g = groupes[groupes.length - 1];
+    if (!g || g.cle !== cle) {
+      const debut = new Date(dt.getFullYear(), dt.getMonth(), 1), fin = new Date(dt.getFullYear(), dt.getMonth() + 1, 1);
+      const tm = totaux(liste.filter(x => { const u = new Date(x.date); return u >= debut && u < fin; }));
+      g = { cle, titre: MOIS_LONGS[dt.getMonth()] + ' ' + dt.getFullYear(), tm, items: [] };
+      groupes.push(g);
+    }
+    g.items.push(a);
+  });
+  $('#listeActivites').innerHTML = groupes.map(g => `<div>
+      <div class="flex items-baseline justify-between px-1 mb-1.5">
+        <span class="text-[13px] font-semibold capitalize">${g.titre}</span>
+        <span class="text-[11.5px] text-brume">${fr1d(g.tm.km)} km, ${dureeCourte(g.tm.temps)}${g.tm.dplus > 0 ? ', ' + Math.round(g.tm.dplus) + ' m D+' : ''}</span>
+      </div>
+      <div class="rounded-xl2 verre overflow-hidden groupe">${g.items.map(ligneActivite).join('')}</div>
+    </div>`).join('') +
+    (liste.length > nbActivitesVisibles ? `<button data-act="voirPlusActivites" class="tapable w-full h-11 rounded-2xl verre text-[13px] text-ocre">Afficher plus (${liste.length - nbActivitesVisibles} restantes)</button>` : '');
+}
+
+/* ---------- Vue 5 : profil ---------- */
+
+function rendreProfil() {
+  const p = ETAT.profil, m = metriques(), fiab = fiabiliteNiveau();
+
+  // Identité et totaux de carrière
+  const pa = profilActif();
+  const tout = totaux(ETAT.activites);
+  const an = new Date().getFullYear();
+  const tAn = totaux(sortiesEntre(new Date(an, 0, 1), new Date(an + 1, 0, 1)));
+  $('#carteIdentite').innerHTML = `<div class="flex items-center gap-3.5">
+      <span class="avatar-dossard" style="width:54px; height:46px; font-size:20px; --couleur-profil:${pa ? pa.couleur : '#FC5200'}">${esc(pa ? initiales(pa.prenom) : '?')}</span>
+      <div class="flex-1 min-w-0">
+        <div class="titre text-[21px] leading-tight truncate">${esc(p.prenom || (pa && pa.prenom) || 'Runner')}</div>
+        <div class="text-[12px] text-brume">${m.parDefaut ? 'Niveau à mesurer' : 'VMA ' + fKmh(m.vma) + ', ' + fr1d(m.kmParSemaine) + ' km/sem.'}</div>
+      </div>
+      <button data-act="modifierProfil" class="tapable h-9 px-3.5 rounded-xl bg-granit text-[13px] shrink-0"><i class="fa-solid fa-pen mr-1.5"></i>Modifier</button>
+    </div>
+    <div class="grid grid-cols-3 gap-3 mt-4 pt-3 filet">
+      ${statBloc(String(an), fr1d(tAn.km), 'km')}
+      ${statBloc('Au total', Math.round(tout.km).toLocaleString('fr-FR'), 'km')}
+      ${statBloc('Sorties', tout.n, '')}
+    </div>`;
+  $('#resumeReglages').textContent = p.seancesSemaine + ' séances par semaine, ' + joursLisibles(p.joursDispo);
 
   // Métriques détaillées
   const ligne = (t, v, sous) => `<div class="px-4 py-3 flex items-center justify-between gap-3">
@@ -6400,7 +7190,7 @@ function rendreProfil() {
   const prog = serieProgression();
   graphique('graphProgression', {
     type: 'line',
-    data: { labels: prog.map(x => x.label), datasets: [{ data: prog.map(x => x.vma), borderColor: '#FF9D66', backgroundColor: degrade('255,157,102', 0.3), fill: true, tension: 0.35, pointRadius: 3.5, pointBackgroundColor: '#FF9D66', spanGaps: true, borderWidth: 2 }] },
+    data: { labels: prog.map(x => x.label), datasets: [{ data: prog.map(x => x.vma), borderColor: '#FC5200', backgroundColor: degrade('252,82,0', 0.3), fill: true, tension: 0.35, pointRadius: 3.5, pointBackgroundColor: '#FC5200', spanGaps: true, borderWidth: 2 }] },
     options: {
       scales: { x: { grid: { display: false } }, y: { suggestedMin: Math.max(8, m.vma - 2), suggestedMax: m.vma + 1.5, ticks: { maxTicksLimit: 4, callback: v => String(v).replace('.', ',') } } },
       plugins: { tooltip: { callbacks: { label: i => i.parsed.y == null ? 'Pas de donnée' : 'VMA ' + fKmh(i.parsed.y) } } }
@@ -6418,14 +7208,6 @@ function rendreProfil() {
   }
   rendreJours();
 
-  // Historique
-  const total = ETAT.activites.length;
-  $('#nbActivites').textContent = total + ' sortie' + (total > 1 ? 's' : '');
-  $('#listeActivites').innerHTML = total
-    ? ETAT.activites.slice(0, nbActivitesVisibles).map(ligneActivite).join('') +
-      (total > nbActivitesVisibles ? `<button data-act="voirPlusActivites" class="tapable w-full py-3 text-[13px] text-ocre">Afficher plus (${total - nbActivitesVisibles} restantes)</button>` : '')
-    : '<div class="px-4 py-5 text-center text-[13px] text-brume">Aucune sortie enregistrée.</div>';
-
   // Moteur IA
   rendreReglagesIA();
   majCarteInstallation();
@@ -6438,7 +7220,7 @@ function rendreProfil() {
 function rendreReglagesIA() {
   const ia = APPAREIL.ia;
   $$('#choixModeIA [data-act="modeIA"]').forEach(bt => {
-    bt.className = 'tapable h-9 rounded-xl text-[13px] ' + (bt.dataset.arg === ia.mode ? 'bg-ocre text-[#23120A] font-semibold' : 'text-brume');
+    bt.className = 'tapable h-9 rounded-xl text-[13px] ' + (bt.dataset.arg === ia.mode ? 'bg-ocre text-white font-semibold' : 'text-brume');
   });
   $('#texteModeIA').textContent = TEXTES_MODE_IA[ia.mode] || TEXTES_MODE_IA.gemini;
   $('#blocGemini').classList.toggle('hidden', ia.mode !== 'gemini');
@@ -6500,7 +7282,7 @@ function ouvrirModaleStrava() {
     </details>`;
   const importer = libelle => `<button data-act="importerFichier" class="${BTN_SECONDAIRE}"><i class="fa-solid fa-file-import mr-2"></i>${libelle}</button>`;
   ouvrirModale(
-    enteteModale('fa-solid fa-person-running', '#7CC8FF', 'Mes sources de sorties', 'Montre, téléphone ou fichiers : tout reste sur cet appareil') +
+    enteteModale('fa-solid fa-person-running', '#2F80ED', 'Mes sources de sorties', 'Montre, téléphone ou fichiers : tout reste sur cet appareil') +
     `<p class="text-[12.5px] text-brume leading-relaxed mb-3">Apple Santé et Samsung Health ne s’ouvrent pas aux sites web : RDD lit leurs exports officiels.
       Réimporte l’export complet quand tu veux, seules les nouvelles sorties sont ajoutées.</p>` +
     bloc('fa-brands fa-apple', '#2C2C2E', 'Apple Santé (Apple Watch, app Exercice)',
@@ -6548,7 +7330,7 @@ function ouvrirModaleValidation(id) {
   const dplus = r ? r.dplus : prevu.dplus;
   const rpe = r && r.rpe ? r.rpe : ((INTENSITE_TYPE[s.type] || 0.3) >= 0.6 ? 7 : 4);
   ouvrirModale(
-    enteteModale('fa-solid fa-circle-check', '#6BE3B5', r ? 'Modifier la séance' : 'Valider la séance', esc(s.titre) + ', ' + dateCourte(depuisCleJour(s.date))) +
+    enteteModale('fa-solid fa-circle-check', '#16A34A', r ? 'Modifier la séance' : 'Valider la séance', esc(s.titre) + ', ' + dateCourte(depuisCleJour(s.date))) +
     `<div class="rounded-xl bg-nuit/50 p-3 text-[12.5px] text-brume mb-4">Prévu : <span class="text-neige">${km1(prevu.distanceM)} km en ${dureeLisible(prevu.dureeS)}</span>, allure moyenne ${formaterAllure(prevu.allureMoy)}/km${prevu.dplus > 20 ? ', ' + prevu.dplus + ' m D+' : ''}.</div>
      <div class="grid grid-cols-3 gap-2 mb-4">
        ${champ('valDist', 'Distance (km)', 'type="text" inputmode="decimal" autocomplete="off"', dist.toFixed(2).replace('.', ','))}
@@ -6655,7 +7437,7 @@ function ouvrirModaleActivite(id) {
   const tuile = (t, v) => `<div class="rounded-xl bg-nuit/50 p-2.5"><div class="text-[10.5px] text-brume">${t}</div><div class="chiffre text-[20px]">${v}</div></div>`;
   const sources = { 'strava-demo': 'Démo', 'strava-fichier': 'Import Strava', 'strava-api': 'Strava', gpx: 'GPX', saisie: 'Saisie manuelle', journal: 'Validée depuis le plan', simulation: 'Synchro simulée' };
   ouvrirModale(
-    enteteModale('fa-solid ' + (a.type === 'trail' ? 'fa-mountain' : 'fa-road'), a.type === 'trail' ? '#FF9D66' : '#7CC8FF', esc(a.nom), dateLongue(a.date) + ', ' + (sources[a.source] || a.source)) +
+    enteteModale('fa-solid ' + (a.type === 'trail' ? 'fa-mountain' : 'fa-road'), a.type === 'trail' ? '#FC5200' : '#2F80ED', esc(a.nom), dateLongue(a.date) + ', ' + (sources[a.source] || a.source)) +
     `<div class="grid grid-cols-3 gap-2 mb-3">
        ${tuile('Distance', km1(a.distanceM) + ' km')}${tuile('Durée', formaterDuree(a.tempsS))}${tuile('Allure', formaterAllure(a.tempsS / (a.distanceM / 1000)))}
        ${tuile('D+', (a.dplus || 0) + ' m')}${tuile('Effort plat', km1(eq) + ' km')}${tuile('FC moy.', a.fcMoy ? a.fcMoy + ' bpm' : '—')}
@@ -6676,7 +7458,7 @@ function ouvrirModaleSortieManuelle(v = null) {
   propositionEnCours = v && v.proposition ? v.proposition : null;
   v = v || {};
   ouvrirModale(
-    enteteModale('fa-solid fa-plus', '#FF9D66', 'Ajouter une sortie', 'Elle compte dans ton niveau et ta charge') +
+    enteteModale('fa-solid fa-plus', '#FC5200', 'Ajouter une sortie', 'Elle compte dans ton niveau et ta charge') +
     `<div class="space-y-3 mb-4">
        ${champ('manNom', 'Nom', 'type="text" placeholder="Sortie trail"', v.nom || '')}
        <div class="grid grid-cols-2 gap-3">
@@ -6689,7 +7471,7 @@ function ouvrirModaleSortieManuelle(v = null) {
          ${champ('manDuree', 'Durée', 'type="text" autocomplete="off" placeholder="1:05:00"', v.duree || '')}
          ${champ('manDplus', 'D+ (m)', 'type="text" inputmode="numeric" pattern="[0-9]*" placeholder="250"', v.dplus ? String(v.dplus) : '')}
        </div>
-       <label class="flex items-center gap-3 text-[13.5px]"><input id="manMax" type="checkbox" class="w-5 h-5 accent-[#FF9D66]">C’était une course ou un effort maximal</label>
+       <label class="flex items-center gap-3 text-[13.5px]"><input id="manMax" type="checkbox" class="w-5 h-5 accent-[#FC5200]">C’était une course ou un effort maximal</label>
      </div>
      <button data-act="enregistrerSortieManuelle" class="${BTN_PRINCIPAL}">Ajouter</button>`
   );
@@ -6725,7 +7507,7 @@ function ouvrirModaleReference() {
   const p = ETAT.profil;
   const ref = p.reference || {};
   ouvrirModale(
-    enteteModale('fa-solid fa-flask', '#B99EFF', 'Affiner mon niveau', 'Une course récente courue à fond est la meilleure référence') +
+    enteteModale('fa-solid fa-flask', '#7C5CFF', 'Affiner mon niveau', 'Une course récente courue à fond est la meilleure référence') +
     `<div class="rounded-2xl bg-nuit/50 border border-brume/10 p-4 mb-3 space-y-3">
        <div class="titre text-[17px]">Performance de référence</div>
        ${champ('refLibelle', 'Nom', 'type="text" placeholder="10 km sur route"', ref.libelle || '')}
@@ -6750,7 +7532,7 @@ function ouvrirModaleReference() {
    11 bis. PROFILS : plusieurs coureurs sur le même appareil
    ================================================================================== */
 
-const COULEURS_PROFIL = ['#FF9D66', '#7CC8FF', '#6BE3B5', '#FF5F8F', '#B99EFF', '#FFD166'];
+const COULEURS_PROFIL = ['#FC5200', '#2F80ED', '#16A34A', '#E5484D', '#7C5CFF', '#FFD166'];
 let sessionOuverte = false;          // un profil est ouvert (sinon l'écran de choix est affiché)
 let couleurBrouillon = COULEURS_PROFIL[0];
 let pinCible = null, pinSaisi = '';
@@ -6775,7 +7557,7 @@ function activerProfil(id) {
   chargerEtat();
   sessionOuverte = true;
   saisieObjectifEnCours = false; saisieReglagesEnCours = false;
-  brouillonType = null; brouillonTech = null;
+  brouillonType = null; brouillonTech = null; brouillonPriorite = null;
   nbActivitesVisibles = 30; coachOccupe = false;
   Object.keys(GRAPHS).forEach(effacerGraphique);
   rafraichirMetriques();
@@ -6871,7 +7653,7 @@ function masquerEcranProfils(viaHistorique) {
 
 function ouvrirMenuProfils() {
   const actif = profilActif();
-  ouvrirModale(enteteModale('fa-solid fa-user-group', '#B99EFF', 'Profils', 'Chaque coureur a ses sorties, son plan et son coach') +
+  ouvrirModale(enteteModale('fa-solid fa-user-group', '#7C5CFF', 'Profils', 'Chaque coureur a ses sorties, son plan et son coach') +
     `<div class="rounded-2xl verre overflow-hidden groupe mb-3">
       ${INDEX.liste.map(p => `<button data-act="choisirProfil" data-arg="${p.id}" class="tapable w-full text-left px-4 py-3 flex items-center gap-3">
           <span class="avatar-dossard" style="--couleur-profil:${p.couleur}">${esc(initiales(p.prenom))}</span>
@@ -6944,7 +7726,7 @@ function dessinerIcone(taille, plein = false, zoneSure = false) {
   x.shadowColor = 'transparent';
   x.save(); arrondi(26, 44, 128, 96, 12); x.clip();
   const g = x.createLinearGradient(26, 0, 154, 0);
-  g.addColorStop(0, '#FF7C70'); g.addColorStop(.55, '#FF9D66'); g.addColorStop(1, '#FFC98A');
+  g.addColorStop(0, '#FF7C70'); g.addColorStop(.55, '#FC5200'); g.addColorStop(1, '#FFC98A');
   x.fillStyle = g; x.fillRect(26, 44, 128, 22); x.restore();
   x.fillStyle = '#10142B';
   [[40, 82], [140, 82]].forEach(([cx, cy]) => { x.beginPath(); x.arc(cx, cy, 4.5, 0, Math.PI * 2); x.fill(); });
@@ -6982,6 +7764,7 @@ function lireFormulaireObjectif() {
   const o = ETAT.objectif;
   if (brouillonType) o.type = brouillonType;
   if (brouillonTech) o.technicite = brouillonTech;
+  if (brouillonPriorite) o.priorite = brouillonPriorite;
   o.nom = $('#objNom').value.trim().slice(0, 60);
   const km = lireNombre($('#objKm').value);
   o.distanceKm = km > 0 ? Math.round(km * 10) / 10 : null;
@@ -6990,6 +7773,16 @@ function lireFormulaireObjectif() {
   o.date = $('#objDate').value || '';
   o.heure = $('#objHeure').value || '09:00';
   o.tempsVise = $('#objTemps').value.trim();
+}
+
+/** Le brouillon (nouvelle course) rejoint la liste des courses et devient la course active. */
+function enregistrerBrouillonCourse() {
+  const o = ETAT.objectif;
+  if (courseParId(o.id)) return o;
+  ETAT.courses.push(o);
+  ETAT.courseActive = o.id;
+  brouillonCourse = null;
+  return o;
 }
 
 function enregistrerObjectif() {
@@ -7004,6 +7797,7 @@ function enregistrerObjectif() {
   }
   // Un D+ saisi à la main sans GPX : la descente est supposée égale (boucle).
   if (!o.gpx) o.dmoins = null;
+  enregistrerBrouillonCourse();
   sauverEtat();
   const avaitPlan = !!ETAT.plan;
   if (ecartJours(new Date(), depuisCleJour(o.date)) >= 2 && genererPlan()) {
@@ -7032,6 +7826,7 @@ async function chargerGpxCourse(fichier) {
     o.dmoins = a.dmoins;
     if (!o.nom && nom) o.nom = nom.slice(0, 60);
     if (a.dplus / (a.distanceM / 1000) > 15) o.type = 'trail';
+    enregistrerBrouillonCourse();
     sauverEtat();
     if (ETAT.plan && o.date) genererPlan();
     saisieObjectifEnCours = false;
@@ -7093,7 +7888,7 @@ const ACTIONS = {
   },
   modifierProfil: () => {
     const p = profilActif();
-    if (p) ouvrirModale(enteteModale('fa-solid fa-pen', '#B99EFF', 'Mon profil', 'Prénom, couleur du dossard et code') + formulaireProfil(p));
+    if (p) ouvrirModale(enteteModale('fa-solid fa-pen', '#7C5CFF', 'Mon profil', 'Prénom, couleur du dossard et code') + formulaireProfil(p));
   },
   enregistrerProfil: () => {
     const p = profilActif(), f = lireFormulaireProfil();
@@ -7127,7 +7922,7 @@ const ACTIONS = {
   supprimerProfil: () => {
     const p = profilActif();
     if (!p) return;
-    ouvrirModale(enteteModale('fa-solid fa-user-xmark', '#FF5F8F', 'Supprimer ' + esc(p.prenom) + ' ?', 'Profil, sorties, plan et conversation') +
+    ouvrirModale(enteteModale('fa-solid fa-user-xmark', '#E5484D', 'Supprimer ' + esc(p.prenom) + ' ?', 'Profil, sorties, plan et conversation') +
       `<p class="text-[13px] text-brume mb-4">Toutes les données de ce profil seront effacées de cet appareil. Exporte une sauvegarde avant si tu veux les garder.</p>
        <button data-act="confirmerSuppressionProfil" class="tapable w-full h-12 rounded-2xl bg-braise text-white font-semibold text-[15px] mb-2">Supprimer définitivement</button>
        <button data-act="fermerModale" class="tapable w-full h-11 text-[14px] text-brume">Annuler</button>`);
@@ -7284,7 +8079,7 @@ const ACTIONS = {
   ajusterPlan: arg => ajusterPlan(arg),
   exporterPlanIcs: () => {
     const auj = cleJour(new Date());
-    livrerIcs(toutesSeances().filter(s => s.date >= auj && s.statut === 'prevu'), 'plan-rdd.ics', 'Plan ' + (ETAT.objectif.nom || 'RDD'));
+    livrerIcs(toutesSeances().filter(s => s.date >= auj && s.statut === 'prevu'), 'plan-rdd.ics', 'Plan RDD' + (prochaineCourse() ? ', ' + nomCourse(prochaineCourse()) : ''));
   },
   exporterPlanJson: () => {
     if (!ETAT.plan) return;
@@ -7352,7 +8147,7 @@ const ACTIONS = {
   avisCoachDeplacement: () => {
     const d = deplacement, s = d && trouverSeance(d.id);
     if (!s) return;
-    const J = dateCoursePlan();
+    const J = dateCoursePlan(s.date);
     const q = d.cible && d.cible !== s.date
       ? 'Je voudrais déplacer « ' + s.titre + ' » du ' + dateLongue(depuisCleJour(s.date)) + ' au ' + dateLongue(depuisCleJour(d.cible)) +
         (J ? ' (J-' + ecartJours(depuisCleJour(d.cible), depuisCleJour(J)) + ' avant ma course)' : '') + (d.cascade ? ', en décalant aussi la suite de la semaine' : '') +
@@ -7370,8 +8165,65 @@ const ACTIONS = {
   reglagesCoach: () => {
     fermerToutesLesFenetres();
     allerA('profil');
+    $('#sectionCoachIA').open = true;
     setTimeout(() => { const el = $('#choixModeIA'); if (el) el.scrollIntoView({ block: 'center' }); }, 350);
   },
+
+  // Courses de la saison
+  nouvelleCourse: () => {
+    brouillonCourse = courseParDefaut();
+    ETAT.courseActive = null;
+    saisieObjectifEnCours = false;
+    if (vueActive !== 'objectif') allerA('objectif'); else rendreObjectif();
+    setTimeout(() => { const c = $('#objNom'); if (c) { c.scrollIntoView({ block: 'center' }); } }, 300);
+  },
+  choisirCourse: id => {
+    if (!courseParId(id)) return;
+    ETAT.courseActive = id;
+    saisieObjectifEnCours = false;
+    sauverEtat();
+    rendreObjectif();
+  },
+  voirCourse: id => {
+    if (courseParId(id)) { ETAT.courseActive = id; saisieObjectifEnCours = false; sauverEtat(); }
+    allerA('objectif');
+  },
+  setPriorite: arg => { if (PRIORITES[arg]) { brouillonPriorite = arg; saisieObjectifEnCours = true; majBoutonsObjectif(); } },
+  supprimerCourse: () => {
+    const c = courseParId(ETAT.courseActive);
+    if (!c) return;
+    ouvrirModale(enteteModale('fa-solid fa-flag', '#E5484D', 'Supprimer ' + esc(nomCourse(c)) + ' ?', 'La course, son GPX et sa stratégie') +
+      `<p class="text-[13px] text-brume mb-4">Le plan sera recalculé avec les autres courses. Tes sorties et les séances déjà faites sont conservées.</p>
+       <button data-act="confirmerSuppressionCourse" class="tapable w-full h-12 rounded-2xl bg-braise text-white font-semibold text-[15px] mb-2">Supprimer la course</button>
+       <button data-act="fermerModale" class="tapable w-full h-11 text-[14px] text-brume">Annuler</button>`);
+  },
+  confirmerSuppressionCourse: () => {
+    const c = courseParId(ETAT.courseActive);
+    if (!c) return;
+    ETAT.courses = ETAT.courses.filter(x => x.id !== c.id);
+    ETAT.courseActive = (prochaineCourse() || coursesTriees().slice(-1)[0] || {}).id || null;
+    saisieObjectifEnCours = false;
+    sauverEtat();
+    fermerModale();
+    if (ETAT.plan && coursesAVenir().length) genererPlan();
+    rendreTout();
+    toast('Course supprimée' + (ETAT.plan && coursesAVenir().length ? ', plan recalculé.' : '.'), 'info');
+  },
+  choisirApproche: arg => {
+    if (!APPROCHES[arg]) return;
+    ETAT.profil.approche = arg;
+    sauverEtat();
+    const recale = ETAT.plan && coursesAVenir().length && genererPlan();
+    rendrePlan();
+    const d = $('#carteMethode details');
+    if (d) d.open = true;
+    toast('Méthode « ' + APPROCHES[arg].libelle + ' »' + (recale ? ' : plan recalculé.' : ' retenue pour le prochain plan.'), 'succes');
+  },
+
+  // Tableau de bord et activités
+  basculerSemainesPassees: () => { afficherSemainesPassees = !afficherSemainesPassees; rendrePlan(); },
+  choisirPeriode: arg => { periodeStats = ['semaines', 'mois', 'annee'].includes(arg) ? arg : 'semaines'; rendreStatistiques(); },
+  filtrerActivites: arg => { filtreActivites = ['tout', 'route', 'trail'].includes(arg) ? arg : 'tout'; nbActivitesVisibles = 30; rendreActivites(); },
 
   // Course & GPX
   setType: arg => { brouillonType = arg === 'route' ? 'route' : 'trail'; saisieObjectifEnCours = true; majBoutonsObjectif(); },
@@ -7412,7 +8264,9 @@ const ACTIONS = {
   },
   renseignerPoids: () => {
     allerA('profil');
-    setTimeout(() => { const c = $('#regPoids'); if (c) { c.scrollIntoView({ block: 'center' }); c.focus(); } }, 350);
+    const c = $('#regPoids');
+    if (c && c.closest('details')) c.closest('details').open = true;
+    setTimeout(() => { if (c) { c.scrollIntoView({ block: 'center' }); c.focus(); } }, 350);
   },
 
   // Activités
@@ -7432,7 +8286,7 @@ const ACTIONS = {
   },
   ajouterSortieManuelle: () => ouvrirModaleSortieManuelle(),
   enregistrerSortieManuelle: () => enregistrerSortieManuelle(),
-  voirPlusActivites: () => { nbActivitesVisibles += 40; rendreProfil(); },
+  voirPlusActivites: () => { nbActivitesVisibles += 40; rendreActivites(); },
 
   // Niveau de référence
   saisirReference: () => ouvrirModaleReference(),
@@ -7483,7 +8337,7 @@ const ACTIONS = {
     saisieReglagesEnCours = false;
     sauverEtat();
     const change = JSON.stringify([p.seancesSemaine, p.joursDispo.slice().sort()]) !== avant;
-    if (change && ETAT.plan && ETAT.objectif.date && genererPlan()) toast('Réglages enregistrés, plan recalé sur tes disponibilités.', 'succes');
+    if (change && ETAT.plan && coursesAVenir().length && genererPlan()) toast('Réglages enregistrés, plan recalé sur tes disponibilités.', 'succes');
     else toast('Réglages enregistrés.', 'succes');
     if (p.seancesSemaine > p.joursDispo.length) toast(p.seancesSemaine + ' séances pour ' + p.joursDispo.length + ' jours disponibles : le plan en programme ' + p.joursDispo.length + '.', 'info');
     rendreTout();
@@ -7502,7 +8356,7 @@ const ACTIONS = {
   },
   importerSauvegarde: () => $('#inputSauvegarde').click(),
   reinitialiser: () => ouvrirModale(
-    enteteModale('fa-solid fa-triangle-exclamation', '#FF5F8F', 'Repartir de zéro ?', 'Sorties, plan, course, réglages et conversation de ce profil') +
+    enteteModale('fa-solid fa-triangle-exclamation', '#E5484D', 'Repartir de zéro ?', 'Sorties, plan, course, réglages et conversation de ce profil') +
     `<p class="text-[13px] text-brume mb-4">Cette action est définitive. Exporte une sauvegarde avant si tu veux pouvoir revenir en arrière.</p>
      <button data-act="confirmerReinitialisation" class="tapable w-full h-12 rounded-2xl bg-braise text-white font-semibold text-[15px] mb-2">Effacer définitivement</button>
      <button data-act="fermerModale" class="tapable w-full h-11 text-[14px] text-brume">Annuler</button>`),
