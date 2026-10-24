@@ -1,0 +1,59 @@
+RDD, Runner du dimanche : l'application complète
+================================================
+
+Contenu du dossier
+------------------
+index.html              l'application
+manifest.webmanifest    nom, couleurs et icônes de l'app installée
+sw.js                   fonctionnement hors ligne (indispensable sur Android et Samsung)
+apple-touch-icon.png    icône iPhone et iPad (180 x 180)
+icon-192.png            icône Android (192 x 192)
+icon-512.png            icône Android et écran de démarrage (512 x 512)
+icon-maskable-512.png   icône Android adaptative (512 x 512)
+favicon.svg             icône de l'onglet du navigateur
+.nojekyll               utile seulement pour GitHub Pages
+
+Tous les fichiers doivent rester ensemble, dans le même dossier.
+Sinon, l'app perd son icône.
+
+Étape 1 : mettre l'app en ligne (gratuit)
+-----------------------------------------
+Option la plus simple, Netlify :
+  1. Va sur https://app.netlify.com/drop
+  2. Dézippe ce fichier, puis glisse le dossier RDD-application sur la page.
+  3. Tu obtiens une adresse en https (renommable dans Site settings).
+
+Option GitHub Pages :
+  1. Crée un dépôt, envoie tous les fichiers à sa racine.
+  2. Settings > Pages > Branch : main, dossier / (root).
+  3. L'adresse est https://<ton-pseudo>.github.io/<depot>/
+
+Pour une mise à jour : remplace seulement index.html (et les icônes si elles
+changent), puis rouvre l'app deux fois pour charger la nouvelle version.
+
+Étape 2 : l'installer comme une vraie app
+-----------------------------------------
+iPhone : ouvre l'adresse dans Safari > Partager > « Sur l'écran d'accueil ».
+Android : ouvre l'adresse dans Chrome > menu > « Installer l'application ».
+
+Si tu avais déjà installé RDD avec l'ancienne icône : supprime-la de l'écran
+d'accueil, puis réinstalle-la depuis la nouvelle adresse.
+
+Attention : les données restent dans le téléphone, liées à l'adresse du site.
+Avant de changer d'adresse, fais Profil > Données et profils >
+« Exporter les données de ce profil », puis « Restaurer une sauvegarde » dans
+la nouvelle installation.
+
+Étape 3 (facultatif) : la publier sur les stores
+------------------------------------------------
+1. Va sur https://www.pwabuilder.com et colle l'adresse de l'étape 1.
+2. Package for stores :
+   - Android : télécharge le paquet Google Play (.aab). Il faut un compte
+     développeur Google Play (25 $ une fois).
+   - iOS : télécharge le projet Xcode. Il faut un Mac et un compte
+     développeur Apple (99 $ par an).
+3. Suis les instructions fournies avec chaque paquet pour l'envoyer au store.
+
+Strava en mode réel : dans les réglages de ton application Strava
+(https://www.strava.com/settings/api), mets le domaine de ton adresse dans
+« Authorization Callback Domain ».
