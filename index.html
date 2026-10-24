@@ -627,12 +627,28 @@ if (window.tailwind) tailwind.config = {
       </summary>
         <div class="px-4 pb-4 pt-3 space-y-4 border-t border-[#EEF0F3]">
       <div>
-        <label class="text-[12px] text-brume block mb-1.5">Nom de la course</label>
+        <label class="text-[12px] text-brume block mb-1.5">Type d’objectif</label>
+        <div id="choixNature" class="segments">
+          <button data-act="setNature" data-arg="course">Course</button>
+          <button data-act="setNature" data-arg="chrono">Chrono</button>
+          <button data-act="setNature" data-arg="forme">Forme</button>
+        </div>
+        <p id="texteNature" class="text-[11.5px] text-brume mt-1.5 leading-snug"></p>
+        <div id="raccourcisChrono" class="hidden grid grid-cols-4 gap-2 mt-2">
+          <button data-act="presetChrono" data-arg="5" class="tapable h-10 rounded-xl verre text-[13px] font-semibold">5 km</button>
+          <button data-act="presetChrono" data-arg="10" class="tapable h-10 rounded-xl verre text-[13px] font-semibold">10 km</button>
+          <button data-act="presetChrono" data-arg="21.1" class="tapable h-10 rounded-xl verre text-[13px] font-semibold">Semi</button>
+          <button data-act="presetChrono" data-arg="42.2" class="tapable h-10 rounded-xl verre text-[13px] font-semibold">Marathon</button>
+        </div>
+      </div>
+
+      <div>
+        <label id="libelleNomCourse" class="text-[12px] text-brume block mb-1.5">Nom de la course</label>
         <input id="objNom" type="text" placeholder="Trail des Crêtes"
           class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
       </div>
 
-      <div>
+      <div id="blocTerrain">
         <label class="text-[12px] text-brume block mb-1.5">Terrain</label>
         <div class="grid grid-cols-2 gap-2">
           <button data-act="setType" data-arg="route" id="btnTypeRoute" class="tapable h-11 rounded-xl verre text-[14px]">
@@ -644,7 +660,7 @@ if (window.tailwind) tailwind.config = {
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div id="blocDistance" class="grid grid-cols-2 gap-3">
         <div>
           <label class="text-[12px] text-brume block mb-1.5">Distance (km)</label>
           <input id="objKm" type="text" inputmode="decimal" autocomplete="off" placeholder="21,1"
@@ -659,7 +675,7 @@ if (window.tailwind) tailwind.config = {
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="text-[12px] text-brume block mb-1.5">Date</label>
+          <label id="libelleDateCourse" class="text-[12px] text-brume block mb-1.5">Date</label>
           <input id="objDate" type="date"
             class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
         </div>
@@ -670,7 +686,7 @@ if (window.tailwind) tailwind.config = {
         </div>
       </div>
 
-      <div>
+      <div id="blocTemps">
         <label class="text-[12px] text-brume block mb-1.5">Temps visé (facultatif, hh:mm:ss)</label>
         <input id="objTemps" type="text" autocomplete="off" placeholder="2:15:00"
           class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
@@ -696,7 +712,7 @@ if (window.tailwind) tailwind.config = {
       </div>
 
       <button data-act="enregistrerObjectif" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]">
-        Enregistrer la course
+        Enregistrer
       </button>
     </div>
     </details>
@@ -1520,6 +1536,7 @@ function courseParDefaut() {
     id: idUnique('crs'), priorite: 'A',          // A : objectif principal, B : course de préparation, C : course d'entraînement
     nom: '', type: 'trail', distanceKm: null, dplus: null, dmoins: null,
     date: '', heure: '09:00', tempsVise: '', technicite: 'moyen', gpx: null,
+    nature: 'course',                             // course (avec dossard) | chrono (contre-la-montre en solo) | forme (remise en forme)
     nutrition: { conditions: 'temperee', boisson: 'eau', ravitos: '' }    // ravitos : km saisis à la main (« 5 ; 12,5 »)
   };
 }
@@ -1630,8 +1647,18 @@ function coursesAVenir() {
   return coursesTriees().filter(c => courseComplete(c) && c.date >= k);
 }
 function prochaineCourse() { return coursesAVenir()[0] || null; }
+/** Types d'objectif : une vraie course, un chrono en solo sur une distance, ou un programme de remise en forme. */
+const NATURES_OBJECTIF = {
+  course: { libelle: 'Course', texte: 'Une course officielle, avec un dossard : le plan converge vers elle.' },
+  chrono: { libelle: 'Objectif chrono', texte: 'Pas de course au calendrier : un contre-la-montre en solo sur la distance choisie, préparé comme une vraie course.' },
+  forme:  { libelle: 'Remise en forme', texte: 'Reprise ou entretien : volume progressif et séances variées, sans pression. Un test de 5 km clôt le programme pour faire le bilan.' }
+};
+const RACCOURCIS_CHRONO = { '5': { nom: 'Objectif 5 km', semaines: 8 }, '10': { nom: 'Objectif 10 km', semaines: 10 }, '21.1': { nom: 'Objectif semi-marathon', semaines: 12 }, '42.2': { nom: 'Objectif marathon', semaines: 16 } };
+function natureCourse(c) { return (c && NATURES_OBJECTIF[c.nature]) ? c.nature : 'course'; }
 function nomCourse(c) {
   if (!c) return 'Ta course';
+  if (!c.nom && natureCourse(c) === 'forme') return 'Remise en forme';
+  if (!c.nom && natureCourse(c) === 'chrono') return 'Objectif ' + (c.distanceKm ? String(c.distanceKm).replace('.', ',') + ' km' : 'chrono');
   return c.nom || ((c.type === 'trail' ? 'Trail ' : 'Course ') + (c.distanceKm ? String(c.distanceKm).replace('.', ',') + ' km' : ''));
 }
 /** Exécute fn avec une autre course active (calculs de stratégie, séance du jour J…), puis rétablit l'ancienne. */
@@ -3891,6 +3918,17 @@ function seanceCourse() {
   const e = effortCourse();
   const trail = o.type === 'trail';
   const secondaire = o.priorite && o.priorite !== 'A';
+  const nature = natureCourse(o);
+  if (nature !== 'course') {
+    return {
+      type: 'course', titre: nature === 'forme' ? 'Bilan forme : test 5 km' : 'Test chrono ' + String(o.distanceKm).replace('.', ',') + ' km', terrain: 'route',
+      courseId: o.id || null, priorite: o.priorite || 'A',
+      blocs: [ech(o.distanceKm > 25 ? 10 : 20), E('travail', 'course', { distanceM: o.distanceKm * 1000 })],
+      conseil: nature === 'forme'
+        ? 'Test de fin de programme : 5 km le plus régulier possible, sur un parcours plat. Compare avec ton niveau de départ.'
+        : 'Contre-la-montre en solo : choisis un parcours plat et bien mesuré (une piste, un tour de lac), échauffe-toi bien, et suis la stratégie de l’onglet Courses.'
+    };
+  }
   return {
     type: 'course', titre: o.nom || (trail ? 'Trail' : 'Course') + ' ' + o.distanceKm + ' km', terrain: trail ? 'trail' : 'route',
     courseId: o.id || null, priorite: o.priorite || 'A',
@@ -3983,9 +4021,11 @@ function semainesRecuperation(c) {
   return eqKm <= 13 ? 0 : eqKm <= 30 ? 1 : eqKm <= 60 ? 2 : 3;
 }
 
-function volumePlafond(distanceKm, seances) {
-  const base = distanceKm <= 5.5 ? 35 : distanceKm <= 12.5 ? 45 : distanceKm <= 25 ? 58 : distanceKm <= 45 ? 75 : 85;
-  return base * (0.55 + 0.1 * seances);
+/** Volume hebdomadaire visé au pic de préparation (km), selon la course et le nombre de séances : un 80 km mène vers 80 km par semaine. */
+function volumeCourse(distanceKm, seances) {
+  // 5 km, 10 km, semi, marathon, ultra de 50 à 60 km, puis environ la distance de la course (80 km → 80, 160 km et plus → 120)
+  const base = distanceKm <= 5.5 ? 50 : distanceKm <= 12.5 ? 60 : distanceKm <= 25 ? 65 : distanceKm <= 45 ? 75 : distanceKm <= 60 ? 75 : borner(distanceKm, 80, 120);
+  return base * (0.8 + 0.05 * borner(seances, 2, 6));
 }
 
 /** Choisit n jours d'entraînement répartis dans la semaine (0 = dimanche). */
@@ -4050,8 +4090,8 @@ function repartirSeances(jours, nbQualites) {
 function dureeTempo(minutes, f) { return Math.min(40, Math.round(minutes * Math.max(1, f) / 5) * 5); }
 
 /**
- * Volume habituel (km/semaine) : la moyenne des 4 dernières semaines tient compte d'une semaine creuse,
- * alors on prend aussi la moyenne des 3 meilleures des 6 dernières semaines complètes (à 92 %).
+ * Volume habituel (km/semaine) : la moyenne des 4 dernières semaines peut refléter une fatigue ou une semaine creuse,
+ * alors on prend aussi les 3 meilleures des 6 dernières semaines (à 92 %) et les 4 meilleures des 12 dernières (à 85 %).
  */
 function volumeHabituel(m) {
   const lundi = lundiDe(new Date());
@@ -4060,8 +4100,13 @@ function volumeHabituel(m) {
     const debut = ajouterJours(lundi, -7 * w), fin = ajouterJours(debut, 7);
     semaines.push(ETAT.activites.filter(a => { const d = new Date(a.date); return d >= debut && d < fin; }).reduce((t, a) => t + (a.distanceM || 0), 0) / 1000);
   }
-  const meilleures = semaines.sort((x, y) => y - x).slice(0, 3);
-  return Math.max(m.kmParSemaine || 0, meilleures.reduce((t, x) => t + x, 0) / 3 * 0.92);
+  const meilleures = semaines.slice().sort((x, y) => y - x).slice(0, 3);
+  for (let w = 7; w <= 12; w++) {
+    const debut = ajouterJours(lundi, -7 * w), fin = ajouterJours(debut, 7);
+    semaines.push(ETAT.activites.filter(a => { const d = new Date(a.date); return d >= debut && d < fin; }).reduce((t, a) => t + (a.distanceM || 0), 0) / 1000);
+  }
+  const meilleures12 = semaines.slice().sort((x, y) => y - x).slice(0, 4);
+  return Math.max(m.kmParSemaine || 0, meilleures.reduce((t, x) => t + x, 0) / 3 * 0.92, meilleures12.reduce((t, x) => t + x, 0) / 4 * 0.85);
 }
 
 function qualitePrincipale(phase, k, trail, distanceKm, dplusKm, f, relache) {
@@ -4074,7 +4119,8 @@ function qualitePrincipale(phase, k, trail, distanceKm, dplusKm, f, relache) {
     if (phase === 'developpement') return k % 2 === 0 ? BIBLIO.cotesLongues(Math.min(8, r(4 + k)), 3, 0.07) : BIBLIO.vmaCourte(r(10 + 2 * k), 30, 30);
     if (phase === 'specifique') return k % 2 === 0
       ? BIBLIO.cotesSpecifiques(Math.min(7, r(3 + k)), distanceKm <= 15 ? 3 : 5, pente)
-      : BIBLIO.specifique(Math.min(6, r(3 + k)), distanceKm <= 15 ? 1500 : 2000, 2, true);
+      : distanceKm >= 50 ? BIBLIO.monteesSeuil(Math.min(5, r(3 + Math.min(k, 2))), 12, pente)
+        : BIBLIO.specifique(Math.min(6, r(3 + k)), distanceKm <= 15 ? 1500 : 2000, 2, true);
     return BIBLIO.rappel(true);
   }
   if (phase === 'foncier') return [BIBLIO.fartlek(Math.min(12, r(6 + k))), BIBLIO.seuilContinu(dureeTempo(15 + 5 * Math.min(k, 3), f)), BIBLIO.vmaCourte(r(8 + 2 * k), 30, 30)][k % 3];
@@ -4166,6 +4212,10 @@ function variantesQualite(phase, k, trail, distanceKm, dplusKm, f, approche) {
            distanceKm > 12.5 ? BIBLIO.kmAlternes(Math.min(8, r(4 + kk)), false) : BIBLIO.vmaLongue(Math.min(10, r(5 + kk)), 1000, 120),
            BIBLIO.seuil(r(3), distanceKm <= 25 ? 10 : 15, 2), BIBLIO.seuilCourt(Math.min(longue ? 6 : 10, r(5 + kk)), longue ? 2000 : 1000, 60), BIBLIO.tempoProgressif(false), BIBLIO.pyramide()];
   }
+  if (trail && distanceKm >= 50 && phase === 'specifique') {
+    // Ultra trail : l'allure « course » est lente et irrégulière ; on travaille plutôt la puissance en montée et le seuil long
+    l = l.filter(x => !/Alternance|Allure course/.test(x.titre)).concat([BIBLIO.monteesSeuil(Math.min(5, r(3 + Math.min(kk, 2))), 12, borner(dplusKm / 1000 * 2.4, 0.06, 0.12))]);
+  }
   if (approche === 'polarisee') l = l.filter(x => x.type !== 'seuil' && x.type !== 'fartlek');     // 80/20 : pas de zone grise
   return l;
 }
@@ -4230,52 +4280,73 @@ function genererSegment(opts) {
   const lundiJ = lundiDe(jourJ);
   const nbSemaines = Math.round((lundiJ - lundi0) / (7 * 86400000)) + 1;
   const recup = Math.max(0, Math.min(opts.recupSemaines || 0, nbSemaines - 3));
-  const phases = Array(recup).fill('recuperation').concat(decouperPhases(nbSemaines - recup, distanceKm, approche));
+  const forme = natureCourse(o) === 'forme';
+  const nPhases = nbSemaines - recup;
+  const phases = Array(recup).fill('recuperation').concat(forme
+    ? Array(Math.max(0, nPhases - 1 - Math.floor((nPhases - 1) * 0.4))).fill('foncier').concat(Array(Math.floor((nPhases - 1) * 0.4)).fill('developpement'), nPhases > 0 ? ['affutage'] : [])
+    : decouperPhases(nPhases, distanceKm, approche));
   const nbSeances = borner(p.seancesSemaine || 3, 2, 6);
   const jours = joursEntrainement(nbSeances, p.joursDispo);
   const z = m.zones;
 
   // Volumes cibles (km/semaine)
-  const v0 = Math.max(opts.volDepart != null ? opts.volDepart : volumeHabituel(m), nbSeances * 6);
-  const plafond = Math.max(volumePlafond(distanceKm, nbSeances) * (approche === 'volume' ? 1.1 : 1), v0 * 1.2);   // de la marge pour progresser, même à haut volume
-  const facteurReps = borner(v0 / 32, 0.7, 1.35);   // les séances de qualité suivent le volume du coureur
-  const pic = [];
-  let v = v0, premiere = true;
-  phases.forEach(ph => {
-    if (ph === 'affutage' || ph === 'recuperation') return;
-    if (premiere) { v = recup ? v0 * 0.9 : v0; premiere = false; } else v = Math.min(plafond, v * 1.05);
-    pic.push(v);
-  });
-  const volMax = pic.length ? Math.max(...pic) : v0;
+  // ---- Montée en charge : un objectif de volume fixé par la course, atteint par une progression régulière ----
+  // Départ : volume habituel (12 dernières semaines, pas seulement les dernières sorties, qui peuvent refléter une fatigue).
+  // Si la course demande beaucoup plus, on part un peu au-dessus (jusqu'à +20 %), sans dépasser la moitié de l'objectif.
+  const vHabituel = opts.volDepart != null ? opts.volDepart : volumeHabituel(m);
+  // Remise en forme : +20 à +40 % par rapport au volume habituel, sans viser un volume de compétition
+  const vCourse = forme ? Math.max(vHabituel * 1.2, Math.min(volumeCourse(10, nbSeances) * 0.85, vHabituel * 1.4))
+                        : volumeCourse(distanceKm, nbSeances) * (approche === 'volume' ? 1.1 : 1);
+  const v0 = forme ? Math.max(nbSeances * 6, vHabituel) : Math.max(nbSeances * 6, vHabituel, Math.min(vCourse * 0.5, vHabituel * 1.2));
+  const facteurReps = borner(v0 / 32, 0.7, 1.35) * (forme ? 0.9 : 1);   // les séances de qualité suivent le volume du coureur
+
+  // Semaines allégées : une sur quatre (schéma 3 + 1), jamais dans les deux semaines de pointe avant l'affûtage.
+  const debutAffutage = phases.indexOf('affutage') >= 0 ? phases.indexOf('affutage') : nbSemaines - 1;
+  const estRelache = w => w < nbSemaines - 1 && phases[w] !== 'affutage' && phases[w] !== 'recuperation' && nbSemaines > 5
+                          && w % 4 === 3 && w < debutAffutage - 2;
+  const semainesCharge = phases.map((ph, w) => w).filter(w => phases[w] !== 'affutage' && phases[w] !== 'recuperation' && !estRelache(w) && w < nbSemaines - 1);
+  const L = semainesCharge.length;
+  // Progression géométrique (au plus +10 % par semaine de charge) ; les deux dernières semaines de charge sont au pic.
+  const vCible = Math.max(vCourse, v0 * 1.1);
+  const taux = L > 2 ? Math.min(1.10, Math.pow(vCible / v0, 1 / (L - 2))) : 1;
+  const volCharge = semainesCharge.map((w, i) => Math.min(vCible, v0 * Math.pow(taux, i)) * (recup && i === 0 ? 0.9 : 1));
+  const volMax = volCharge.length ? Math.max(...volCharge) : v0;
   const nbAff = phases.filter(x => x === 'affutage').length;
   const partsAff = { 1: [0.55], 2: [0.75, 0.55], 3: [0.85, 0.7, 0.55] }[nbAff] || [0.55];
   const partsRecup = [0.55, 0.7, 0.85];
 
-  // Sortie longue maximale (Hanson la plafonne plus bas, compensée par le volume de semaine)
+  // Sortie longue : de la longueur habituelle à la longueur clé de la course, au même rythme que le volume.
   const strat = calculerStrategie();
   const allureEfTerrain = z.ef * (1 + (trail ? borner(dplusKm, 10, 60) : 0) * 0.0075);
+  const ultra = distanceKm >= 50;
   const slMaxKm = trail
-    ? (borner((strat ? strat.tempsModele : 5400) / 60 * 0.8, 75, 240) * 60) / allureEfTerrain
-    : (distanceKm <= 12.5 ? 16 : distanceKm <= 25 ? 22 : distanceKm <= 45 ? 32 : 35);
+    ? (borner((strat ? strat.tempsModele : 5400) / 60 * (ultra ? 0.5 : 0.65), 90, 360) * 60) / allureEfTerrain
+    : forme ? 16 : (distanceKm <= 5.5 ? 15 : distanceKm <= 12.5 ? 18 : distanceKm <= 25 ? 22 : distanceKm <= 45 ? 33 : 38);
+  const slPic = Math.min(slMaxKm, vCible * (ultra ? 0.5 : 0.45));
+  const debut6S = ajouterJours(new Date(), -42);
+  const plusLongueRecente = ETAT.activites.filter(x => new Date(x.date) >= debut6S).reduce((mx, x) => Math.max(mx, (x.distanceM || 0) / 1000), 0);
+  const sl0 = Math.min(slPic, Math.max(8, v0 * 0.3, plusLongueRecente * 0.9));
+  const slCharge = semainesCharge.map((w, i) => sl0 + (slPic - sl0) * (L > 2 ? Math.min(1, i / (L - 2)) : 1));
 
   const semaines = [];
   const compteurPhase = {};
-  let indexVol = 0;
-  // Charge ondulatoire : dans chaque cycle de 4 semaines, une semaine moyenne, une plus chargée, une de pointe, puis allègement.
-  const ONDE = [0.95, 1, 1.05, 1];
   let qualitesPrecedentes = [];      // qualités des deux semaines précédentes (toutes positions confondues)
   let titresPrecedents = new Set();  // toutes les séances de la semaine précédente
   let slPrecedentes = [];            // familles des deux dernières sorties longues
+  let derniereCharge = { vol: v0, sl: sl0 };
   for (let w = 0; w < nbSemaines; w++) {
     const phase = phases[w];
     const k = compteurPhase[phase] = (compteurPhase[phase] == null ? 0 : compteurPhase[phase] + 1);
     const lundi = ajouterJours(lundi0, 7 * w);
     const derniere = w === nbSemaines - 1;
-    const relache = !derniere && phase !== 'affutage' && phase !== 'recuperation' && nbSemaines > 5 && w % 4 === 3;
-    let volumeCible;
+    const relache = estRelache(w);
+    const iCharge = semainesCharge.indexOf(w);
+    let volumeCible, slVise = null;
     if (phase === 'affutage') volumeCible = volMax * partsAff[partsAff.length - (nbSemaines - w)] || volMax * 0.55;
     else if (phase === 'recuperation') volumeCible = v0 * partsRecup[k] || v0 * 0.8;
-    else { volumeCible = pic[indexVol++] * (relache ? 0.72 : ONDE[w % 4]); }
+    else if (relache) { volumeCible = derniereCharge.vol * 0.72; slVise = derniereCharge.sl * 0.65; }
+    else if (iCharge >= 0) { volumeCible = volCharge[iCharge]; slVise = slCharge[iCharge]; derniereCharge = { vol: volumeCible, sl: slVise }; }
+    else volumeCible = derniereCharge.vol;
 
     const seances = [];
     const joursSemaine = jours.map(j => ajouterJours(lundi, (j + 6) % 7));
@@ -4345,21 +4416,39 @@ function genererSegment(opts) {
           const retenu = libre(choix) ? choix : choisirVariante(pool, depart, libre);
           if (retenu && libre(retenu)) brouillon[idx] = JSON.parse(JSON.stringify(retenu));
         });
+        // Cohérence de la charge : les séances de qualité ne dépassent pas 40 % du volume de la semaine.
+        // Sinon, la plus lourde laisse sa place à une variante plus courte (jamais deux grosses séances spécifiques la même semaine).
+        const kmDe = x => mesurerSeance(x).distanceM / 1000;
+        for (let essai = 0; essai < 2; essai++) {
+          const idxQ = brouillon.map((x, i) => (estQualite(x) ? i : -1)).filter(i => i >= 0);
+          const total = idxQ.reduce((t, i) => t + kmDe(brouillon[i]), 0);
+          if (idxQ.length < 2 || total <= volumeCible * 0.4) break;
+          const lourde = idxQ.reduce((a, b) => (kmDe(brouillon[b]) > kmDe(brouillon[a]) ? b : a));
+          const autreQ = brouillon[idxQ.find(i => i !== lourde)];
+          const budget = volumeCible * 0.4 - kmDe(autreQ);
+          const options = pool.filter(x => kmDe(x) < kmDe(brouillon[lourde]) && !proche(x, autreQ) && !qualitesPrecedentes.some(y => familleSeance(x) === familleSeance(y)))
+                              .sort((a, b) => kmDe(b) - kmDe(a));
+          const secours = [BIBLIO.tempoProgressif(trail), BIBLIO.seuilContinu(dureeTempo(20, facteurReps), trail), BIBLIO.fartlekKenyan(Math.min(20, r(12)), trail),
+                           BIBLIO.pyramide(), BIBLIO.fartlek(Math.min(12, r(6)), trail), BIBLIO.cotesCourtes(Math.min(16, r(8)), 40), BIBLIO.vitesse200(Math.min(16, r(8)))]
+            .filter(x => kmDe(x) < kmDe(brouillon[lourde]) && !proche(x, autreQ))
+            .sort((a, b) => qualitesPrecedentes.some(y => y.titre === a.titre || familleSeance(y) === familleSeance(a)) - qualitesPrecedentes.some(y => y.titre === b.titre || familleSeance(y) === familleSeance(b)));
+          const neuf = x => !qualitesPrecedentes.some(y => y.titre === x.titre || familleSeance(y) === familleSeance(x));
+          const choix = options.find(x => kmDe(x) <= budget) || secours.find(x => kmDe(x) <= budget && neuf(x)) || options[options.length - 1] || secours.find(neuf);
+          if (!choix) break;
+          brouillon[lourde] = JSON.parse(JSON.stringify(choix));
+        }
         // Mémoire sur deux semaines : une séance clé ne revient qu'après au moins deux semaines
         qualitesPrecedentes = qualitesPrecedentes.slice(-2).concat(brouillon.filter(estQualite)).slice(-4);
       }
       const kmQualite = brouillon.reduce((s, x) => s + (x ? mesurerSeance(x).distanceM / 1000 : 0), 0);
 
-      // Footings plus longs pour les gros volumes, et sortie longue allongée si les footings ne suffisent pas
+      // Footings plus longs pour les gros volumes
       const nbEf = motif.filter((t, idx) => (t === 'ef') || ((t === 'q1' || t === 'q2') && !brouillon[idx])).length;
-      const efMax = volumeCible >= 65 ? 95 : volumeCible >= 45 ? 85 : 70;
-      const kmEfMax = nbEf * efMax * 60 / z.ef;
+      const efMax = volumeCible >= 80 ? 110 : volumeCible >= 65 ? 95 : volumeCible >= 45 ? 85 : 70;
 
-      // 2. Sortie longue
-      let slKm = borner(volumeCible * (n <= 3 ? 0.42 : 0.34), 7, slMaxKm) * (relache ? 0.8 : 1);
-      slKm = Math.min(slKm, slMaxKm * progressionPhase + 3);
-      const manqueSl = volumeCible - kmQualite - kmEfMax - slKm;
-      if (manqueSl > 0 && !relache) slKm = Math.min(slKm + manqueSl, slMaxKm * progressionPhase + 6, volumeCible * 0.42, slMaxKm);
+      // 2. Sortie longue : suit la montée en charge (pas de saut d'une semaine à l'autre)
+      let slKm = slVise != null ? borner(slVise, 7, slMaxKm)
+        : Math.min(borner(volumeCible * (n <= 3 ? 0.42 : 0.34), 7, slMaxKm), slMaxKm * progressionPhase + 3);
       const allureSl = z.ef * (1 + dpkSl * 0.0075);
       const slMin = arrondi5(slKm * allureSl / 60);
       const finSl = phase === 'specifique' && !relache ? (trail ? 20 : distanceKm <= 12.5 ? 15 : distanceKm <= 25 ? 25 : 40) : 0;
@@ -4370,11 +4459,25 @@ function genererSegment(opts) {
       if (familleSeance(sl) === derniereSl) sl = choisirVariante(variantesSl, w, x => familleSeance(x) !== derniereSl);
       slPrecedentes = slPrecedentes.concat([familleSeance(sl)]).slice(-(variantesSl.length > 2 ? 2 : 1));
 
+      // Ultra : la veille de la sortie longue devient une sortie moyenne-longue (enchaînement, fatigue cumulée)
+      const idxSl = motif.indexOf('sl');
+      let idxVeille = -1;
+      if (idxSl > 0 && ultra && !relache && (phase === 'developpement' || phase === 'specifique')) {
+        for (let i = idxSl - 1; i >= 0; i--) { if (motif[i] === 'ef' && joursSemaine[i] && joursSemaine[i] >= auj) { idxVeille = i; break; } if (motif[i] !== 'recup') break; }
+      }
+      // Sa durée tient dans le volume de la semaine (les autres footings gardent au moins 30 min)
+      const nbAutresEf = motif.filter((t, i) => i !== idxVeille && ((t === 'ef') || ((t === 'q1' || t === 'q2') && !brouillon[i]))).length;
+      const budgetMin = (volumeCible - kmQualite - mesurerSeance(sl).distanceM / 1000) * z.ef / 60 - nbAutresEf * 30;
+      let minVeille = idxVeille >= 0 ? Math.min(arrondi5(slMin * 0.45), distanceKm >= 120 ? 180 : 150, Math.floor(budgetMin / 5) * 5) : 0;
+      if (minVeille < 50) { idxVeille = -1; minVeille = 0; }
+
       // 3. Footings pour compléter le volume
-      const resteKm = Math.max(0, volumeCible - kmQualite - mesurerSeance(sl).distanceM / 1000);
-      const efMin = nbEf ? borner(arrondi5((resteKm / nbEf) * z.ef / 60), 30, efMax) : 0;
+      const kmVeille = minVeille * 60 / z.ef;
+      const nbEfLibres = nbEf - (idxVeille >= 0 ? 1 : 0);
+      const resteKm = Math.max(0, volumeCible - kmQualite - mesurerSeance(sl).distanceM / 1000 - kmVeille);
+      const efMin = nbEfLibres ? borner(arrondi5((resteKm / nbEfLibres) * z.ef / 60), 30, efMax) : 0;
       // Encore du volume à trouver : échauffements plus longs sur les séances de qualité (jusqu'à +10 min), comme les coureurs d'élite
-      let manqueMin = (resteKm - nbEf * efMin * 60 / z.ef) * z.ef / 60;
+      let manqueMin = (resteKm - nbEfLibres * efMin * 60 / z.ef) * z.ef / 60;
       brouillon.forEach(x => {
         if (!x || manqueMin < 5 || ['ef', 'sl', 'recup'].includes(x.type)) return;
         const e = x.blocs.find(b => b.nature === 'echauffement' && b.dureeS);
@@ -4391,6 +4494,12 @@ function genererSegment(opts) {
         if (!d || d < auj) return;
         let s = brouillon[idx];
         if (t === 'sl') s = sl;
+        if (!s && idx === idxVeille) {
+          const enchaine = ecartJours(joursSemaine[idxVeille], joursSemaine[idxSl]) === 1;
+          s = BIBLIO.ef(minVeille, { trail, dpk: Math.round(dpkSl * 0.8), titre: enchaine ? 'Sortie moyenne-longue (enchaînement)' : 'Sortie moyenne-longue' });
+          s.conseil = enchaine ? 'Veille de la sortie longue : on court sur des jambes un peu fatiguées, comme en ultra. Allure facile, ravitaille-toi comme le jour J.'
+                               : 'Deuxième sortie longue de la semaine, à allure facile : en ultra, c’est le volume en endurance qui fait la différence.';
+        }
         if (!s) {
           // Footings : un court et un plus long (même volume au total), et jamais deux fois le même dans la semaine
           const ecart = nbEf > 1 ? (rangEf % 2 === 0 ? 0.88 : 1.12) : 1;
@@ -6444,7 +6553,7 @@ let nbActivitesVisibles = 30;
 let joursBrouillon = [];
 let saisieObjectifEnCours = false;   // champs de la course modifiés, pas encore enregistrés
 let saisieReglagesEnCours = false;   // réglages modifiés, pas encore enregistrés
-let brouillonType = null, brouillonTech = null, brouillonPriorite = null;
+let brouillonType = null, brouillonTech = null, brouillonPriorite = null, brouillonNature = null;
 let afficherSemainesPassees = false;
 
 const CHAMP = 'w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]';   // 16 px : iOS ne zoome pas au toucher
@@ -8015,6 +8124,18 @@ function majBoutonsObjectif() {
   const prio = brouillonPriorite || o.priorite || 'A';
   $$('#choixPriorite button').forEach(b => b.classList.toggle('actif', b.dataset.arg === prio));
   $('#textePriorite').textContent = PRIORITES[prio].texte;
+  // Type d'objectif : la remise en forme n'a ni distance, ni terrain, ni temps à viser
+  const nature = brouillonNature || natureCourse(o);
+  $$('#choixNature button').forEach(b => b.classList.toggle('actif', b.dataset.arg === nature));
+  $('#texteNature').textContent = NATURES_OBJECTIF[nature].texte;
+  $('#raccourcisChrono').classList.toggle('hidden', nature !== 'chrono');
+  const km = $('#objKm').value.replace(',', '.');
+  $$('#raccourcisChrono button').forEach(b => regler(b, b.dataset.arg === km));
+  ['#blocTerrain', '#blocDistance', '#blocTemps'].forEach(sel => $(sel).classList.toggle('hidden', nature === 'forme'));
+  if (nature !== 'course') { $('#blocTerrain').classList.add('hidden'); $('#blocTechnicite').classList.add('hidden'); }
+  $('#libelleNomCourse').textContent = nature === 'course' ? 'Nom de la course' : 'Nom de l’objectif (facultatif)';
+  $('#objNom').placeholder = nature === 'course' ? 'Trail des Crêtes' : nature === 'forme' ? 'Remise en forme' : 'Objectif 10 km';
+  $('#libelleDateCourse').textContent = nature === 'forme' ? 'Fin du programme' : nature === 'chrono' ? 'Date du chrono' : 'Date';
 }
 
 /** Liste des courses (passées et à venir) en tête de l'onglet Courses. */
@@ -8024,7 +8145,8 @@ function rendreListeCourses() {
   const k = cleJour(new Date());
   if (!liste.length) {
     cible.innerHTML = `<div class="px-4 py-4 text-[13px] text-brume">Aucune course pour l’instant. Ajoutes-en une, puis d’autres si tu veux (une en novembre, une en mars…) : le plan s’organisera autour de toutes.
-      <button data-act="nouvelleCourse" class="tapable mt-3 w-full h-11 rounded-2xl bg-ocre text-white font-semibold text-[14px]">Ajouter une course</button></div>`;
+      Pas de course prévue ? Fixe-toi un objectif chrono (5 km, 10 km, semi, marathon) ou un programme de remise en forme.
+      <button data-act="nouvelleCourse" class="tapable mt-3 w-full h-11 rounded-2xl bg-ocre text-white font-semibold text-[14px]">Ajouter une course ou un objectif</button></div>`;
     return;
   }
   cible.innerHTML = liste.map(c => {
@@ -8035,7 +8157,7 @@ function rendreListeCourses() {
     return `<button data-act="choisirCourse" data-arg="${c.id}" class="tapable w-full text-left px-4 py-3 flex items-center gap-3 ${passee ? 'opacity-60' : ''}">
       <span class="w-8 h-8 rounded-lg grid place-items-center text-[12px] font-bold text-white shrink-0" style="background:${passee ? '#B4BAC5' : pr.couleur}">${pr.court}</span>
       <span class="flex-1 min-w-0"><span class="block text-[14px] font-semibold truncate">${esc(nomCourse(c))}</span>
-        <span class="block text-[11.5px] text-brume truncate">${d ? JOURS_COURTS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURTS[d.getMonth()] + ' ' + d.getFullYear() : 'date à définir'}${c.distanceKm ? ', ' + String(c.distanceKm).replace('.', ',') + ' km' : ''}${c.gpx ? ', GPX' : ''}</span></span>
+        <span class="block text-[11.5px] text-brume truncate">${d ? JOURS_COURTS[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURTS[d.getMonth()] + ' ' + d.getFullYear() : 'date à définir'}${natureCourse(c) === 'forme' ? ', remise en forme' : c.distanceKm ? ', ' + String(c.distanceKm).replace('.', ',') + ' km' + (natureCourse(c) === 'chrono' ? ' chrono' : '') : ''}${c.gpx ? ', GPX' : ''}</span></span>
       <span class="text-right shrink-0">${j != null ? (passee ? '<span class="text-[11.5px] text-brume">passée</span>' : `<span class="chiffre text-[19px]">J-${j}</span>`) : ''}</span>
       <i class="fa-solid fa-chevron-right text-[11px] text-brume"></i>
     </button>`;
@@ -8057,8 +8179,10 @@ function rendreEnteteFiche(o, enregistree) {
   const dplus = o.gpx ? o.gpx.dplus : o.dplus;
   cible.innerHTML = `<div class="px-1 mt-1">
       <div class="flex items-center gap-2 text-[11.5px] mb-1">
-        <span class="px-2 py-0.5 rounded-full font-semibold" style="background:${pr.couleur}22;color:${pr.couleur}">${pr.libelle}</span>
-        <span class="text-brume"><i class="fa-solid ${o.type === 'trail' ? 'fa-mountain' : 'fa-road'} mr-1"></i>${o.type === 'trail' ? 'Trail' : 'Route'}</span>
+        ${natureCourse(o) === 'course'
+          ? `<span class="px-2 py-0.5 rounded-full font-semibold" style="background:${pr.couleur}22;color:${pr.couleur}">${pr.libelle}</span>
+             <span class="text-brume"><i class="fa-solid ${o.type === 'trail' ? 'fa-mountain' : 'fa-road'} mr-1"></i>${o.type === 'trail' ? 'Trail' : 'Route'}</span>`
+          : `<span class="px-2 py-0.5 rounded-full font-semibold bg-azur/15 text-azur"><i class="fa-solid ${natureCourse(o) === 'forme' ? 'fa-heart-pulse' : 'fa-stopwatch'} mr-1"></i>${NATURES_OBJECTIF[natureCourse(o)].libelle}</span>`}
       </div>
       <div class="flex items-end justify-between gap-3">
         <h2 class="titre text-[28px] leading-tight min-w-0 break-words">${esc(nomCourse(o))}</h2>
@@ -8178,6 +8302,7 @@ function rendreObjectif(remplirChamps = true) {
     brouillonType = null;
     brouillonTech = null;
     brouillonPriorite = null;
+    brouillonNature = null;
     $('#objNom').value = o.nom || '';
     $('#objKm').value = o.distanceKm ? String(o.distanceKm).replace('.', ',') : '';
     $('#objDplus').value = o.dplus != null ? o.dplus : '';
@@ -8936,7 +9061,7 @@ function activerProfil(id) {
   chargerEtat();
   sessionOuverte = true;
   saisieObjectifEnCours = false; saisieReglagesEnCours = false;
-  brouillonType = null; brouillonTech = null; brouillonPriorite = null;
+  brouillonType = null; brouillonTech = null; brouillonPriorite = null; brouillonNature = null;
   nbActivitesVisibles = 30; coachOccupe = false;
   Object.keys(GRAPHS).forEach(effacerGraphique);
   rafraichirMetriques();
@@ -9147,6 +9272,7 @@ function annoncerPlan() {
 
 function lireFormulaireObjectif() {
   const o = ETAT.objectif;
+  if (brouillonNature) o.nature = brouillonNature;
   if (brouillonType) o.type = brouillonType;
   if (brouillonTech) o.technicite = brouillonTech;
   if (brouillonPriorite) o.priorite = brouillonPriorite;
@@ -9158,6 +9284,9 @@ function lireFormulaireObjectif() {
   o.date = $('#objDate').value || '';
   o.heure = $('#objHeure').value || '09:00';
   o.tempsVise = $('#objTemps').value.trim();
+  // Chrono : sur route, sans dénivelé ; remise en forme : test de 5 km en fin de programme
+  if (natureCourse(o) !== 'course') { o.type = 'route'; o.dplus = 0; o.gpx = o.gpx || null; }
+  if (natureCourse(o) === 'forme') { o.distanceKm = 5; o.tempsVise = ''; }
 }
 
 /** Le brouillon (nouvelle course) rejoint la liste des courses et devient la course active. */
@@ -9635,6 +9764,29 @@ const ACTIONS = {
   voirCourse: id => {
     if (courseParId(id)) { ETAT.courseActive = id; saisieObjectifEnCours = false; sauverEtat(); ficheCourseOuverte = true; $('#reglagesCourse').open = false; }
     allerA('objectif');
+  },
+  setNature: arg => {
+    if (!NATURES_OBJECTIF[arg]) return;
+    brouillonNature = arg;
+    saisieObjectifEnCours = true;
+    if (arg !== 'course') brouillonType = 'route';
+    if (!$('#objDate').value && arg !== 'course') $('#objDate').value = cleJour(ajouterJours(new Date(), 7 * (arg === 'forme' ? 10 : 12)));
+    if (arg === 'forme') $('#objKm').value = '5';
+    majBoutonsObjectif();
+  },
+  presetChrono: arg => {
+    const r = RACCOURCIS_CHRONO[arg];
+    if (!r) return;
+    brouillonNature = 'chrono';
+    brouillonType = 'route';
+    saisieObjectifEnCours = true;
+    $('#objKm').value = arg.replace('.', ',');
+    $('#objDplus').value = '0';
+    const nom = $('#objNom').value.trim();
+    if (!nom || /^Objectif /.test(nom)) $('#objNom').value = r.nom;
+    if (!$('#objDate').value) $('#objDate').value = cleJour(ajouterJours(new Date(), 7 * r.semaines));
+    majBoutonsObjectif();
+    setTimeout(() => $('#objTemps').focus(), 50);
   },
   setPriorite: arg => { if (PRIORITES[arg]) { brouillonPriorite = arg; saisieObjectifEnCours = true; majBoutonsObjectif(); } },
   supprimerCourse: () => {
