@@ -275,6 +275,8 @@ if (window.tailwind) tailwind.config = {
   details > summary::-webkit-details-marker{ display:none; }
   details[open] > summary .chevron{ transform:rotate(90deg); }
   .chevron{ transition:transform .2s ease; }
+  /* Volet dans un volet : simple ligne, sans carte */
+  .sous-accordeon > summary .chevron{ font-size:10px; }
   .ligne-sep{ background:var(--filet); height:1px; }
   .saisie span{ display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:50%; background:#8A93A6; animation:saisie 1.2s infinite ease-in-out; }
   .saisie span:nth-child(2){ animation-delay:.15s; } .saisie span:nth-child(3){ animation-delay:.3s; }
@@ -453,88 +455,104 @@ if (window.tailwind) tailwind.config = {
   </div>
   <div id="carteSemaine" class="rounded-xl2 verre p-4 mb-6"></div>
 
-  <!-- Statistiques : semaine, mois, année -->
-  <h2 class="surtitre px-1 mb-2">Statistiques</h2>
-  <div class="rounded-xl2 verre p-4 mb-6">
-    <div id="choixPeriode" class="segments mb-4">
-      <button data-act="choisirPeriode" data-arg="semaines">Semaines</button>
-      <button data-act="choisirPeriode" data-arg="mois">Mois</button>
-      <button data-act="choisirPeriode" data-arg="annee">Année</button>
-    </div>
-    <div id="resumePeriode"></div>
-    <div class="h-[170px] mt-3"><canvas id="graphStats"></canvas></div>
-    <p id="legendeStats" class="text-[11.5px] text-brume mt-2"></p>
-  </div>
-
-  <!-- Analyse détaillée : KPIs, complétion du plan, répartition des séances, charge -->
-  <div class="flex items-baseline justify-between px-1 mb-2">
-    <h2 class="surtitre">Analyse détaillée</h2>
-    <span id="periodeAnalyse" class="text-[11px] text-brume"></span>
-  </div>
-  <div class="rounded-xl2 verre p-4 mb-6">
-    <div id="kpisAnalyse" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
-    <div id="completionPlan" class="mt-4"></div>
-    <div class="ligne-sep my-4"></div>
-    <h3 class="titre text-[15px]">Répartition des séances</h3>
-    <p id="legendeRepartition" class="text-[12px] text-brume mb-3">Sorties réalisées sur la période, par type de séance.</p>
-    <div class="flex items-center gap-4">
-      <div class="relative w-[112px] h-[112px] shrink-0"><canvas id="graphTypes"></canvas>
-        <div id="centreTypes" class="absolute inset-0 grid place-items-center text-center pointer-events-none"></div></div>
-      <div id="legendeTypes" class="flex-1 min-w-0 space-y-1.5"></div>
-    </div>
-    <div class="ligne-sep my-4"></div>
-    <div class="flex items-baseline justify-between">
-      <h3 class="titre text-[15px]">Charge d’entraînement</h3>
-      <span id="tendanceCharge" class="text-[11px] text-brume"></span>
-    </div>
-    <p id="legendeChargePeriode" class="text-[12px] text-brume mb-3">Durée × intensité de chaque sortie, cumulée, avec sa tendance.</p>
-    <div class="h-[170px]"><canvas id="graphChargePeriode"></canvas></div>
-  </div>
-
-  <!-- Records -->
-  <div class="flex items-baseline justify-between px-1 mb-2">
-    <h2 class="surtitre">Records personnels</h2>
-    <span class="text-[11px] text-brume">sur tes sorties</span>
-  </div>
-  <div id="grilleRecords" class="grid grid-cols-2 gap-2.5 mb-6"></div>
-
-  <!-- Forme et niveau -->
-  <div class="flex items-baseline justify-between px-1 mb-2">
-    <h2 class="surtitre">Forme et niveau</h2>
-    <button data-act="allerA" data-arg="profil" class="text-[12px] text-ocre font-medium tapable">Détail</button>
-  </div>
-  <div id="grilleMetriques" class="grid grid-cols-3 gap-2.5 mb-3"></div>
-  <div class="rounded-xl2 verre p-4 mb-3">
-    <div class="flex items-baseline justify-between mb-1">
-      <h3 class="titre text-[15px]">Charge d’entraînement</h3>
-      <span id="etatForme" class="text-[11px] px-2 py-1 rounded-full bg-granit text-brume">—</span>
-    </div>
-    <p id="legendeCharge" class="text-[12px] text-brume mb-3">Condition (long terme) contre fatigue (7 jours).</p>
-    <div class="h-[150px]"><canvas id="graphCharge"></canvas></div>
-  </div>
-  <div class="rounded-xl2 verre p-4 mb-6">
-    <div class="flex items-center gap-4">
-      <div class="relative w-[64px] h-[64px] shrink-0">
-        <svg viewBox="0 0 80 80" class="w-full h-full -rotate-90">
-          <circle cx="40" cy="40" r="33" fill="none" style="stroke:var(--segment)" stroke-width="8"/>
-          <circle id="anneauRespect" cx="40" cy="40" r="33" fill="none" stroke="#16A34A" stroke-width="8"
-                  stroke-linecap="round" stroke-dasharray="207.3" stroke-dashoffset="207.3"/>
-        </svg>
-        <div id="respectValeur" class="absolute inset-0 grid place-items-center chiffre text-[20px]">0%</div>
+  <!-- Le reste est rangé dans des volets repliables : moins d’informations sous les yeux -->
+  <details class="accordeon rounded-xl2 verre overflow-hidden mb-3">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-ocre/10 shrink-0"><i class="fa-solid fa-chart-column text-ocre"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Statistiques</span><span class="block text-[11.5px] text-brume truncate">Volume, analyse détaillée, charge</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]">
+      <div id="choixPeriode" class="segments mb-4">
+        <button data-act="choisirPeriode" data-arg="semaines">Semaines</button>
+        <button data-act="choisirPeriode" data-arg="mois">Mois</button>
+        <button data-act="choisirPeriode" data-arg="annee">Année</button>
       </div>
-      <div class="min-w-0">
-        <div class="titre text-[15px]">Respect du plan</div>
-        <div id="respectDetail" class="text-[12px] text-brume mt-0.5">Aucune séance planifiée pour l’instant.</div>
-      </div>
+      <div id="resumePeriode"></div>
+      <div class="h-[170px] mt-3"><canvas id="graphStats"></canvas></div>
+      <p id="legendeStats" class="text-[11.5px] text-brume mt-2"></p>
+      <details class="sous-accordeon filet mt-4">
+        <summary class="py-3 flex items-center gap-2">
+          <span class="flex-1 min-w-0 text-[14px] font-semibold">Analyse détaillée</span><span id="periodeAnalyse" class="text-[11px] text-brume shrink-0"></span>
+          <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+        </summary>
+        <div class="pb-1 pt-1">
+          <div id="kpisAnalyse" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+          <div id="completionPlan" class="mt-4"></div>
+          <div class="ligne-sep my-4"></div>
+          <h3 class="titre text-[15px]">Répartition des séances</h3>
+          <p id="legendeRepartition" class="text-[12px] text-brume mb-3">Sorties réalisées sur la période, par type de séance.</p>
+          <div class="flex items-center gap-4">
+            <div class="relative w-[112px] h-[112px] shrink-0"><canvas id="graphTypes"></canvas>
+              <div id="centreTypes" class="absolute inset-0 grid place-items-center text-center pointer-events-none"></div></div>
+            <div id="legendeTypes" class="flex-1 min-w-0 space-y-1.5"></div>
+          </div>
+          <div class="ligne-sep my-4"></div>
+          <div class="flex items-baseline justify-between">
+            <h3 class="titre text-[15px]">Charge d’entraînement</h3>
+            <span id="tendanceCharge" class="text-[11px] text-brume"></span>
+          </div>
+          <p id="legendeChargePeriode" class="text-[12px] text-brume mb-3">Durée × intensité de chaque sortie, cumulée, avec sa tendance.</p>
+          <div class="h-[170px]"><canvas id="graphChargePeriode"></canvas></div>
+        </div>
+      </details>
     </div>
-  </div>
-
-  <!-- Journal -->
-  <div class="flex items-baseline justify-between px-1 mb-2">
-    <h2 class="surtitre">Dernières sorties</h2>
-    <button data-act="allerA" data-arg="activites" class="text-[12px] text-ocre font-medium tapable">Tout voir</button>
-  </div>
-  <div id="listeJournal" class="rounded-xl2 verre overflow-hidden groupe mb-4"></div>
+  </details>
+  <details class="accordeon rounded-xl2 verre overflow-hidden mb-3">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-braise/10 shrink-0"><i class="fa-solid fa-heart-pulse text-braise"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Forme et records</span><span class="block text-[11.5px] text-brume truncate">Niveau, respect du plan, fraîcheur, records</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]">
+      <div id="grilleMetriques" class="grid grid-cols-3 gap-2.5"></div>
+      <div class="flex items-center gap-4 mt-4">
+        <div class="relative w-[64px] h-[64px] shrink-0">
+          <svg viewBox="0 0 80 80" class="w-full h-full -rotate-90">
+            <circle cx="40" cy="40" r="33" fill="none" style="stroke:var(--segment)" stroke-width="8"/>
+            <circle id="anneauRespect" cx="40" cy="40" r="33" fill="none" stroke="#16A34A" stroke-width="8"
+                    stroke-linecap="round" stroke-dasharray="207.3" stroke-dashoffset="207.3"/>
+          </svg>
+          <div id="respectValeur" class="absolute inset-0 grid place-items-center chiffre text-[20px]">0%</div>
+        </div>
+        <div class="min-w-0">
+          <div class="titre text-[15px]">Respect du plan</div>
+          <div id="respectDetail" class="text-[12px] text-brume mt-0.5">Aucune séance planifiée pour l’instant.</div>
+        </div>
+      </div>
+      <details class="sous-accordeon filet mt-4">
+        <summary class="py-3 flex items-center gap-2">
+          <span class="flex-1 min-w-0 text-[14px] font-semibold">Fraîcheur et fatigue</span><span id="etatForme" class="text-[11px] px-2 py-1 rounded-full bg-granit text-brume shrink-0">—</span>
+          <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+        </summary>
+        <div class="pb-1 pt-1">
+          <p id="legendeCharge" class="text-[12px] text-brume mb-3">Condition (long terme) contre fatigue (7 jours).</p>
+          <div class="h-[150px]"><canvas id="graphCharge"></canvas></div>
+        </div>
+      </details>
+      <details class="sous-accordeon filet mt-4">
+        <summary class="py-3 flex items-center gap-2">
+          <span class="flex-1 min-w-0 text-[14px] font-semibold">Records personnels</span>
+          <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+        </summary>
+        <div class="pb-1 pt-1">
+          <div id="grilleRecords" class="grid grid-cols-2 gap-2.5"></div>
+        </div>
+      </details>
+      <button data-act="allerA" data-arg="profil" class="tapable w-full mt-3 h-10 rounded-xl bg-granit text-[13px]">Voir le détail de mon niveau</button>
+    </div>
+  </details>
+  <details class="accordeon rounded-xl2 verre overflow-hidden mb-4">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-azur/10 shrink-0"><i class="fa-solid fa-person-running text-azur"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Dernières sorties</span><span class="block text-[11.5px] text-brume truncate">Tes 5 dernières sorties</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]">
+      <div id="listeJournal" class="groupe -mx-4 -mt-3"></div>
+      <button data-act="allerA" data-arg="activites" class="tapable w-full mt-3 h-10 rounded-xl bg-granit text-[13px]">Voir toutes mes sorties</button>
+    </div>
+  </details>
 </section>
 
 <!-- ------------------------------------------------------------------ -->
@@ -551,11 +569,16 @@ if (window.tailwind) tailwind.config = {
 
   <div id="resumePlan" class="mb-4"></div>
 
-  <div id="blocVolumePlan" class="rounded-xl2 verre p-4 mb-4 hidden">
-    <h3 class="titre text-[15px] mb-1">Volume hebdomadaire</h3>
-    <p class="text-[12px] text-brume mb-3">Prévu par phase (barres) et réalisé (ligne).</p>
-    <div class="h-[160px]"><canvas id="graphVolume"></canvas></div>
-  </div>
+  <details id="blocVolumePlan" class="accordeon rounded-xl2 verre overflow-hidden mb-3 hidden">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-azur/10 shrink-0"><i class="fa-solid fa-chart-column text-azur"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Volume hebdomadaire</span><span class="block text-[11.5px] text-brume truncate">Prévu par phase (barres) et réalisé (ligne)</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]">
+      <div class="h-[160px]"><canvas id="graphVolume"></canvas></div>
+    </div>
+  </details>
 
   <!-- Méthode : approche d'entraînement et principes -->
   <div id="carteMethode" class="mb-4"></div>
@@ -563,10 +586,7 @@ if (window.tailwind) tailwind.config = {
   <div id="listeSemaines" class="space-y-2.5"></div>
 
   <div id="actionsPlan" class="mt-5 space-y-2 hidden">
-    <button data-act="exporterPlanIcs" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]">
-      <i class="fa-regular fa-calendar-plus mr-2"></i>Ajouter tout le plan au calendrier
-    </button>
-    <button data-act="exporterPlanJson" class="tapable w-full h-12 rounded-2xl verre text-[15px] font-medium">
+    <button data-act="exporterPlanJson" class="tapable w-full h-11 rounded-2xl verre text-[14px] font-medium">
       <i class="fa-solid fa-file-arrow-down mr-2"></i>Exporter le plan (JSON)
     </button>
   </div>
@@ -618,26 +638,39 @@ if (window.tailwind) tailwind.config = {
         <button data-act="exporterStrategie" class="text-[12px] text-ocre tapable"><i class="fa-solid fa-share-nodes mr-1"></i>Partager</button>
       </div>
       <div id="synthStrategie" class="rounded-xl2 verre p-4 mb-3"></div>
-      <div class="rounded-xl2 verre p-4 mb-3">
-        <h4 class="titre text-[16px] mb-2">Allure prévue par kilomètre</h4>
-        <div class="h-[170px]"><canvas id="graphAllures"></canvas></div>
-      </div>
-      <div id="tableauKm" class="rounded-xl2 verre overflow-hidden groupe mb-4"></div>
+      <details class="accordeon rounded-xl2 verre overflow-hidden mb-3">
+        <summary class="px-4 py-3.5 flex items-center gap-3">
+          <span class="w-9 h-9 rounded-xl grid place-items-center bg-ocre/10 shrink-0"><i class="fa-solid fa-gauge text-ocre"></i></span>
+          <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Allure prévue par kilomètre</span><span class="block text-[11.5px] text-brume truncate">Graphique et tableau km par km</span></span>
+          <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+        </summary>
+        <div class="px-4 pb-3 pt-3 border-t border-[#EEF0F3]"><div class="h-[170px]"><canvas id="graphAllures"></canvas></div></div>
+        <div id="tableauKm" class="groupe border-t border-[#EEF0F3]"></div>
+      </details>
       <!-- La stratégie transformée en séance structurée pour la montre -->
-      <div class="flex items-baseline justify-between px-1 mb-2">
-        <h3 class="titre text-[19px]">Programmer ma montre</h3>
-        <button data-act="copierMontreCourse" class="text-[12px] text-ocre tapable"><i class="fa-regular fa-copy mr-1"></i>Copier</button>
-      </div>
-      <div id="blocMontreCourse" class="rounded-xl2 verre p-4 mb-4"></div>
+      <details class="accordeon rounded-xl2 verre overflow-hidden mb-3">
+        <summary class="px-4 py-3.5 flex items-center gap-3">
+          <span class="w-9 h-9 rounded-xl grid place-items-center bg-azur/10 shrink-0"><i class="fa-solid fa-stopwatch text-azur"></i></span>
+          <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Programmer ma montre</span><span class="block text-[11.5px] text-brume truncate">La stratégie en séance structurée, étape par étape</span></span>
+          <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+        </summary>
+        <div id="blocMontreCourse" class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]"></div>
+      </details>
     </div>
 
     <!-- Stratégie nutritionnelle -->
     <div id="blocNutrition" class="hidden">
-      <div class="flex items-baseline justify-between px-1 mb-2">
-        <h3 class="titre text-[19px]">Stratégie nutritionnelle</h3>
-        <button data-act="partagerNutrition" class="text-[12px] text-ocre tapable"><i class="fa-solid fa-share-nodes mr-1"></i>Partager</button>
-      </div>
-      <div id="contenuNutrition" class="rounded-xl2 verre p-4 mb-4"></div>
+      <details class="accordeon rounded-xl2 verre overflow-hidden mb-3">
+        <summary class="px-4 py-3.5 flex items-center gap-3">
+          <span class="w-9 h-9 rounded-xl grid place-items-center bg-vallee/10 shrink-0"><i class="fa-solid fa-bottle-water text-vallee"></i></span>
+          <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Stratégie nutritionnelle</span><span class="block text-[11.5px] text-brume truncate">Gels, eau, sodium et timing des prises</span></span>
+          <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]">
+          <div class="flex justify-end -mt-1 mb-1"><button data-act="partagerNutrition" class="text-[12px] text-ocre tapable"><i class="fa-solid fa-share-nodes mr-1"></i>Partager</button></div>
+          <div id="contenuNutrition"></div>
+        </div>
+      </details>
     </div>
 
     <details id="reglagesCourse" class="rounded-xl2 verre overflow-hidden mb-3">
@@ -750,38 +783,35 @@ if (window.tailwind) tailwind.config = {
     <button data-act="ajouterSortieManuelle" class="text-[12.5px] text-ocre font-medium tapable"><i class="fa-solid fa-plus mr-1"></i>Ajouter</button>
   </div>
 
-  <!-- Sources des sorties : Apple Santé, Samsung Health, fichiers, Strava -->
-  <div class="rounded-xl2 verre p-4 mb-4">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl grid place-items-center bg-ocre/10">
-        <i class="fa-solid fa-arrows-rotate text-ocre text-[17px]"></i>
+  <!-- Sources des sorties : Apple Santé, Samsung Health, fichiers, Strava (repliées : l'état reste visible) -->
+  <details class="accordeon rounded-xl2 verre overflow-hidden mb-4">
+    <summary class="px-4 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-ocre/10 shrink-0"><i class="fa-solid fa-arrows-rotate text-ocre"></i></span>
+      <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Sources et import</span><span id="etatStrava" class="block text-[11.5px] text-brume truncate">Non connecté</span></span>
+      <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+    </summary>
+    <div class="px-4 pb-4 pt-3 border-t border-[#EEF0F3]">
+      <button id="btnStrava" data-act="ouvrirSync" class="tapable w-full h-10 rounded-xl bg-ocre text-white text-[13.5px] font-semibold">Connecter</button>
+      <div class="grid grid-cols-2 gap-2 mt-2">
+        <button data-act="importerFichier" class="tapable h-10 rounded-xl bg-granit text-[13px]"><i class="fa-solid fa-file-import mr-1.5"></i>Importer</button>
+        <button data-act="synchroniser" class="tapable h-10 rounded-xl bg-granit text-[13px]"><i class="fa-solid fa-rotate mr-1.5"></i>Synchroniser</button>
       </div>
-      <div class="flex-1 min-w-0">
-        <div class="titre text-[15px]">Sources</div>
-        <div id="etatStrava" class="text-[12px] text-brume leading-snug">Non connecté</div>
-      </div>
-      <button id="btnStrava" data-act="ouvrirSync" class="tapable h-9 px-4 rounded-xl bg-ocre text-white text-[13px] font-semibold">Connecter</button>
-    </div>
-    <div class="grid grid-cols-2 gap-2 mt-3">
-      <button data-act="importerFichier" class="tapable h-10 rounded-xl bg-granit text-[13px]"><i class="fa-solid fa-file-import mr-1.5"></i>Importer</button>
-      <button data-act="synchroniser" class="tapable h-10 rounded-xl bg-granit text-[13px]"><i class="fa-solid fa-rotate mr-1.5"></i>Synchroniser</button>
-    </div>
-    <input id="inputActivites" type="file" multiple class="hidden">
-    <label class="flex items-center justify-between mt-3 pt-3 filet">
-      <span class="text-[13.5px]">Synchro automatique des nouvelles sorties</span>
+      <input id="inputActivites" type="file" multiple class="hidden">
+      <label class="flex items-center justify-between mt-3 pt-3 filet">
+        <span class="text-[13.5px]">Synchro automatique des nouvelles sorties</span>
       <input id="switchAutoSync" type="checkbox" class="w-[50px] h-[30px] appearance-none rounded-full bg-[#DDE1E7] checked:bg-vallee relative transition-colors cursor-pointer
         before:content-[''] before:absolute before:top-[3px] before:left-[3px] before:w-6 before:h-6 before:rounded-full before:bg-white before:shadow before:transition-transform checked:before:translate-x-5">
-    </label>
-  </div>
+      </label>
+    </div>
+  </details>
 
   <!-- Filtre et journal groupé par mois -->
-  <div class="flex items-center gap-2 mb-3">
-    <div id="filtreActivites" class="segments flex-1">
+  <div class="mb-3">
+    <div id="filtreActivites" class="segments">
       <button data-act="filtrerActivites" data-arg="tout">Tout</button>
       <button data-act="filtrerActivites" data-arg="route">Route</button>
       <button data-act="filtrerActivites" data-arg="trail">Trail</button>
     </div>
-    <button data-act="exporterSortiesIcs" aria-label="Ajouter les sorties à l’agenda" class="tapable w-[42px] h-[42px] rounded-xl verre grid place-items-center text-brume"><i class="fa-regular fa-calendar-plus"></i></button>
   </div>
   <div class="flex items-baseline justify-between px-1 mb-2">
     <span id="nbActivites" class="text-[12px] text-brume"></span>
@@ -806,7 +836,7 @@ if (window.tailwind) tailwind.config = {
   </div>
 
   <!-- 1. Mon niveau -->
-  <details class="rounded-xl2 verre overflow-hidden mb-3" open>
+  <details class="rounded-xl2 verre overflow-hidden mb-3">
     <summary class="px-4 py-3.5 flex items-center gap-3">
       <span class="w-9 h-9 rounded-xl grid place-items-center bg-ocre/10 shrink-0"><i class="fa-solid fa-gauge-high text-ocre"></i></span>
       <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Mon niveau</span><span id="baseMetriques" class="block text-[11.5px] text-brume"></span></span>
@@ -1074,7 +1104,7 @@ if (window.tailwind) tailwind.config = {
 /* ==================================================================================
    RDD, Runner du dimanche : coach running et trail
    Application mono-fichier : stockage local, analyse d'activités, génération de plan,
-   lecture GPX, stratégie d'allures, export calendrier et séances structurées.
+   lecture GPX, stratégie d'allures et séances structurées.
    ================================================================================== */
 
 /* ==================================================================================
@@ -3507,7 +3537,7 @@ function rappelsNutrition(p) {
   };
 }
 
-/** Résumé en une phrase (synthèse de la stratégie, agenda). */
+/** Résumé en une phrase (synthèse de la stratégie). */
 function resumeNutrition(p) {
   if (!p) return '';
   const eau = 'eau ' + p.eauParHeure + ' ml/h (' + litres(p.eauTotale) + ' au total)';
@@ -3515,7 +3545,7 @@ function resumeNutrition(p) {
   const produits = [p.nbGels ? nbTexte(p.nbGels, 'gel', 'gels') : '', p.nbBarres ? nbTexte(p.nbBarres, 'barre', 'barres') : '', p.gBoissonH ? 'boisson énergétique' : ''].filter(Boolean).join(', ');
   return p.glucidesParHeure + ' g de glucides par heure (' + produits + '), ' + eau + (p.sodiumParHeure ? ', sodium ' + p.sodiumParHeure + ' mg/h' : '') + '.';
 }
-/** Texte complet ou compact (partage de la stratégie, export du plan vers l'agenda). */
+/** Texte complet ou compact (partage de la stratégie). */
 function texteNutrition(p, complet = true) {
   if (!p) return '';
   const l = ['RAVITAILLEMENT ET HYDRATATION', resumeNutrition(p)];
@@ -5070,7 +5100,7 @@ function appliquerDeplacement() {
 }
 /** Change la date d'une séance ; elle rejoint la semaine du plan qui contient ce jour. */
 function deplacerVers(x, jour) {
-  if (!x.dateInitiale) x.dateInitiale = x.date;      // garde l'identifiant d'agenda : un nouvel export met l'événement à jour
+  if (!x.dateInitiale) x.dateInitiale = x.date;      // date d'origine de la séance
   x.date = jour;
   x.deplacee = true;
   const ancienne = ETAT.plan.semaines.find(w => w.seances.includes(x));
@@ -5083,179 +5113,8 @@ function deplacerVers(x, jour) {
 }
 
 /* ==================================================================================
-   8. EXPORTS : CALENDRIER (.ics) ET SÉANCES STRUCTURÉES APPLE WATCH
+   8. EXPORTS : SÉANCES STRUCTURÉES APPLE WATCH
    ================================================================================== */
-
-function echapperIcs(t) {
-  return String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
-}
-/** Pliage RFC 5545 : lignes de 75 octets maximum. */
-function plierLigneIcs(ligne) {
-  const enc = new TextEncoder();
-  if (enc.encode(ligne).length <= 75) return ligne;
-  const morceaux = [];
-  let courant = '', taille = 0;
-  for (const c of ligne) {
-    const t = enc.encode(c).length;
-    const max = morceaux.length ? 74 : 75;
-    if (taille + t > max) { morceaux.push(courant); courant = c; taille = t; }
-    else { courant += c; taille += t; }
-  }
-  morceaux.push(courant);
-  return morceaux.join('\r\n ');
-}
-const horodatageUtc = d => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-
-/** Texte détaillé d'une séance (calendrier, partage). */
-function texteCompletSeance(s) {
-  const m = mesurerSeance(s);
-  const lignes = lignesSeance(s);
-  let t = TYPES_SEANCE[s.type].libelle + ' : ' + km1(m.distanceM) + ' km, ' + dureeLisible(m.dureeS) +
-          (m.dplus > 20 ? ', ' + m.dplus + ' m D+' : '') + '\n\n' + lignes.join('\n');
-  if (s.conseil) t += '\n\nConseil du coach : ' + s.conseil;
-  if (s.type === 'course') {
-    const st = calculerStrategie();
-    if (st) t += '\n\nObjectif : ' + formaterDuree(st.tempsCible) + ' (allure moyenne ' + formaterAllure(st.allureMoy) + '/km).\n' +
-                 'Échauffement : ' + st.echauffement + '\n\n' + texteNutrition(planNutrition(st), false);
-  }
-  return t;
-}
-
-/**
- * Identifiant d'événement stable et unique : un profil + un jour (ou une sortie) = un événement.
- * Réexporter met donc l'événement à jour au lieu de le dupliquer, et deux coureurs du même
- * appareil ne s'écrasent jamais dans un agenda partagé.
- */
-function uidIcs(nature, cle) {
-  return 'rdd-' + String(INDEX.actif || 'profil').replace(/[^a-z0-9_-]/gi, '') + '-' + nature + '-' + String(cle).replace(/[^a-z0-9_-]/gi, '') + '@runner-du-dimanche';
-}
-/** Numéro de version croissant (minutes écoulées) : l'agenda remplace l'ancienne version de l'événement. */
-const sequenceIcs = () => Math.floor(Date.now() / 60000) % 1000000000;
-
-/** Séance planifiée → événement. Heures en UTC (suffixe Z) : format universel, lu à l'heure locale par tous les agendas. */
-function evenementIcs(s, uid) {
-  const m = mesurerSeance(s);
-  const heure = s.type === 'course' ? ((courseParId(s.courseId) || ETAT.objectif).heure || '09:00') : (ETAT.profil.heureSeance || '18:00');
-  const [h, mn] = String(heure).split(':').map(Number);
-  const debut = depuisCleJour(s.date);
-  debut.setHours(isFinite(h) ? h : 18, isFinite(mn) ? mn : 0, 0, 0);
-  const dureeTotale = s.type === 'course'
-    ? ((calculerStrategie() || {}).tempsCible || m.dureeS) + 45 * 60
-    : m.dureeS + 15 * 60;
-  const fin = new Date(debut.getTime() + Math.max(15 * 60, dureeTotale || 0) * 1000);
-  const titre = s.type === 'course'
-    ? 'Jour J : ' + s.titre
-    : s.titre + ' (' + km1(m.distanceM) + ' km)';
-  const maintenant = horodatageUtc(new Date());
-  return [
-    'BEGIN:VEVENT',
-    'UID:' + (uid || uidIcs('seance', (s.dateInitiale || s.date).replace(/-/g, '') + (s.type === 'course' ? '-course' : ''))),
-    'SEQUENCE:' + sequenceIcs(),
-    'DTSTAMP:' + maintenant,
-    'LAST-MODIFIED:' + maintenant,
-    'DTSTART:' + horodatageUtc(debut),
-    'DTEND:' + horodatageUtc(fin),
-    'SUMMARY:' + echapperIcs(titre),
-    'DESCRIPTION:' + echapperIcs(texteCompletSeance(s)),
-    'CATEGORIES:' + echapperIcs('Entraînement'),
-    'STATUS:CONFIRMED',
-    'TRANSP:OPAQUE',
-    'BEGIN:VALARM',
-    'ACTION:DISPLAY',
-    'DESCRIPTION:' + echapperIcs(titre),
-    'TRIGGER:-PT' + (s.type === 'course' ? '120' : '60') + 'M',
-    'END:VALARM',
-    'END:VEVENT'
-  ];
-}
-
-/** Sortie réalisée → événement (journal d'entraînement dans l'agenda). */
-function evenementActiviteIcs(a) {
-  const debut = new Date(a.date);
-  const fin = new Date(debut.getTime() + Math.max(60, a.tempsS || 0) * 1000);
-  const km = km1(a.distanceM);
-  const titre = 'Sortie : ' + km + ' km en ' + formaterDuree(a.tempsS);
-  const details = [a.nom,
-    km + ' km, ' + formaterDuree(a.tempsS) + ', allure ' + formaterAllure(a.tempsS / Math.max(0.001, a.distanceM / 1000)) + '/km',
-    a.dplus ? a.dplus + ' m D+' : '', a.fcMoy ? 'Fréquence cardiaque moyenne ' + a.fcMoy + ' bpm' : ''].filter(Boolean).join('\n');
-  const maintenant = horodatageUtc(new Date());
-  return [
-    'BEGIN:VEVENT',
-    'UID:' + uidIcs('sortie', a.id),
-    'SEQUENCE:' + sequenceIcs(),
-    'DTSTAMP:' + maintenant,
-    'LAST-MODIFIED:' + maintenant,
-    'DTSTART:' + horodatageUtc(debut),
-    'DTEND:' + horodatageUtc(fin),
-    'SUMMARY:' + echapperIcs(titre),
-    'DESCRIPTION:' + echapperIcs(details),
-    'CATEGORIES:' + echapperIcs('Course à pied'),
-    'STATUS:CONFIRMED',
-    'TRANSP:TRANSPARENT',
-    'END:VEVENT'
-  ];
-}
-
-/** Calendrier complet (RFC 5545) : CRLF, lignes pliées à 75 octets, texte échappé. */
-function construireIcs(seances, nomCalendrier, activites = []) {
-  const lignes = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//RDD Runner du dimanche//Coach//FR',
-    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + echapperIcs(nomCalendrier)
-  ];
-  const parJour = {};
-  (seances || []).forEach(s => {
-    const base = (s.dateInitiale || s.date).replace(/-/g, '') + (s.type === 'course' ? '-course' : '');   // date d'origine : stable si la séance est déplacée
-    parJour[base] = (parJour[base] || 0) + 1;                 // deux séances le même jour : identifiants distincts
-    lignes.push(...evenementIcs(s, uidIcs('seance', base + (parJour[base] > 1 ? '-' + parJour[base] : ''))));
-  });
-  (activites || []).forEach(a => lignes.push(...evenementActiviteIcs(a)));
-  lignes.push('END:VCALENDAR');
-  return lignes.map(plierLigneIcs).join('\r\n') + '\r\n';
-}
-
-/**
- * Remise du calendrier selon l'appareil :
- * iPhone : ouverture directe dans Calendrier (« Tout ajouter »), partage en secours ;
- * Android : téléchargement du .ics, que Samsung Calendrier sait ajouter (Chrome bloque l'ouverture directe) ;
- * ordinateur : téléchargement.
- */
-let icsEnCours = null;
-function livrerIcs(seances, nomFichier, titre, activites = []) {
-  const nb = (seances || []).length + (activites || []).length;
-  if (!nb) { toast('Rien à ajouter au calendrier pour l’instant.', 'info'); return; }
-  const ics = construireIcs(seances, titre, activites);
-  icsEnCours = { ics, nomFichier };
-  const p = plateforme();
-  let partage = false;
-  try { partage = !!(navigator.canShare && navigator.canShare({ files: [new File([ics], nomFichier, { type: 'text/calendar' })] })); } catch (e) { partage = false; }
-  const quoi = [seances.length ? nbTexte(seances.length, 'séance', 'séances') : '',
-                activites.length ? nbTexte(activites.length, 'sortie réalisée', 'sorties réalisées') : ''].filter(Boolean).join(' et ');
-  let actions, aide;
-  if (p.ios) {
-    actions = `<a href="data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}" target="_blank" rel="noopener" class="${BTN_PRINCIPAL} flex items-center justify-center mb-2"><i class="fa-solid fa-calendar-check mr-2"></i>Ajouter à Calendrier</a>` +
-      `<button data-act="icsPartager" class="${BTN_SECONDAIRE} mb-2"><i class="fa-solid fa-arrow-up-from-bracket mr-2"></i>Partager ou enregistrer le fichier</button>`;
-    aide = 'Calendrier s’ouvre : touche « Tout ajouter ». Réexporter plus tard met les séances à jour sans doublon.';
-  } else if (p.android) {
-    actions = `<button data-act="icsTelecharger" class="${BTN_PRINCIPAL} mb-2"><i class="fa-solid fa-calendar-check mr-2"></i>Ajouter au calendrier</button>` +
-      (partage ? `<button data-act="icsPartager" class="${BTN_SECONDAIRE} mb-2"><i class="fa-solid fa-share-nodes mr-2"></i>Envoyer vers une app</button>` : '');
-    aide = 'Ouvre le fichier téléchargé (notification ou Mes fichiers) : Samsung Calendrier propose d’ajouter les événements. Google Agenda n’ouvre pas ces fichiers sur téléphone : importe-le depuis calendar.google.com (Paramètres, Importer).';
-  } else {
-    actions = `<button data-act="icsTelecharger" class="${BTN_PRINCIPAL} mb-2"><i class="fa-solid fa-download mr-2"></i>Télécharger le fichier .ics</button>`;
-    aide = 'Ouvre le fichier avec ton agenda (Calendrier, Outlook ou Google Agenda, menu Importer).';
-  }
-  ouvrirModale(`
-    <div class="text-center mb-4">
-      <div class="w-14 h-14 rounded-2xl bg-ocre/15 border border-ocre/40 grid place-items-center mx-auto mb-3">
-        <i class="fa-regular fa-calendar-plus text-ocre text-[22px]"></i>
-      </div>
-      <h3 class="titre text-[22px]">${esc(titre)}</h3>
-      <p class="text-[13px] text-brume mt-1">${quoi}${seances.length ? ', avec un rappel avant chaque séance' : ''}.
-      Heures au format universel : ton agenda les affiche à l’heure locale.</p>
-    </div>
-    ${actions}
-    <p class="text-[12px] text-brume leading-relaxed mt-1 mb-3">${aide}</p>
-    <button data-act="fermerModale" class="tapable w-full h-11 text-[14px] text-brume">Fermer</button>`);
-}
 
 /* ---------- Séance structurée pour Apple Watch (modèle WorkoutKit) ---------- */
 
@@ -5361,11 +5220,10 @@ function ouvrirModaleMontre(id) {
     </div>
     <div class="rounded-2xl verre px-3 mb-3">${corps}</div>
     <p class="text-[12px] text-brume leading-relaxed mb-3">Sur la montre : app Exercice, Course en extérieur, bouton « … », Créer un entraînement, Personnalisé. Le fichier JSON suit la structure WorkoutKit (échauffement, blocs, retour au calme) pour une import directe par une app compagnon.</p>
-    <div class="grid grid-cols-2 gap-2 mb-2">
+    <div class="grid grid-cols-2 gap-2">
       <button data-act="copierMontre" data-arg="${s.id}" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-regular fa-copy mr-1.5"></i>Copier les étapes</button>
       <button data-act="partagerMontre" data-arg="${s.id}" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-solid fa-share-from-square mr-1.5"></i>Fichier séance</button>
-    </div>
-    <button data-act="icsSeance" data-arg="${s.id}" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[14.5px]"><i class="fa-regular fa-calendar-plus mr-2"></i>Ajouter au calendrier</button>`);
+    </div>`);
 }
 
 async function partagerFichierSeance(id) {
@@ -5732,7 +5590,7 @@ function promptSystemeCoach(ecran = null) {
     '- Le coureur peut joindre des photos (capture de montre ou d’application, analyse de fréquence cardiaque), des PDF ou des traces. Dis brièvement ce que tu y lis, puis commente-le.',
     '- Si une pièce jointe montre une sortie de course réalisée, termine par [[activite:{"date":"AAAA-MM-JJ","heure":"HH:MM","distanceKm":10.2,"duree":"H:MM:SS","dplus":120,"fcMoy":150,"type":"route","nom":"…"}]] (type : route, trail ou tapis). Mets null pour toute valeur illisible et n’invente rien. Une balise par sortie, trois au plus. Les fichiers marqués « lu par l’application » sont déjà proposés à l’enregistrement : pas de balise pour eux.',
     '- Ravitaillement de la course : appuie-toi sur course.ravitaillement du CONTEXTE.',
-    '- Tu peux proposer une action en ajoutant, à la toute fin de ta réponse, une ou plusieurs balises parmi : [[alleger]] (alléger les 7 prochains jours), [[decaler]] (replacer une séance clé manquée), [[plan]] (générer ou mettre à jour le plan), [[montre]] (envoyer la prochaine séance à la montre), [[calendrier]] (exporter le plan dans l’agenda), [[course]] (ouvrir la fiche de la course), [[strava]] (connecter Strava). L’utilisateur confirme d’un geste : ne dis jamais que tu as modifié le plan toi-même.',
+    '- Tu peux proposer une action en ajoutant, à la toute fin de ta réponse, une ou plusieurs balises parmi : [[alleger]] (alléger les 7 prochains jours), [[decaler]] (replacer une séance clé manquée), [[plan]] (générer ou mettre à jour le plan), [[montre]] (envoyer la prochaine séance à la montre), [[course]] (ouvrir la fiche de la course), [[strava]] (connecter Strava). L’utilisateur confirme d’un geste : ne dis jamais que tu as modifié le plan toi-même.',
     '',
     'CONTEXTE (JSON) :',
     JSON.stringify(contexteIA())
@@ -5779,7 +5637,6 @@ function miseEnFormeIA(texte) {
     decaler: { label: 'Replacer la séance clé', act: 'ajusterPlan', arg: 'decaler' },
     plan: { label: ETAT.plan ? 'Mettre à jour le plan' : 'Générer le plan', act: 'genererPlan' },
     montre: prochaine && prochaine.type !== 'course' ? { label: 'Séance vers la montre', act: 'montreSeance', arg: prochaine.id } : null,
-    calendrier: ETAT.plan ? { label: 'Plan vers l’agenda', act: 'exporterPlanIcs' } : null,
     course: { label: 'Ouvrir la course', act: 'voirCourse', arg: ETAT.courseActive || '' },
     strava: { label: 'Connecter Strava', act: 'ouvrirSync' }
   };
@@ -6846,15 +6703,14 @@ function carteSeance(s, opts = {}) {
   const rpe = st === 'fait' && s.realise && s.realise.rpe ? `<div class="text-[11.5px] text-brume mt-2">Ressenti ${s.realise.rpe}/10${s.realise.notes ? ', « ' + esc(s.realise.notes) + ' »' : ''}</div>` : '';
   const btnValider = `<button data-act="validerSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl ${st === 'fait' ? 'verre' : 'bg-vallee/20 text-vallee border border-vallee/30'} text-[12.5px]"><i class="fa-solid ${st === 'fait' ? 'fa-pen' : 'fa-check'} mr-1"></i>${st === 'fait' ? 'Modifier' : 'Valider'}</button>`;
   const btnMontre = `<button data-act="montreSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-stopwatch mr-1"></i>Montre</button>`;
-  const btnAgenda = `<button data-act="icsSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-regular fa-calendar-plus mr-1"></i>Agenda</button>`;
   const btnStrategie = `<button data-act="voirCourse" data-arg="${s.courseId || ''}" class="tapable h-9 rounded-xl bg-ocre/20 text-ocre border border-ocre/30 text-[12.5px]"><i class="fa-solid fa-route mr-1"></i>Stratégie</button>`;
   const btnDeplacer = `<button data-act="deplacerSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-calendar-day mr-1"></i>${st === 'manque' ? 'Reporter' : 'Déplacer'}</button>`;
-  let choix = course ? (s.date <= cleJour(new Date()) ? [btnValider, btnStrategie] : [btnStrategie, btnAgenda])
-                     : [btnValider].concat(seanceDeplacable(s) ? [btnDeplacer] : [], [btnMontre, btnAgenda]);
+  let choix = course ? (s.date <= cleJour(new Date()) ? [btnValider, btnStrategie] : [btnStrategie])
+                     : [btnValider].concat(seanceDeplacable(s) ? [btnDeplacer] : [], [btnMontre]);
   // Quatre boutons : icône au-dessus du libellé pour tenir sur un téléphone
   if (choix.length === 4) choix = choix.map(b => b.replace('h-9 rounded-xl', 'h-12 rounded-xl flex flex-col items-center justify-center gap-1 leading-none')
                                              .replace('text-[12.5px]', 'text-[11px]').replace(' mr-1"></i>', '"></i>'));
-  const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 2 ? 'grid-cols-2' : choix.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>`;
+  const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 1 ? 'grid-cols-1' : choix.length === 2 ? 'grid-cols-2' : choix.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>`;
   return `<div data-seance="${s.id}" class="rounded-2xl ${opts.compact ? 'bg-nuit/40 border border-brume/10' : 'verre'} overflow-hidden ${st === 'reporte' ? 'opacity-60' : ''}">
     <div class="flex">
       <div class="w-1.5 shrink-0" style="background:${t.couleur}"></div>
@@ -7123,6 +6979,7 @@ function rendreDashboard() {
 
 let periodeStats = 'semaines';           // 'semaines' | 'mois' | 'annee'
 let filtreActivites = 'tout';            // 'tout' | 'route' | 'trail'
+let moisOuverts = null;                  // mois du journal ouverts par le coureur (null : le plus récent)
 
 /** Totaux d'une liste de sorties. */
 function totaux(liste) {
@@ -8725,8 +8582,8 @@ function rendreActivites() {
   const modes = { api: 'Strava connecté' + (st.athlete ? ' : ' + st.athlete : ''), simulation: 'Mode simulation', fichier: 'Importées' + (st.derniereSource ? ' (' + st.derniereSource + ')' : ' par fichier'), aucun: 'Aucune source pour l’instant' };
   const d = st.dernierSync ? new Date(st.dernierSync) : null;
   $('#etatStrava').innerHTML = esc(modes[st.mode || 'aucun']) +
-    (d ? '<br>Mise à jour ' + dateCourte(d) + ' à ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '');
-  $('#btnStrava').textContent = st.mode && st.mode !== 'aucun' ? 'Sources' : 'Connecter';
+    (d ? ', mis à jour ' + dateCourte(d) + ' à ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '');
+  $('#btnStrava').textContent = st.mode && st.mode !== 'aucun' ? 'Gérer les sources' : 'Connecter une source';
   $('#switchAutoSync').checked = !!st.autoSync;
   $$('#filtreActivites button').forEach(b => b.classList.toggle('actif', b.dataset.arg === filtreActivites));
 
@@ -8751,13 +8608,15 @@ function rendreActivites() {
     }
     g.items.push(a);
   });
-  $('#listeActivites').innerHTML = groupes.map(g => `<div>
-      <div class="flex items-baseline justify-between px-1 mb-1.5">
-        <span class="text-[13px] font-semibold capitalize">${g.titre}</span>
+  // Un mois par volet repliable : seul le plus récent est ouvert (sauf choix du coureur).
+  $('#listeActivites').innerHTML = groupes.map((g, i) => `<details data-mois="${g.cle}" class="mois-activites"${(moisOuverts ? moisOuverts.has(g.cle) : i === 0) ? ' open' : ''}>
+      <summary class="flex items-center gap-2 px-1 mb-1.5">
+        <span class="flex-1 text-[13px] font-semibold capitalize">${g.titre}</span>
         <span class="text-[11.5px] text-brume">${fr1d(g.tm.km)} km, ${dureeCourte(g.tm.temps)}${g.tm.dplus > 0 ? ', ' + Math.round(g.tm.dplus) + ' m D+' : ''}</span>
-      </div>
+        <i class="fa-solid fa-chevron-right text-[10px] text-brume chevron"></i>
+      </summary>
       <div class="rounded-xl2 verre overflow-hidden groupe">${g.items.map(ligneActivite).join('')}</div>
-    </div>`).join('') +
+    </details>`).join('') +
     (liste.length > nbActivitesVisibles ? `<button data-act="voirPlusActivites" class="tapable w-full h-11 rounded-2xl verre text-[13px] text-ocre">Afficher plus (${liste.length - nbActivitesVisibles} restantes)</button>` : '');
 }
 
@@ -9713,30 +9572,6 @@ const ACTIONS = {
     toast('Profil supprimé.', 'info');
   },
 
-  // Calendrier
-  icsTelecharger: () => {
-    if (!icsEnCours) return;
-    if (telecharger(icsEnCours.nomFichier, icsEnCours.ics, 'text/calendar;charset=utf-8')) toast('Fichier téléchargé : ouvre-le pour ajouter les événements à ton agenda.', 'succes');
-    else toast('Téléchargement impossible sur ce navigateur.', 'erreur');
-  },
-  icsPartager: async () => {
-    if (!icsEnCours) return;
-    const fichier = new File([icsEnCours.ics], icsEnCours.nomFichier, { type: 'text/calendar' });
-    try {
-      if (navigator.canShare && navigator.canShare({ files: [fichier] })) { await navigator.share({ files: [fichier], title: icsEnCours.nomFichier }); return; }
-    } catch (e) {
-      if (e && e.name === 'AbortError') return;                       // partage annulé par l'utilisateur
-    }
-    telecharger(icsEnCours.nomFichier, icsEnCours.ics, 'text/calendar;charset=utf-8');
-    toast('Partage indisponible : le fichier a été téléchargé.', 'info');
-  },
-  exporterSortiesIcs: () => {
-    const depuis = ajouterJours(new Date(), -60);
-    const sorties = ETAT.activites.filter(a => new Date(a.date) >= depuis).slice(0, 200);
-    if (!sorties.length) { toast('Aucune sortie sur les 60 derniers jours.', 'info'); return; }
-    livrerIcs([], 'sorties-rdd.ics', 'Sorties RDD' + (ETAT.profil.prenom ? ' de ' + ETAT.profil.prenom : ''), sorties);
-  },
-
   // Cerveau du coach
   testerGemini: async () => {
     lireReglagesGemini();
@@ -9899,10 +9734,6 @@ const ACTIONS = {
   supprimerSeance: arg => demanderSuppressionSeance(arg),
   confirmerSuppressionSeance: arg => supprimerSeance(arg),
   basculerVerrou: arg => basculerVerrou(arg),
-  exporterPlanIcs: () => {
-    const auj = cleJour(new Date());
-    livrerIcs(toutesSeances().filter(s => s.date >= auj && s.statut === 'prevu'), 'plan-rdd.ics', 'Plan RDD' + (prochaineCourse() ? ', ' + nomCourse(prochaineCourse()) : ''));
-  },
   exporterPlanJson: () => {
     if (!ETAT.plan) return;
     const o = ETAT.objectif;
@@ -9922,7 +9753,6 @@ const ACTIONS = {
     };
     return livrerFichier('plan-rdd.json', JSON.stringify(donnees, null, 2), 'application/json');
   },
-  icsSeance: id => { const s = trouverSeance(id); if (s) livrerIcs([s], 'seance-' + s.date + '.ics', s.titre); },
   montreSeance: id => ouvrirModaleMontre(id),
   copierMontre: async id => {
     const s = trouverSeance(id);
@@ -10411,6 +10241,16 @@ function brancherEvenements() {
   }, 60000);
   // Fermer la modale avec Échap (clavier)
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (COUCHES.coach) fermerCoach(); else fermerModale(); } });
+  // Volet repliable ouvert : ses graphiques, dessinés replié, prennent leur vraie taille.
+  document.addEventListener('toggle', e => {
+    const volet = e.target;
+    if (volet.dataset && volet.dataset.mois) {
+      if (!moisOuverts) moisOuverts = new Set(Array.from(document.querySelectorAll('#listeActivites details[open]')).map(d => d.dataset.mois));
+      moisOuverts[volet.open ? 'add' : 'delete'](volet.dataset.mois);
+    }
+    if (!volet.open || !volet.querySelectorAll) return;
+    volet.querySelectorAll('canvas').forEach(c => { const g = GRAPHS[c.id]; if (g) { try { g.resize(); } catch (err) { /* graphique détruit */ } } });
+  }, true);
 }
 
 async function initialiser() {
