@@ -380,6 +380,21 @@ if (window.tailwind) tailwind.config = {
     <h1 id="salutation" class="titre text-[28px] leading-tight mt-0.5">Bonjour</h1>
   </div>
 
+  <!-- Rappel : les données ne vivent que sur ce téléphone -->
+  <div id="carteSauvegarde" class="hidden rounded-xl2 verre p-4 mb-4">
+    <div class="flex items-start gap-3">
+      <span class="w-9 h-9 rounded-xl grid place-items-center bg-ocre/15 shrink-0"><i class="fa-solid fa-shield-halved text-ocre"></i></span>
+      <div class="flex-1 min-w-0">
+        <div class="titre text-[15px]">Mets ta progression à l’abri</div>
+        <p id="texteSauvegarde" class="text-[12.5px] text-brume leading-relaxed mt-0.5"></p>
+      </div>
+    </div>
+    <div class="grid grid-cols-[1fr_auto] gap-2 mt-3">
+      <button data-act="exporterTout" class="tapable h-10 rounded-xl bg-ocre text-white font-semibold text-[13.5px]"><i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>Sauvegarder maintenant</button>
+      <button data-act="reporterRappelSauvegarde" class="tapable h-10 px-3 text-[13px] text-brume">Plus tard</button>
+    </div>
+  </div>
+
   <!-- Héros : le dossard du jour J, épinglé -->
   <div id="heroDossard" class="dossard-cadre dossard-entre mt-2 mb-4">
     <svg class="epingle" style="left:16px; transform:rotate(-8deg)" viewBox="0 0 54 18" aria-hidden="true">
@@ -6886,7 +6901,26 @@ function ligneActivite(a) {
 
 /* ---------- Vue 1 : tableau de bord ---------- */
 
+/**
+ * Les données ne vivent que dans ce navigateur : sur iPhone, supprimer l'icône de l'écran d'accueil les efface.
+ * Rappel sur l'accueil quand le profil a du contenu et que la dernière sauvegarde exportée date de plus de 7 jours.
+ */
+function majRappelSauvegarde() {
+  const carte = $('#carteSauvegarde');
+  if (!carte) return;
+  const contenu = (ETAT.activites || []).length + (ETAT.courses || []).length;
+  const derniere = ETAT.derniereSauvegarde ? new Date(ETAT.derniereSauvegarde) : null;
+  const age = derniere ? (Date.now() - derniere) / 864e5 : Infinity;
+  const reporte = ETAT.rappelSauvegardeApres && Date.now() < new Date(ETAT.rappelSauvegardeApres);
+  const afficher = contenu > 0 && age > 7 && !reporte;
+  carte.classList.toggle('hidden', !afficher);
+  if (!afficher) return;
+  $('#texteSauvegarde').textContent = (derniere ? 'Dernière sauvegarde il y a ' + Math.floor(age) + ' jours. ' : 'Aucune sauvegarde pour l’instant. ') +
+    'Tes sorties, ton plan et tes courses sont seulement sur ce téléphone : supprimer l’icône de l’app les efface. Enregistre une copie dans Fichiers ou iCloud Drive.';
+}
+
 function rendreDashboard() {
+  majRappelSauvegarde();
   const proch = prochaineCourse();
   const o = proch || ETAT.objectif;
   const m = metriques();
@@ -9946,6 +9980,7 @@ const ACTIONS = {
 
   // Données
   exporterTout: () => {
+    const avant = ETAT.derniereSauvegarde;
     ETAT.derniereSauvegarde = new Date().toISOString();
     sauverEtat();
     const copie = JSON.parse(JSON.stringify(ETAT));
@@ -9953,9 +9988,18 @@ const ACTIONS = {
     copie.strava.jeton = null;
     const nomProfil = normaliser((profilActif() || {}).prenom || 'profil').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'profil';
     return livrerFichier('rdd-' + nomProfil + '-' + cleJour(new Date()) + '.json', JSON.stringify(copie), 'application/json')
-      .then(ok => { if (ok) toast('Sauvegarde exportée (sans tes identifiants Strava).', 'succes'); });
+      .then(ok => {
+        if (!ok) { ETAT.derniereSauvegarde = avant; sauverEtat(); return; }    // partage annulé : rien n'a été enregistré
+        majRappelSauvegarde();
+        toast('Sauvegarde exportée (sans tes identifiants Strava). Garde-la dans Fichiers ou iCloud Drive.', 'succes');
+      });
   },
   importerSauvegarde: () => $('#inputSauvegarde').click(),
+  reporterRappelSauvegarde: () => {
+    ETAT.rappelSauvegardeApres = new Date(Date.now() + 2 * 864e5).toISOString();
+    sauverEtat();
+    majRappelSauvegarde();
+  },
   reinitialiser: () => ouvrirModale(
     enteteModale('fa-solid fa-triangle-exclamation', '#E5484D', 'Repartir de zéro ?', 'Sorties, plan, course, réglages et conversation de ce profil') +
     `<p class="text-[13px] text-brume mb-4">Cette action est définitive. Exporte une sauvegarde avant si tu veux pouvoir revenir en arrière.</p>
