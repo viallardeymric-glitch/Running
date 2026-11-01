@@ -623,6 +623,12 @@ if (window.tailwind) tailwind.config = {
         <div class="h-[170px]"><canvas id="graphAllures"></canvas></div>
       </div>
       <div id="tableauKm" class="rounded-xl2 verre overflow-hidden groupe mb-4"></div>
+      <!-- La stratégie transformée en séance structurée pour la montre -->
+      <div class="flex items-baseline justify-between px-1 mb-2">
+        <h3 class="titre text-[19px]">Programmer ma montre</h3>
+        <button data-act="copierMontreCourse" class="text-[12px] text-ocre tapable"><i class="fa-regular fa-copy mr-1"></i>Copier</button>
+      </div>
+      <div id="blocMontreCourse" class="rounded-xl2 verre p-4 mb-4"></div>
     </div>
 
     <!-- Stratégie nutritionnelle -->
@@ -8454,6 +8460,7 @@ function rendreObjectif(remplirChamps = true) {
       <div class="flex-1 min-w-0 text-[12px] leading-snug"><i class="fa-solid ${k.consigne.icone} mr-1 text-brume"></i>${k.consigne.texte}
         <div class="text-[11px] text-brume">passage ${formaterDuree(k.cumul)}</div></div>
     </div>`).join('');
+  rendreMontreCourse(s);
 }
 
 /** Texte de la stratégie pour le partage. */
@@ -8467,6 +8474,219 @@ function texteStrategie() {
     (k.dplus > 5 || k.dmoins > 5 ? ' (+' + Math.round(k.dplus) + ' / -' + Math.round(k.dmoins) + ' m)' : '') + ', ' + k.consigne.texte));
   l.push('', 'Échauffement : ' + s.echauffement, '', texteNutrition(planNutrition(s), true));
   return l.join('\n');
+}
+
+/* ==================================================================================
+   5 ter. LA COURSE SUR LA MONTRE
+   La stratégie kilomètre par kilomètre devient une séance structurée : une étape par
+   kilomètre ou par portion d'allure proche, allure cible ajustée au dénivelé et fourchette
+   d'alerte. Fichier .FIT de séance pour Garmin, pas à pas pour les autres marques.
+   ================================================================================== */
+
+const MARQUES_MONTRE = {
+  garmin: { nom: 'Garmin', etapes: [
+    'App Garmin Connect : Entraînement et planification, Entraînements, Créer un entraînement, Course à pied.',
+    'Pour chaque étape ci-dessus : Durée « Distance », Cible « Allure » avec la fourchette indiquée. Dernière étape : durée « Appui sur Lap ».',
+    'Enregistre, puis « Envoyer vers l’appareil ». Le jour J : Course à pied, bouton du haut maintenu ou menu, Entraînement, Mes entraînements.',
+    'Plus rapide : télécharge le fichier .FIT et copie-le dans le dossier GARMIN/NewFiles de la montre branchée à l’ordinateur. Il apparaît dans tes entraînements.'
+  ], bonus: 'Si ta montre propose PacePro (Forerunner 255 et plus, Fenix, Epix…) : dans Garmin Connect, importe le GPX de la course comme parcours, crée une stratégie PacePro avec le temps cible ci-dessus. La montre ajuste alors l’allure à la pente en direct, mètre par mètre.' },
+  coros: { nom: 'Coros', etapes: [
+    'App COROS : onglet Entraînement (Workouts), bouton +, Course à pied.',
+    'Ajoute une étape par ligne ci-dessus : objectif « Distance », intensité « Allure » avec la fourchette indiquée. Dernière étape : « Ouvert » (fin manuelle).',
+    'Enregistre et synchronise. Le jour J : Course, puis Entraînement, et choisis la séance avant le départ.',
+    'Sur ordinateur, COROS Training Hub permet de saisir les étapes plus vite.'
+  ] },
+  suunto: { nom: 'Suunto', etapes: [
+    'App Suunto : Entraînement, Planificateur de séances (Workout planner), nouvelle séance de course.',
+    'Une étape par ligne ci-dessus : durée en distance, cible « Allure » avec la fourchette indiquée. Dernière étape : fin manuelle (tour).',
+    'Enregistre et synchronise la montre. Le jour J : choisis Course, puis la séance dans les options avant de démarrer.'
+  ] },
+  apple: { nom: 'Apple Watch', etapes: [
+    'Sur la montre (watchOS 10 et plus) : app Exercice, Course en extérieur, bouton « … », Créer un entraînement, Personnalisé.',
+    'Ajoute une étape « Travail » par ligne ci-dessus : objectif Distance, alerte Allure avec la fourchette indiquée. Pas d’échauffement ni de récupération.',
+    'Avec beaucoup d’étapes la saisie est longue : garde le découpage par portions. Le jour J, lance la séance depuis l’app Exercice.'
+  ] },
+  polar: { nom: 'Polar', etapes: [
+    'Polar Flow (site ou app) : Agenda, Ajouter, Objectif d’entraînement, Par phases.',
+    'Une phase par ligne ci-dessus : durée en distance, cible « Allure » avec la fourchette indiquée.',
+    'Synchronise la montre. Le jour J : Démarrer l’entraînement, puis Favoris ou Objectifs.'
+  ] },
+  autre: { nom: 'Autre', etapes: [
+    'Dans l’app de ta montre, crée une séance structurée de course (souvent : Entraînements, Créer, Course).',
+    'Une étape par ligne ci-dessus : fin à la distance indiquée, cible « Allure » avec la fourchette. Dernière étape : fin manuelle.',
+    'Synchronise, puis lance la séance depuis le mode Course le jour J. Une montre Garmin accepte aussi le fichier .FIT.'
+  ] }
+};
+
+const MAX_ETAPES_MONTRE = 48;                     // Garmin et la plupart des marques plafonnent autour de 50 étapes
+
+function categorieKmMontre(k) {
+  if (k.consigne && k.consigne.icone === 'fa-person-hiking') return 'marche';
+  return k.pente > 0.045 ? 'montee' : k.pente < -0.055 ? 'descente' : 'plat';
+}
+
+/** Regroupe les kilomètres en étapes : chaque kilomètre, ou des portions d'allure proche et de même terrain. */
+function etapesMontreCourse(s, decoupage) {
+  const fourchette = s.trail ? 0.06 : 0.03;
+  const grouper = (tolerance, maxKm) => {
+    const g = [];
+    s.kms.forEach(k => {
+      const cat = categorieKmMontre(k), der = g[g.length - 1];
+      if (der && tolerance != null && der.cat === cat && Math.abs(k.allure - der.ref) <= tolerance && der.kmFin - der.kmDebut + 1 < maxKm) {
+        der.dist += k.dist; der.temps += k.temps; der.dplus += k.dplus; der.dmoins += k.dmoins; der.kmFin = k.km; der.cumul = k.cumul;
+      } else g.push({ cat, ref: k.allure, dist: k.dist, temps: k.temps, dplus: k.dplus, dmoins: k.dmoins, kmDebut: k.km, kmFin: k.km, cumul: k.cumul, consigne: k.consigne });
+    });
+    return g;
+  };
+  // Portions : allure à quelques secondes près, même terrain, 5 km au plus (l'allure cible suit ainsi la fatigue).
+  let tolerance = decoupage === 'km' ? null : (s.trail ? 15 : 6), maxKm = 5;
+  let groupes = grouper(tolerance, maxKm), force = false;
+  while (groupes.length > MAX_ETAPES_MONTRE) {      // trop d'étapes pour une montre : on élargit les portions
+    tolerance = (tolerance || (s.trail ? 15 : 6)) * 1.4;
+    maxKm *= 1.4;
+    groupes = grouper(tolerance, maxKm);
+    force = decoupage === 'km';
+  }
+  let debut = 0;
+  const etapes = groupes.map((g, i) => {
+    const allure = g.temps / (g.dist / 1000);
+    const marche = g.cat === 'marche';
+    const e = {
+      num: i + 1, debutM: debut, dist: g.dist, temps: g.temps, allure, cumul: g.cumul, cat: g.cat,
+      dplus: g.dplus, dmoins: g.dmoins, kmDebut: g.kmDebut, kmFin: g.kmFin,
+      rapide: marche ? null : allure * (1 - fourchette), lente: marche ? null : allure * (1 + fourchette),
+      derniere: i === groupes.length - 1,
+      consigne: g.kmDebut === g.kmFin ? g.consigne.texte
+        : { montee: 'Montée : effort constant, petits pas', descente: 'Descente : laisse rouler', marche: 'Marche active dans le raide', plat: 'Allure régulière' }[g.cat]
+    };
+    debut += g.dist;
+    return e;
+  });
+  return { etapes, force, fourchette };
+}
+
+const libelleKmsEtape = e => e.kmDebut === e.kmFin ? 'Km ' + e.kmDebut : 'Km ' + e.kmDebut + ' à ' + e.kmFin;
+const cibleEtape = e => e.rapide ? formaterAllure(e.rapide) + ' à ' + formaterAllure(e.lente) + '/km' : 'sans alerte d’allure';
+
+/** Pas à pas en texte (copie, partage, saisie manuelle). */
+function texteMontreCourse() {
+  const s = calculerStrategie();
+  if (!s) return '';
+  const o = ETAT.objectif;
+  const { etapes } = etapesMontreCourse(s, (o.montre && o.montre.decoupage) || 'portions');
+  const l = ['Séance montre : ' + (o.nom || 'ma course') + ', temps cible ' + formaterDuree(s.tempsCible), ''];
+  etapes.forEach(e => l.push('Étape ' + e.num + ' (' + libelleKmsEtape(e) + ') : ' +
+    (e.derniere ? 'jusqu’à l’arrivée (fin manuelle, environ ' + distanceLisible(e.dist) + ')' : distanceLisible(e.dist)) +
+    ', allure ' + formaterAllure(e.allure) + '/km, ' + cibleEtape(e) + '. ' + e.consigne + '. Passage ' + formaterDuree(e.cumul) + '.'));
+  return l.join('\n');
+}
+
+/** Encodeur FIT minimal : fichier de séance (file_id, workout, workout_step). */
+const CRC_FIT = [0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401, 0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400];
+function crcFit(octets) {
+  let crc = 0;
+  for (const o of octets) {
+    let t = CRC_FIT[crc & 0xF]; crc = ((crc >> 4) & 0x0FFF) ^ t ^ CRC_FIT[o & 0xF];
+    t = CRC_FIT[crc & 0xF]; crc = ((crc >> 4) & 0x0FFF) ^ t ^ CRC_FIT[(o >> 4) & 0xF];
+  }
+  return crc;
+}
+function fichierFitSeance(nom, etapes) {
+  const d = [];
+  const u8 = v => d.push(v & 0xFF);
+  const u16 = v => { u8(v); u8(v >> 8); };
+  const u32 = v => { u16(v & 0xFFFF); u16(Math.floor(v / 65536)); };
+  const ascii = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’']/g, ' ').replace(/[^\x20-\x7E]/g, '');
+  const chaine = (t, n) => { const a = ascii(t).slice(0, n - 1); for (let i = 0; i < n; i++) u8(i < a.length ? a.charCodeAt(i) : 0); };
+  const definir = (local, global, champs) => { u8(0x40 | local); u8(0); u8(0); u16(global); u8(champs.length); champs.forEach(c => c.forEach(u8)); };
+  const INVALIDE = 0xFFFFFFFF;
+  // file_id : séance (type 5)
+  definir(0, 0, [[0, 1, 0x00], [1, 2, 0x84], [2, 2, 0x84], [3, 4, 0x8C], [4, 4, 0x86]]);
+  u8(0); u8(5); u16(255); u16(0); u32(1 + Math.floor(Math.random() * 0x7FFFFFFE)); u32(Math.round(Date.now() / 1000) - 631065600);
+  // workout : course à pied
+  definir(1, 26, [[4, 1, 0x00], [6, 2, 0x84], [8, 24, 0x07]]);
+  u8(1); u8(1); u16(etapes.length); chaine(nom, 24);
+  // workout_step : distance (cm) et vitesse cible (mm/s), la plus lente en bas de fourchette
+  definir(2, 27, [[254, 2, 0x84], [0, 16, 0x07], [1, 1, 0x00], [2, 4, 0x86], [3, 1, 0x00], [4, 4, 0x86], [5, 4, 0x86], [6, 4, 0x86], [7, 1, 0x00], [8, 48, 0x07]]);
+  etapes.forEach((e, i) => {
+    u8(2); u16(i);
+    chaine(libelleKmsEtape(e).replace(' à ', '-'), 16);
+    if (e.derniere) { u8(5); u32(INVALIDE); } else { u8(1); u32(Math.round(e.dist * 100)); }
+    if (e.rapide) { u8(0); u32(0); u32(Math.round(1e6 / e.lente)); u32(Math.round(1e6 / e.rapide)); }
+    else { u8(2); u32(INVALIDE); u32(INVALIDE); u32(INVALIDE); }
+    u8(0);
+    chaine(formaterAllure(e.allure).replace("'", ':') + '/km. ' + e.consigne, 48);
+  });
+  const entete = [14, 0x20, 2132 & 0xFF, 2132 >> 8, d.length & 0xFF, (d.length >> 8) & 0xFF, (d.length >> 16) & 0xFF, (d.length >> 24) & 0xFF, 46, 70, 73, 84];
+  const crcEntete = crcFit(entete);
+  entete.push(crcEntete & 0xFF, crcEntete >> 8);
+  const tout = entete.concat(d);
+  const crc = crcFit(tout);
+  tout.push(crc & 0xFF, crc >> 8);
+  return new Uint8Array(tout);
+}
+
+function rendreMontreCourse(s) {
+  const zone = $('#blocMontreCourse');
+  if (!zone) return;
+  if (!s || !s.kms || !s.kms.length) { zone.innerHTML = ''; return; }
+  const o = ETAT.objectif;
+  const decoupage = (o.montre && o.montre.decoupage) || 'portions';
+  const marque = MARQUES_MONTRE[APPAREIL.montre] ? APPAREIL.montre : null;
+  const { etapes, force, fourchette } = etapesMontreCourse(s, decoupage);
+  const couleur = { montee: '#FC5200', descente: '#2F80ED', marche: '#8A93A6', plat: '#16A34A' };
+  const puces = Object.entries(MARQUES_MONTRE).map(([cle, m]) =>
+    `<button data-act="choisirMontre" data-arg="${cle}" class="tapable h-8 px-3 rounded-full text-[12.5px] ${cle === marque ? 'bg-ocre text-white font-semibold' : 'verre'}">${m.nom}</button>`).join('');
+  const lignes = etapes.map(e => `
+    <div class="flex items-center gap-3 py-2">
+      <span class="w-1.5 self-stretch rounded-full" style="background:${couleur[e.cat]}"></span>
+      <div class="w-6 chiffre text-[15px] text-brume">${e.num}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[13.5px]">${e.derniere ? 'Jusqu’à l’arrivée' : distanceLisible(e.dist)} <span class="text-[11.5px] text-brume">· ${libelleKmsEtape(e)}${e.dplus > 5 || e.dmoins > 5 ? ' · +' + Math.round(e.dplus) + ' / -' + Math.round(e.dmoins) + ' m' : ''}</span></div>
+        <div class="text-[11.5px] text-brume leading-snug">${esc(e.consigne)} · passage ${formaterDuree(e.cumul)}</div>
+      </div>
+      <div class="text-right shrink-0">
+        <div class="chiffre text-[18px]">${formaterAllure(e.allure)}</div>
+        <div class="text-[10.5px] text-brume">${e.rapide ? formaterAllure(e.rapide) + '–' + formaterAllure(e.lente) : 'libre'}</div>
+      </div>
+    </div>`).join('');
+  const reglages = [
+    ['fa-flag-checkered', 'Dernière étape en fin manuelle : la montre mesure souvent 0,5 à 1 % de plus que le parcours officiel, elle ne doit pas « finir » avant l’arche. Les étapes changent donc un peu avant les panneaux kilométriques : c’est normal.'],
+    ['fa-bell', 'Alerte allure hors fourchette (±' + Math.round(fourchette * 100) + ' %) en vibration. Ne réagis que si elle dure plus de 20 à 30 s : un virage ou un ravito la déclenchent sans raison.'],
+    ['fa-mobile-screen', 'Écran principal : allure moyenne de l’étape (plus stable que l’allure instantanée' + (s.trail ? ', surtout en forêt et en montée' : '') + '), allure cible, distance restante de l’étape, temps total.'],
+    ['fa-satellite-dish', 'GPS dans le mode le plus précis (multibande ou double fréquence si ta montre l’a), pause automatique désactivée.'],
+    etapes.some(e => !e.rapide) ? ['fa-person-hiking', 'Dans les passages de marche, pas d’alerte d’allure : marche fort au souffle ou à la fréquence cardiaque.'] : null,
+    ['fa-vial', 'Charge la séance 2 ou 3 jours avant et teste-la sur un footing (tu peux passer les étapes) pour vérifier les vibrations et l’écran.']
+  ].filter(Boolean);
+  const m = marque ? MARQUES_MONTRE[marque] : null;
+  zone.innerHTML = `
+    <p class="text-[12.5px] text-brume leading-relaxed">Ta stratégie devient une séance structurée : une étape par ${decoupage === 'km' ? 'kilomètre' : 'portion d’allure proche'}, avec l’allure ajustée au dénivelé et une fourchette d’alerte. Temps cible <span class="text-neige">${formaterDuree(s.tempsCible)}</span>.</p>
+    <div class="segments mt-3">
+      <button data-act="decoupageMontre" data-arg="portions" class="${decoupage !== 'km' ? 'actif' : ''}">Par portions</button>
+      <button data-act="decoupageMontre" data-arg="km" class="${decoupage === 'km' ? 'actif' : ''}">Km par km</button>
+    </div>
+    ${force ? `<div class="mt-2 flex gap-2 text-[12px] text-ocre leading-relaxed"><i class="fa-solid fa-triangle-exclamation mt-[3px]"></i><span>Plus de ${MAX_ETAPES_MONTRE} kilomètres : trop d’étapes pour une montre, les kilomètres d’allure proche sont regroupés.</span></div>` : ''}
+    <div class="text-[11.5px] text-brume mt-3">${etapes.length} étape${etapes.length > 1 ? 's' : ''}, allure cible et fourchette d’alerte</div>
+    <div class="groupe mt-1">${lignes}</div>
+    <div class="ligne-sep my-3"></div>
+    <div class="text-[12px] text-brume mb-2">Ta montre</div>
+    <div class="flex flex-wrap gap-2">${puces}</div>
+    ${m ? `
+      <div class="mt-3 space-y-2 text-[12.5px] leading-relaxed">
+        ${m.etapes.map((t, i) => `<div class="flex gap-2"><span class="w-5 h-5 rounded-full bg-ocre/10 text-ocre text-[11px] font-semibold grid place-items-center shrink-0 mt-[1px]">${i + 1}</span><span>${esc(t)}</span></div>`).join('')}
+        ${m.bonus ? `<div class="flex gap-2 rounded-xl bg-nuit/50 p-3"><i class="fa-solid fa-mountain-sun text-ocre mt-[3px]"></i><span>${esc(m.bonus)}</span></div>` : ''}
+      </div>`
+    : `<p class="text-[12px] text-brume mt-2 leading-relaxed">Choisis ta marque pour voir où créer la séance pas à pas.</p>`}
+    <div class="ligne-sep my-3"></div>
+    <div class="text-[12px] text-brume mb-2">Réglages pour le jour J</div>
+    <div class="space-y-2 text-[12.5px] leading-relaxed">
+      ${reglages.map(([ic, t]) => `<div class="flex gap-2"><i class="fa-solid ${ic} text-ocre mt-[3px] w-4"></i><span>${esc(t)}</span></div>`).join('')}
+    </div>
+    <div class="grid grid-cols-2 gap-2 mt-4">
+      <button data-act="copierMontreCourse" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-regular fa-copy mr-1.5"></i>Copier les étapes</button>
+      <button data-act="fitMontreCourse" class="tapable h-11 rounded-xl ${!marque || marque === 'garmin' || marque === 'autre' ? 'bg-ocre text-white font-semibold' : 'verre'} text-[13.5px]"><i class="fa-solid fa-download mr-1.5"></i>Fichier .FIT</button>
+    </div>
+    <p class="text-[11px] text-brume mt-2 leading-snug">Le fichier .FIT est une séance au format Garmin (à copier dans GARMIN/NewFiles). Les autres marques se programment à la main en quelques minutes avec la liste ci-dessus.</p>`;
 }
 
 /* ---------- Vue 5 : profil ---------- */
@@ -9880,6 +10100,30 @@ const ACTIONS = {
     if (!t) return;
     const r = await partagerOuCopier('Stratégie ' + (ETAT.objectif.nom || 'jour J'), t);
     if (r === 'copie') toast('Stratégie copiée dans le presse-papiers.', 'succes');
+  },
+
+  // Course programmée sur la montre
+  choisirMontre: arg => { if (MARQUES_MONTRE[arg]) { APPAREIL.montre = arg; sauverAppareil(); rendreMontreCourse(calculerStrategie()); } },
+  decoupageMontre: arg => {
+    ETAT.objectif.montre = Object.assign({}, ETAT.objectif.montre || {}, { decoupage: arg === 'km' ? 'km' : 'portions' });
+    sauverEtat();
+    rendreMontreCourse(calculerStrategie());
+  },
+  copierMontreCourse: async () => {
+    const t = texteMontreCourse();
+    if (!t) return;
+    const r = await partagerOuCopier('Séance montre ' + (ETAT.objectif.nom || 'jour J'), t);
+    if (r === 'copie') toast('Étapes de la séance copiées.', 'succes');
+  },
+  fitMontreCourse: async () => {
+    const s = calculerStrategie();
+    if (!s) return;
+    const o = ETAT.objectif;
+    const { etapes } = etapesMontreCourse(s, (o.montre && o.montre.decoupage) || 'portions');
+    const nom = (o.nom || 'Course') + ' ' + formaterDuree(s.tempsCible);
+    const fichier = 'course-' + (normaliser(o.nom || 'jour-j').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'jour-j') + '.fit';
+    const ok = await livrerFichier(fichier, fichierFitSeance(nom, etapes), 'application/vnd.ant.fit');
+    if (ok) toast('Séance .FIT prête : copie-la dans GARMIN/NewFiles.', 'succes');
   },
 
   // Stratégie nutritionnelle
