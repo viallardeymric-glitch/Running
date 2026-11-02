@@ -603,6 +603,90 @@ if (window.tailwind) tailwind.config = {
       <button data-act="nouvelleCourse" class="text-[12.5px] text-ocre font-medium tapable"><i class="fa-solid fa-plus mr-1"></i>Ajouter</button>
     </div>
     <div id="listeCourses" class="rounded-xl2 verre overflow-hidden groupe mb-5"></div>
+
+    <!-- Générateur de parcours : boucles routées sur les chemins OpenStreetMap, profil et export GPX -->
+    <details id="voletGenerateur" class="accordeon rounded-xl2 verre overflow-hidden mb-5">
+      <summary class="px-4 py-3.5 flex items-center gap-3">
+        <span class="w-9 h-9 rounded-xl grid place-items-center bg-vallee/10 shrink-0"><i class="fa-solid fa-route text-vallee"></i></span>
+        <span class="flex-1 min-w-0"><span class="block titre text-[15px]">Générateur de parcours</span><span class="block text-[11.5px] text-brume truncate">Boucles route ou trail à ta distance et ton D+, export GPX</span></span>
+        <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
+      </summary>
+      <div class="px-4 pb-4 pt-3 space-y-4 border-t border-[#EEF0F3]">
+        <div>
+          <label class="text-[12px] text-brume block mb-1.5">Départ et arrivée</label>
+          <div class="flex gap-2">
+            <input id="genAdresse" type="text" autocomplete="off" placeholder="Adresse, ville, lieu…" enterkeyhint="search"
+              class="flex-1 min-w-0 h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+            <button data-act="genChercherAdresse" class="tapable w-11 h-11 rounded-xl verre shrink-0" aria-label="Chercher l’adresse"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <button data-act="genMaPosition" class="tapable w-11 h-11 rounded-xl verre shrink-0" aria-label="Ma position"><i class="fa-solid fa-location-crosshairs text-azur"></i></button>
+          </div>
+          <p id="genDepart" class="text-[11.5px] text-brume mt-1.5 leading-snug">Cherche une adresse, prends ta position ou touche la carte.</p>
+        </div>
+        <div id="carteGen" class="carte-parcours rounded-xl overflow-hidden h-[260px] bg-nuit/50"></div>
+
+        <div>
+          <label class="text-[12px] text-brume block mb-1.5">Je règle</label>
+          <div id="genChoixMode" class="segments">
+            <button data-act="genMode" data-arg="distance">La distance</button>
+            <button data-act="genMode" data-arg="duree">La durée</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div id="genBlocKm">
+            <label class="text-[12px] text-brume block mb-1.5">Distance (km)</label>
+            <input id="genKm" type="text" inputmode="decimal" autocomplete="off" placeholder="10"
+              class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+          </div>
+          <div id="genBlocDuree" class="hidden">
+            <label class="text-[12px] text-brume block mb-1.5">Durée (h:mm)</label>
+            <input id="genDuree" type="text" autocomplete="off" placeholder="1:00"
+              class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+          </div>
+          <div>
+            <label class="text-[12px] text-brume block mb-1.5">D+ souhaité (m)</label>
+            <input id="genDplus" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="indifférent"
+              class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+          </div>
+        </div>
+        <div>
+          <label class="text-[12px] text-brume block mb-1.5">Allure visée (min/km)</label>
+          <input id="genAllure" type="text" autocomplete="off" placeholder="5:30"
+            class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+          <p id="genEstimation" class="text-[11.5px] text-brume mt-1.5 leading-snug"></p>
+        </div>
+        <div>
+          <div class="flex items-baseline justify-between mb-1.5">
+            <label class="text-[12px] text-brume">Terrain</label>
+            <span id="genTerrainTexte" class="text-[12px] font-semibold"></span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mb-3">
+            <button data-act="genTerrain" data-arg="0" class="tapable btnGenTerrain h-10 rounded-xl verre text-[13px]"><i class="fa-solid fa-road mr-1"></i>Route</button>
+            <button data-act="genTerrain" data-arg="50" class="tapable btnGenTerrain h-10 rounded-xl verre text-[13px]">Mixte</button>
+            <button data-act="genTerrain" data-arg="100" class="tapable btnGenTerrain h-10 rounded-xl verre text-[13px]"><i class="fa-solid fa-mountain mr-1"></i>Trail</button>
+          </div>
+          <input id="genTrail" type="range" min="0" max="100" step="10" value="0" class="w-full" aria-label="Part de trail">
+        </div>
+        <button data-act="genGenerer" id="btnGenGenerer" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]">
+          <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Générer un parcours
+        </button>
+
+        <div id="genResultat" class="hidden space-y-3">
+          <div class="flex items-center gap-2">
+            <button data-act="genPrecedent" id="btnGenPrec" class="tapable w-10 h-10 rounded-xl verre shrink-0" aria-label="Parcours précédent"><i class="fa-solid fa-chevron-left"></i></button>
+            <button data-act="genChanger" id="btnGenChanger" class="tapable flex-1 h-10 rounded-xl verre text-[13.5px] font-semibold">🔄 Changer de parcours</button>
+            <button data-act="genSuivant" id="btnGenSuiv" class="tapable w-10 h-10 rounded-xl verre shrink-0" aria-label="Parcours suivant"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+          <div id="genTitre" class="text-[12px] text-brume text-center"></div>
+          <div id="genStats" class="grid grid-cols-4 gap-2"></div>
+          <div id="genStats2" class="grid grid-cols-2 gap-2"></div>
+          <div class="h-[170px]"><canvas id="graphProfilGen"></canvas></div>
+          <button data-act="genTelecharger" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]">
+            <i class="fa-solid fa-download mr-1.5"></i>Télécharger en GPX
+          </button>
+          <p id="genSource" class="text-[11px] text-brume text-center leading-snug"></p>
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- Fiche d'une course, en plein écran : parcours, stratégies, puis infos modifiables -->
@@ -8184,6 +8268,603 @@ function rendreCarteParcours(o) {
   }).catch(() => { /* hors ligne : le dessin du tracé reste affiché */ });
 }
 
+/* ==================================================================================
+   GÉNÉRATEUR DE PARCOURS
+   Boucles autour d'un départ, à la distance (ou durée) et au D+ voulus, sur route, trail ou mixte.
+   Tout se fait dans le navigateur avec des services publics et gratuits :
+   - BRouter (brouter.de) calcule l'itinéraire sur OpenStreetMap avec un profil « course à pied »
+     dont les coûts suivent le mélange route/trail demandé, et renvoie l'altitude de chaque point ;
+   - à défaut, OSRM piéton (routing.openstreetmap.de) + altitudes Open-Meteo ;
+   - Open-Meteo sert aussi à sonder le relief autour du départ pour orienter la boucle vers le D+ voulu ;
+   - Nominatim (OpenStreetMap) trouve l'adresse de départ.
+   La variété vient du hasard : direction, nombre de points de passage et forme changent à chaque proposition.
+   ================================================================================== */
+
+const GEN = {
+  carte: null, coucheTrace: null, coucheDepart: null, coucheCurseur: null, coucheKm: null,
+  mode: 'distance', trail: 0, depart: null,
+  propositions: [], index: -1, cle: '', enCours: false,
+  prochaine: null, cleProchaine: '',
+  capsUtilises: [], relief: {}, profils: {},
+  facteur: { route: 1.3, trail: 1.4 },       // longueur routée / longueur du polygone des points de passage (appris au fil des calculs)
+  moteurKo: {}                               // services en échec pendant cette session
+};
+const URL_BROUTER = 'https://brouter.de/brouter';
+const URL_OSRM_PIETON = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/';
+const URL_ALTITUDE = 'https://api.open-meteo.com/v1/elevation';
+const URL_GEOCODAGE = 'https://nominatim.openstreetmap.org/search';
+
+/** fetch avec délai maximal. */
+async function fetchDelai(url, options = {}, ms = 25000) {
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const minuteur = ctrl ? setTimeout(() => ctrl.abort(), ms) : null;
+  try { return await fetch(url, Object.assign({}, options, ctrl ? { signal: ctrl.signal } : {})); }
+  finally { if (minuteur) clearTimeout(minuteur); }
+}
+
+/* ---------- Géométrie ---------- */
+
+/** Point atteint depuis p en suivant un cap (degrés) sur une distance (m). */
+function pointDestination(p, capDeg, distanceM) {
+  const R = 6371008.8, rad = Math.PI / 180;
+  const d = distanceM / R, c = capDeg * rad, la1 = p.lat * rad, lo1 = p.lon * rad;
+  const la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(c));
+  const lo2 = lo1 + Math.atan2(Math.sin(c) * Math.sin(d) * Math.cos(la1), Math.cos(d) - Math.sin(la1) * Math.sin(la2));
+  return { lat: la2 / rad, lon: ((lo2 / rad + 540) % 360) - 180 };
+}
+const ecartCap = (a, b) => { const d = Math.abs(((a - b) % 360 + 360) % 360); return Math.min(d, 360 - d); };
+
+/**
+ * Forme d'une boucle : le départ est sur un cercle dont le centre est dans la direction « cap ».
+ * Les points de passage sont répartis sur ce cercle, légèrement déformés pour ne jamais retomber sur la même boucle.
+ */
+function formeAleatoire(cap) {
+  const n = Math.random() < 0.55 ? 3 : 4;
+  const pas = 360 / (n + 1);
+  return {
+    cap, n,
+    angles: Array.from({ length: n }, (_, j) => (j + 1) * pas + (Math.random() - 0.5) * pas * 0.45),
+    rayons: Array.from({ length: n }, () => 0.82 + Math.random() * 0.36)
+  };
+}
+function pointsForme(dep, forme, rayon) {
+  const centre = pointDestination(dep, forme.cap, rayon);
+  const passages = forme.angles.map((a, j) => pointDestination(centre, forme.cap + 180 + a, rayon * forme.rayons[j]));
+  return [dep, ...passages, dep];
+}
+function longueurPolyligne(pts) {
+  let d = 0;
+  for (let i = 1; i < pts.length; i++) d += distanceHaversine(pts[i - 1], pts[i]);
+  return d;
+}
+
+/* ---------- Altitudes (Open-Meteo, 100 points par appel) ---------- */
+
+async function altitudesOpenMeteo(points) {
+  const res = [];
+  for (let i = 0; i < points.length; i += 100) {
+    const lot = points.slice(i, i + 100);
+    const url = URL_ALTITUDE + '?latitude=' + lot.map(p => p.lat.toFixed(5)).join(',') + '&longitude=' + lot.map(p => p.lon.toFixed(5)).join(',');
+    const r = await fetchDelai(url, {}, 15000);
+    if (!r.ok) throw new Error('altitudes indisponibles (' + r.status + ')');
+    const j = await r.json();
+    if (!j || !Array.isArray(j.elevation) || j.elevation.length !== lot.length) throw new Error('altitudes illisibles');
+    res.push(...j.elevation.map(Number));
+  }
+  return res;
+}
+
+/**
+ * Relief autour du départ : pour 12 directions, D+ approximatif d'une boucle régulière de la bonne taille.
+ * Sert à orienter la boucle vers les collines (beaucoup de D+) ou vers le plat. Gardé en mémoire par départ et distance.
+ */
+async function reliefAutour(dep, rayon) {
+  const cle = dep.lat.toFixed(3) + ',' + dep.lon.toFixed(3) + '|' + Math.round(rayon / 250);
+  if (GEN.relief[cle] !== undefined) return GEN.relief[cle];
+  if (GEN.moteurKo.altitude) return null;
+  const caps = Array.from({ length: 12 }, (_, i) => i * 30);
+  const formeReg = cap => ({ cap, n: 5, angles: [60, 120, 180, 240, 300], rayons: [1, 1, 1, 1, 1] });
+  const points = [dep];
+  caps.forEach(cap => points.push(...pointsForme(dep, formeReg(cap), rayon).slice(1, -1)));
+  try {
+    const alt = await altitudesOpenMeteo(points);
+    const res = {};
+    caps.forEach((cap, i) => {
+      const boucle = [alt[0], ...alt.slice(1 + i * 5, 6 + i * 5), alt[0]];
+      let monte = 0;
+      for (let k = 1; k < boucle.length; k++) if (boucle[k] > boucle[k - 1]) monte += boucle[k] - boucle[k - 1];
+      res[cap] = monte * 1.6;            // le tracé réel ajoute le micro-relief entre les points sondés
+    });
+    GEN.relief[cle] = res;
+    return res;
+  } catch (e) {
+    console.warn('Relief non sondé :', e);
+    GEN.moteurKo.altitude = true;
+    return (GEN.relief[cle] = null);
+  }
+}
+
+/* ---------- Itinéraire ---------- */
+
+/** Profil BRouter « course à pied » : coût des routes et des chemins selon la part de trail voulue (0 à 1). */
+function profilBrouterCourse(partTrail) {
+  const f = x => (Math.round(x * 100) / 100).toFixed(2);
+  const multRoute = 1 + 4 * partTrail, multTrail = 1 + 4 * (1 - partTrail);
+  return [
+    '# RDD : course à pied, ' + Math.round(partTrail * 100) + ' % trail',
+    '---context:global',
+    'assign downhillcost 0',
+    'assign downhillcutoff 0',
+    'assign uphillcost 0',
+    'assign uphillcutoff 0',
+    'assign validForFoot 1',
+    '---context:way',
+    'assign turncost 0',
+    'assign initialcost 0',
+    'assign estgoudron surface=asphalt|paved|concrete|paving_stones|sett',
+    'assign esttendre surface=unpaved|gravel|fine_gravel|dirt|ground|grass|compacted|earth|mud|sand',
+    'assign estsentier',
+    '  if esttendre then 1',
+    '  else if estgoudron then 0',
+    '  else if highway=path|bridleway then 1',
+    '  else if highway=track then not tracktype=grade1',
+    '  else 0',
+    'assign interdit',
+    '  if foot=yes|designated|permissive then 0',
+    '  else if foot=no then 1',
+    '  else if access=private|no then 1',
+    '  else 0',
+    'assign coutbase',
+    '  switch highway=motorway|motorway_link|trunk|trunk_link 10000',
+    '  switch highway=primary|primary_link 4',
+    '  switch highway=secondary|secondary_link 2.5',
+    '  switch highway=tertiary|tertiary_link 1.6',
+    '  switch highway=residential|living_street|unclassified|road 1.2',
+    '  switch highway=service 1.3',
+    '  switch highway=pedestrian|footway|cycleway|path|track 1',
+    '  switch highway=bridleway 1.3',
+    '  switch highway=steps 3',
+    '  10000',
+    'assign coutalpin',
+    '  switch sac_scale=alpine_hiking|demanding_alpine_hiking|difficult_alpine_hiking 30',
+    '  switch sac_scale=demanding_mountain_hiking 4',
+    '  1',
+    'assign coutterrain if estsentier then ' + f(multTrail) + ' else ' + f(multRoute),
+    'assign costfactor',
+    '  if interdit then 10000',
+    '  else multiply coutbase multiply coutalpin coutterrain',
+    '---context:node',
+    'assign initialcost 0',
+    ''
+  ].join('\n');
+}
+async function idProfilBrouter(partTrail) {
+  const cle = Math.round(partTrail * 10);
+  if (GEN.profils[cle]) return GEN.profils[cle];
+  const r = await fetchDelai(URL_BROUTER + '/profile', { method: 'POST', body: profilBrouterCourse(cle / 10) }, 15000);
+  const j = await r.json();
+  if (!r.ok || !j || j.error || !j.profileid) throw new Error((j && j.error) || 'profil refusé');
+  return (GEN.profils[cle] = j.profileid);
+}
+
+/** Classe un tronçon d'après ses tags OSM (mêmes règles que le profil). */
+function tronconTrail(tags) {
+  const t = {};
+  String(tags || '').split(/\s+/).forEach(kv => { const i = kv.indexOf('='); if (i > 0) t[kv.slice(0, i)] = kv.slice(i + 1); });
+  const tendre = /^(unpaved|gravel|fine_gravel|dirt|ground|grass|compacted|earth|mud|sand|pebblestone|woodchips)$/.test(t.surface || '');
+  const dur = /^(asphalt|paved|concrete|paving_stones|sett|concrete:plates|cobblestone)$/.test(t.surface || '');
+  if (tendre) return true;
+  if (dur) return false;
+  if (/^(path|bridleway)$/.test(t.highway || '')) return true;
+  if (t.highway === 'track') return t.tracktype !== 'grade1';
+  return false;
+}
+
+async function itineraireBrouter(passages, partTrail) {
+  let profil = null;
+  if (!GEN.moteurKo.profilBrouter) {
+    try { profil = await idProfilBrouter(partTrail); }
+    catch (e) { console.warn('Profil course BRouter refusé, profil standard utilisé :', e); GEN.moteurKo.profilBrouter = true; }
+  }
+  if (!profil) profil = partTrail >= 0.5 ? 'hiking-mountain' : 'trekking';
+  const url = URL_BROUTER + '?lonlats=' + passages.map(p => p.lon.toFixed(6) + ',' + p.lat.toFixed(6)).join('|') +
+              '&profile=' + encodeURIComponent(profil) + '&alternativeidx=0&format=geojson';
+  const r = await fetchDelai(url);
+  const texte = await r.text();
+  let j = null;
+  try { j = JSON.parse(texte); } catch (e) { /* message d'erreur en texte brut */ }
+  const f = j && j.features && j.features[0];
+  if (!r.ok || !f || !f.geometry || !Array.isArray(f.geometry.coordinates)) throw new Error(texte.slice(0, 160) || 'itinéraire introuvable');
+  const points = f.geometry.coordinates.map(c => ({ lon: +c[0], lat: +c[1], ele: c.length > 2 && isFinite(c[2]) ? +c[2] : null, seg: 0 }));
+  // Part de trail mesurée sur les tags OSM de chaque tronçon
+  let partMesuree = null;
+  const msg = f.properties && f.properties.messages;
+  if (Array.isArray(msg) && msg.length > 1) {
+    const iD = msg[0].indexOf('Distance'), iT = msg[0].indexOf('WayTags');
+    if (iD >= 0 && iT >= 0) {
+      let tot = 0, tr = 0;
+      msg.slice(1).forEach(l => { const d = +l[iD] || 0; tot += d; if (tronconTrail(l[iT])) tr += d; });
+      if (tot > 0) partMesuree = tr / tot;
+    }
+  }
+  return { points, partTrail: partMesuree, source: 'BRouter' + (profil.startsWith('custom') ? '' : ' (' + profil + ')') };
+}
+
+async function itineraireOsrm(passages) {
+  const url = URL_OSRM_PIETON + passages.map(p => p.lon.toFixed(6) + ',' + p.lat.toFixed(6)).join(';') + '?overview=full&geometries=geojson&steps=false';
+  const r = await fetchDelai(url);
+  const j = await r.json();
+  if (!r.ok || !j || j.code !== 'Ok' || !j.routes || !j.routes[0]) throw new Error((j && (j.message || j.code)) || 'itinéraire introuvable');
+  const points = j.routes[0].geometry.coordinates.map(c => ({ lon: +c[0], lat: +c[1], ele: null, seg: 0 }));
+  // Altitudes : un point tous les ~100 m environ (300 au plus), interpolées sur tout le tracé
+  try {
+    const pas = Math.max(1, Math.ceil(points.length / 300));
+    const idx = points.map((_, i) => i).filter(i => i % pas === 0 || i === points.length - 1);
+    const alt = await altitudesOpenMeteo(idx.map(i => points[i]));
+    idx.forEach((i, k) => {
+      points[i].ele = alt[k];
+      const suiv = idx[k + 1];
+      if (suiv != null) for (let m = i + 1; m < suiv; m++) points[m].ele = alt[k] + (alt[k + 1] - alt[k]) * (m - i) / (suiv - i);
+    });
+  } catch (e) { console.warn('Altitudes du tracé indisponibles :', e); }
+  return { points, partTrail: null, source: 'OSRM piéton + Open-Meteo' };
+}
+
+/** Itinéraire passant par les points donnés : BRouter, sinon OSRM piéton. */
+async function itineraireCourse(passages, partTrail) {
+  let erreur = null;
+  if (!GEN.moteurKo.brouter) {
+    try { return await itineraireBrouter(passages, partTrail); }
+    catch (e) {
+      erreur = e;
+      // Point de passage hors réseau (lac, champ…) : BRouter répond, le problème vient du point, pas du service.
+      if (/not mapped|no track found|position not/i.test(e.message || '')) throw e;
+      console.warn('BRouter indisponible, essai avec OSRM :', e);
+      GEN.moteurKo.brouter = true;
+    }
+  }
+  try { return await itineraireOsrm(passages); }
+  catch (e) { throw erreur || e; }
+}
+
+/* ---------- Réglages ---------- */
+
+function reglagesGenerateur() {
+  let ef = 360;                              // sans niveau connu : 6'00/km
+  try { const m = metriques(); if (m && m.zones && m.zones.ef > 0) ef = m.zones.ef; } catch (e) { /* pas encore de profil ouvert */ }
+  const allure = lireDuree($('#genAllure').value) || Math.round(ef);
+  const dplusSaisi = $('#genDplus').value.trim();
+  const dplus = dplusSaisi === '' ? null : Math.max(0, Math.round(lireNombre(dplusSaisi)) || 0);
+  let km;
+  if (GEN.mode === 'duree') {
+    let duree = lireDuree($('#genDuree').value);
+    if (duree > 0 && /^\s*\d{1,2}:\d{2}\s*$/.test($('#genDuree').value) && duree < 600) duree *= 60;   // « 1:15 » = 1 h 15
+    km = duree > 0 ? duree / allure - 7.5 * (dplus || 0) / 1000 : NaN;                           // 100 m de D+ ≈ 0,75 km sur une boucle
+  } else km = lireNombre($('#genKm').value);
+  return { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100 };
+}
+const cleReglages = r => [GEN.depart && GEN.depart.lat.toFixed(5), GEN.depart && GEN.depart.lon.toFixed(5), Math.round(r.km * 10), r.dplus, GEN.trail].join('|');
+
+function sauverReglagesGenerateur() {
+  APPAREIL.generateur = {
+    depart: GEN.depart, mode: GEN.mode, trail: GEN.trail,
+    km: $('#genKm').value, duree: $('#genDuree').value, dplus: $('#genDplus').value, allure: $('#genAllure').value
+  };
+  sauverAppareil();
+}
+
+/** Texte « Route 70 % · Trail 30 % » et estimation de durée. */
+function majReglagesGenerateur() {
+  $$('#genChoixMode button').forEach(b => b.classList.toggle('actif', b.dataset.arg === GEN.mode));
+  $('#genBlocKm').classList.toggle('hidden', GEN.mode !== 'distance');
+  $('#genBlocDuree').classList.toggle('hidden', GEN.mode !== 'duree');
+  $('#genTrail').value = GEN.trail;
+  $('#genTerrainTexte').textContent = GEN.trail === 0 ? '100 % route' : GEN.trail === 100 ? '100 % trail' : 'Route ' + (100 - GEN.trail) + ' % · Trail ' + GEN.trail + ' %';
+  $$('.btnGenTerrain').forEach(b => { const on = +b.dataset.arg === GEN.trail; b.classList.toggle('verre', !on); ['bg-ocre', 'text-white', 'font-semibold'].forEach(c => b.classList.toggle(c, on)); });
+  const r = reglagesGenerateur();
+  const est = $('#genEstimation');
+  if (!(r.km > 0)) { est.textContent = 'Allure par défaut : ton endurance fondamentale (' + formaterAllure(r.allure) + '/km).'; return; }
+  const t = distanceEquivalente(r.km * 1000, r.dplus || 0) / 1000 * r.allure;
+  est.textContent = GEN.mode === 'duree'
+    ? 'Soit une boucle d’environ ' + String(Math.round(r.km * 10) / 10).replace('.', ',') + ' km à ' + formaterAllure(r.allure) + '/km' + (r.dplus ? ' avec ' + r.dplus + ' m D+' : '') + '.'
+    : 'Environ ' + formaterDuree(t, true).replace(/:\d\d$/, '').replace(':', ' h ') + ' à ' + formaterAllure(r.allure) + '/km' + (r.dplus ? ', D+ compris' : '') + '.';
+}
+
+/* ---------- Génération d'une proposition ---------- */
+
+/** Choisit une direction encore jamais prise, au plus près du D+ voulu si le relief est connu. */
+function choisirCap(relief, dplusVise) {
+  const base = Array.from({ length: 12 }, (_, i) => i * 30);
+  let libres = base.filter(c => GEN.capsUtilises.every(u => ecartCap(c, u) >= 40));
+  if (!libres.length) { GEN.capsUtilises = GEN.capsUtilises.slice(-2); libres = base.filter(c => GEN.capsUtilises.every(u => ecartCap(c, u) >= 25)); }
+  if (!libres.length) libres = base;
+  let cap;
+  if (relief && dplusVise != null) {
+    const tries = libres.slice().sort((a, b) => Math.abs(relief[a] - dplusVise) - Math.abs(relief[b] - dplusVise));
+    const top = tries.slice(0, Math.min(3, tries.length));
+    cap = top[Math.floor(Math.random() * top.length)];
+  } else cap = libres[Math.floor(Math.random() * libres.length)];
+  GEN.capsUtilises.push(cap);
+  return (cap + (Math.random() - 0.5) * 20 + 360) % 360;
+}
+
+/** Calcule une boucle : jusqu'à 3 appels pour caler la distance à ±8 %. */
+async function proposerParcours(reg) {
+  const dep = GEN.depart, cible = reg.km * 1000;
+  const typeTerrain = reg.trail >= 0.5 ? 'trail' : 'route';
+  const rayonApprox = cible / GEN.facteur[typeTerrain] / (2 * Math.PI * 0.9);
+  const relief = reg.dplus != null ? await reliefAutour(dep, rayonApprox) : null;
+  let derniereErreur = null;
+  for (let essai = 0; essai < 3; essai++) {
+    const forme = formeAleatoire(choisirCap(relief, reg.dplus));
+    const perim1000 = longueurPolyligne(pointsForme(dep, forme, 1000)) / 1000;      // le polygone grandit avec le rayon
+    let rayon = cible / GEN.facteur[typeTerrain] / perim1000;
+    let meilleur = null;
+    try {
+      for (let tour = 0; tour < 3; tour++) {
+        const passages = pointsForme(dep, forme, rayon);
+        const it = await itineraireCourse(passages, reg.trail);
+        const a = analyserTrace(it.points);
+        const ecart = Math.abs(a.distanceM - cible) / cible;
+        if (!meilleur || ecart < meilleur.ecart) meilleur = { it, a, ecart };
+        // Apprentissage du rapport tracé réel / polygone, pour viser juste du premier coup la fois suivante
+        const rapport = a.distanceM / longueurPolyligne(passages);
+        if (isFinite(rapport) && rapport > 1 && rapport < 3) GEN.facteur[typeTerrain] = GEN.facteur[typeTerrain] * 0.6 + rapport * 0.4;
+        if (ecart <= 0.08) break;
+        rayon *= Math.pow(cible / a.distanceM, 0.9);
+      }
+    } catch (e) { derniereErreur = e; console.warn('Proposition abandonnée :', e); continue; }
+    if (meilleur && meilleur.ecart < 0.3) {
+      const { it, a } = meilleur;
+      return {
+        points: it.points, distanceM: a.distanceM, dplus: a.dplus, dmoins: a.dmoins, altMin: a.altMin, altMax: a.altMax,
+        aAltitude: a.aAltitude, profil: a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: forme.cap
+      };
+    }
+  }
+  throw derniereErreur || new Error('aucune boucle de cette distance trouvée autour du départ');
+}
+
+/** Prépare en arrière-plan la proposition suivante : « Changer de parcours » devient instantané. */
+function precalculerSuivante(reg, cle) {
+  GEN.cleProchaine = cle;
+  GEN.prochaine = proposerParcours(reg).catch(e => { console.warn(e); return null; });
+}
+
+function messageErreurGen(e) {
+  const t = String((e && e.message) || e || '');
+  if (navigator.onLine === false) return 'Pas de connexion : le calcul d’itinéraire a besoin d’Internet.';
+  if (/abort/i.test(t)) return 'Le service d’itinéraire met trop de temps à répondre. Réessaie dans un instant.';
+  if (/not mapped|position not/i.test(t)) return 'Aucun chemin praticable près de certains points. Déplace le départ ou change la distance.';
+  if (/failed to fetch|networkerror|load failed/i.test(t)) return 'Services d’itinéraire injoignables pour le moment. Réessaie dans un instant.';
+  return 'Parcours impossible à calculer : ' + esc(t.slice(0, 120));
+}
+
+async function lancerGeneration(nouvelle) {
+  if (GEN.enCours) return;
+  if (!GEN.depart) { toast('Choisis d’abord un point de départ : adresse, ta position ou touche la carte.', 'alerte'); return; }
+  const reg = reglagesGenerateur();
+  if (!(reg.km >= 1 && reg.km <= 100)) { toast(GEN.mode === 'duree' ? 'Indique une durée (par exemple 1:00).' : 'Indique une distance entre 1 et 100 km.', 'alerte'); return; }
+  sauverReglagesGenerateur();
+  const cle = cleReglages(reg);
+  if (nouvelle || cle !== GEN.cle) {
+    GEN.propositions = []; GEN.index = -1; GEN.cle = cle; GEN.capsUtilises = [];
+    if (GEN.cleProchaine !== cle) GEN.prochaine = null;
+  }
+  GEN.enCours = true;
+  majBoutonsGen();
+  try {
+    let p = null;
+    if (GEN.prochaine && GEN.cleProchaine === cle) { p = await GEN.prochaine; GEN.prochaine = null; }
+    if (!p) p = await proposerParcours(reg);
+    GEN.capsUtilises.push(p.cap);
+    GEN.propositions.push(p);
+    GEN.index = GEN.propositions.length - 1;
+    rendreGenerateur();
+    precalculerSuivante(reg, cle);
+  } catch (e) {
+    console.error(e);
+    toast(messageErreurGen(e), 'erreur');
+  } finally {
+    GEN.enCours = false;
+    majBoutonsGen();
+  }
+}
+
+function majBoutonsGen() {
+  const b = $('#btnGenGenerer'), c = $('#btnGenChanger');
+  b.disabled = c.disabled = GEN.enCours;
+  b.innerHTML = GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Calcul de la boucle…' : '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>' + (GEN.propositions.length ? 'Nouvelle série de parcours' : 'Générer un parcours');
+  c.innerHTML = GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Calcul…' : '🔄 Changer de parcours';
+  $('#btnGenPrec').disabled = GEN.enCours || GEN.index <= 0;
+  $('#btnGenSuiv').disabled = GEN.enCours || GEN.index >= GEN.propositions.length - 1;
+  $('#btnGenPrec').classList.toggle('opacity-40', $('#btnGenPrec').disabled);
+  $('#btnGenSuiv').classList.toggle('opacity-40', $('#btnGenSuiv').disabled);
+}
+
+/* ---------- Carte ---------- */
+
+function centrerSurDepart(zoom) {
+  if (!GEN.carte || !GEN.depart || !window.L) return;
+  if (GEN.coucheDepart) GEN.coucheDepart.setLatLng([GEN.depart.lat, GEN.depart.lon]);
+  else GEN.coucheDepart = L.circleMarker([GEN.depart.lat, GEN.depart.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#16A34A', fillOpacity: 1 }).addTo(GEN.carte).bindTooltip('Départ et arrivée');
+  if (zoom) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], zoom);
+}
+function definirDepart(lat, lon, nom) {
+  GEN.depart = { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, nom: nom || '' };
+  $('#genDepart').innerHTML = '<i class="fa-solid fa-location-dot text-vallee mr-1"></i>' + (nom ? esc(nom) : 'Point placé sur la carte') +
+    ' <span class="opacity-70">(' + GEN.depart.lat.toFixed(4).replace('.', ',') + ' ; ' + GEN.depart.lon.toFixed(4).replace('.', ',') + ')</span>';
+  sauverReglagesGenerateur();
+  centrerSurDepart(GEN.propositions.length ? null : 14);
+}
+
+async function preparerCarteGen() {
+  const zone = $('#carteGen');
+  if (GEN.carte) { GEN.carte.invalidateSize(); return; }
+  if (navigator.onLine === false) { zone.innerHTML = '<div class="h-full grid place-items-center text-center px-6 text-[12.5px] text-brume">Hors ligne : la carte et le calcul d’itinéraire reviendront avec la connexion.</div>'; return; }
+  try {
+    const L = await chargerLeaflet();
+    if (GEN.carte || !zone.isConnected) return;
+    zone.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'w-full h-full';
+    zone.appendChild(div);
+    GEN.carte = L.map(div, { scrollWheelZoom: false, attributionControl: true });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(GEN.carte);
+    if (GEN.depart) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 14); else GEN.carte.setView([46.6, 2.4], 5);
+    GEN.carte.on('click', e => {
+      definirDepart(e.latlng.lat, e.latlng.lng, '');
+      toast('Départ placé. Touche « Générer » pour calculer une boucle.', 'info');
+    });
+    centrerSurDepart();
+    if (GEN.index >= 0) dessinerTraceGen(GEN.propositions[GEN.index]);
+  } catch (e) {
+    zone.innerHTML = '<div class="h-full grid place-items-center text-center px-6 text-[12.5px] text-brume">Carte indisponible pour le moment. Tu peux quand même chercher une adresse ou prendre ta position.</div>';
+  }
+}
+
+function dessinerTraceGen(p) {
+  const zone = $('#carteGen');
+  const trace = p.points.map(q => [q.lat, q.lon]);
+  if (!GEN.carte || !window.L) { zone.innerHTML = svgParcours({ trace: traceSimplifiee(p.points), distanceM: p.distanceM, ravitos: [] }); return; }
+  [GEN.coucheTrace, GEN.coucheKm, GEN.coucheCurseur].forEach(c => { if (c) c.remove(); });
+  GEN.coucheCurseur = null;
+  GEN.coucheTrace = L.polyline(trace, { color: '#FC5200', weight: 4.5, opacity: 0.95 }).addTo(GEN.carte);
+  // Bornes kilométriques
+  const km = p.distanceM / 1000, pas = km > 40 ? 5 : km > 15 ? 2 : 1;
+  const kms = []; for (let k = pas; k < km - pas / 3; k += pas) kms.push(k);
+  GEN.coucheKm = L.layerGroup(pointsAuxKm({ trace, distanceM: p.distanceM }, kms).map((pt, i) => L.marker(pt, {
+    interactive: false, icon: L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 9],
+      html: '<span style="display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#fff;color:#1F2430;font:700 9.5px/1 sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.35)">' + kms[i] + '</span>' })
+  }))).addTo(GEN.carte);
+  centrerSurDepart();
+  GEN.coucheDepart.bringToFront();
+  GEN.carte.fitBounds(GEN.coucheTrace.getBounds(), { padding: [18, 18] });
+}
+
+/** Survol du profil : un repère suit le point correspondant sur la carte. */
+function curseurCarteGen(kmPos) {
+  const p = GEN.propositions[GEN.index];
+  if (!p || !GEN.carte || !window.L) return;
+  const pt = pointsAuxKm({ trace: p.points.map(q => [q.lat, q.lon]), distanceM: p.distanceM }, [kmPos])[0];
+  if (!pt) return;
+  if (GEN.coucheCurseur) GEN.coucheCurseur.setLatLng(pt);
+  else GEN.coucheCurseur = L.circleMarker(pt, { radius: 6, color: '#fff', weight: 2, fillColor: '#2F80ED', fillOpacity: 1, interactive: false }).addTo(GEN.carte);
+}
+
+/* ---------- Affichage d'une proposition ---------- */
+
+function rendreGenerateur() {
+  const p = GEN.propositions[GEN.index];
+  $('#genResultat').classList.toggle('hidden', !p);
+  majBoutonsGen();
+  if (!p) { effacerGraphique('graphProfilGen'); return; }
+  const reg = p.reglages;
+  $('#genTitre').textContent = 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + ' · boucle vers ' + ['le nord', 'le nord-est', 'l’est', 'le sud-est', 'le sud', 'le sud-ouest', 'l’ouest', 'le nord-ouest'][Math.round(p.cap / 45) % 8];
+  const tuile = (t, v, u) => `<div class="rounded-xl bg-nuit/50 p-2.5 text-center"><div class="text-[10.5px] text-brume">${t}</div><div class="chiffre text-[20px]">${v}</div><div class="text-[10px] text-brume">${u}</div></div>`;
+  $('#genStats').innerHTML = tuile('Distance', km1(p.distanceM), 'km') + tuile('D+', p.aAltitude ? p.dplus : '—', 'm') +
+    tuile('D-', p.aAltitude ? p.dmoins : '—', 'm') + tuile('Alt. max', p.altMax != null ? p.altMax : '—', 'm');
+  const duree = distanceEquivalente(p.distanceM, p.dplus || 0, p.dmoins) / 1000 * reg.allure;
+  const terrain = p.partTrail == null ? '—' : Math.round((1 - p.partTrail) * 100) + ' % / ' + Math.round(p.partTrail * 100) + ' %';
+  const ligne = (t, v, s) => `<div class="rounded-xl bg-nuit/50 px-3 py-2"><div class="text-[10.5px] text-brume">${t}</div><div class="text-[14px] font-semibold">${v}</div>${s ? `<div class="text-[10.5px] text-brume">${s}</div>` : ''}</div>`;
+  $('#genStats2').innerHTML = ligne('Durée estimée', formaterDuree(duree, true), 'à ' + formaterAllure(reg.allure) + '/km, D+ compris') +
+    ligne('Route / trail', terrain, 'visé : ' + Math.round((1 - reg.trail) * 100) + ' % / ' + Math.round(reg.trail * 100) + ' %' + (reg.dplus != null ? ', D+ ' + reg.dplus + ' m' : ''));
+  $('#genSource').textContent = 'Itinéraire ' + p.source + ', données © contributeurs OpenStreetMap. Vérifie le tracé sur place (accès, sécurité).';
+  dessinerTraceGen(p);
+  const fin = p.profil.length ? p.profil[p.profil.length - 1][0] : 1;
+  graphique('graphProfilGen', {
+    type: 'line',
+    data: { datasets: [{
+      data: p.profil.map(([x, y]) => ({ x, y })),
+      borderWidth: 2, pointRadius: 0, tension: 0.15, fill: true,
+      backgroundColor: degrade('138,147,166', 0.28),
+      segment: { borderColor: ctx => ctx.p1.parsed.y > ctx.p0.parsed.y + 0.3 ? '#FC5200' : ctx.p1.parsed.y < ctx.p0.parsed.y - 0.3 ? '#2F80ED' : '#8A93A6' }
+    }] },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      onHover: (e, els, chart) => { if (els && els.length) curseurCarteGen(chart.data.datasets[0].data[els[0].index].x); },
+      scales: {
+        x: { type: 'linear', min: 0, max: fin, grid: { display: false }, ticks: { maxTicksLimit: 6, callback: v => String(Math.round(v * 10) / 10).replace('.', ',') + ' km' } },
+        y: { ticks: { maxTicksLimit: 4, callback: v => Math.round(v) + ' m' } }
+      },
+      plugins: { tooltip: { callbacks: { title: i => 'Km ' + i[0].parsed.x.toFixed(1).replace('.', ','), label: i => Math.round(i.parsed.y) + ' m' } } }
+    }
+  });
+}
+
+/* ---------- Export GPX ---------- */
+
+function gpxDepuisParcours(p, nom) {
+  const x = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const pts = p.points.map(q => '      <trkpt lat="' + q.lat.toFixed(6) + '" lon="' + q.lon.toFixed(6) + '">' +
+    (q.ele != null && isFinite(q.ele) ? '<ele>' + (Math.round(q.ele * 10) / 10) + '</ele>' : '') + '</trkpt>').join('\n');
+  const desc = km1(p.distanceM) + ' km, ' + p.dplus + ' m D+, ' + p.dmoins + ' m D-' +
+    (p.partTrail != null ? ', ' + Math.round(p.partTrail * 100) + ' % trail' : '') + '. Généré par RDD, itinéraire ' + p.source + ', © OpenStreetMap.';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<gpx version="1.1" creator="RDD - Runner du dimanche" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n' +
+    '  <metadata>\n    <name>' + x(nom) + '</name>\n    <desc>' + x(desc) + '</desc>\n    <time>' + new Date().toISOString() + '</time>\n  </metadata>\n' +
+    '  <trk>\n    <name>' + x(nom) + '</name>\n    <desc>' + x(desc) + '</desc>\n    <type>running</type>\n    <trkseg>\n' + pts + '\n    </trkseg>\n  </trk>\n</gpx>\n';
+}
+function telechargerParcoursGen() {
+  const p = GEN.propositions[GEN.index];
+  if (!p) return;
+  const km = km1(p.distanceM);
+  const lieu = GEN.depart && GEN.depart.nom ? GEN.depart.nom.split(',')[0].trim() : '';
+  const nom = 'Boucle ' + km + ' km' + (lieu ? ' depuis ' + lieu : '') + (p.dplus ? ' (' + p.dplus + ' m D+)' : '');
+  const fichier = 'RDD-boucle-' + km.replace(',', '-') + 'km' + (lieu ? '-' + lieu.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) : '') + '.gpx';
+  if (telecharger(fichier, gpxDepuisParcours(p, nom), 'application/gpx+xml')) toast('GPX téléchargé : ' + esc(fichier) + '. Importe-le dans l’app de ta montre.', 'succes');
+  else toast('Téléchargement impossible sur cet appareil.', 'erreur');
+}
+
+/* ---------- Départ : adresse et position ---------- */
+
+async function chercherAdresseGen() {
+  const q = $('#genAdresse').value.trim();
+  if (!q) { toast('Écris une adresse ou une ville.', 'alerte'); return; }
+  try {
+    const r = await fetchDelai(URL_GEOCODAGE + '?format=json&limit=1&accept-language=fr&q=' + encodeURIComponent(q), {}, 12000);
+    const j = await r.json();
+    if (!Array.isArray(j) || !j.length) { toast('Adresse introuvable. Essaie avec la ville.', 'alerte'); return; }
+    definirDepart(+j[0].lat, +j[0].lon, j[0].display_name);
+    if (GEN.carte) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 14);
+  } catch (e) { toast(messageErreurGen(e), 'erreur'); }
+}
+function maPositionGen() {
+  if (!navigator.geolocation) { toast('Position indisponible sur cet appareil.', 'erreur'); return; }
+  toast('Recherche de ta position…', 'info');
+  navigator.geolocation.getCurrentPosition(pos => {
+    definirDepart(pos.coords.latitude, pos.coords.longitude, 'Ma position');
+    if (GEN.carte) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 14);
+  }, err => toast(err && err.code === 1 ? 'Accès à la position refusé : autorise-le dans les réglages, ou touche la carte.' : 'Position introuvable pour le moment.', 'erreur'),
+  { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+}
+
+/** Branche le générateur une seule fois : réglages enregistrés, champs, carte à l'ouverture du volet. */
+function brancherGenerateur() {
+  const r = APPAREIL.generateur || {};
+  GEN.mode = r.mode === 'duree' ? 'duree' : 'distance';
+  GEN.trail = borner(Math.round((+r.trail || 0) / 10) * 10, 0, 100);
+  $('#genKm').value = r.km || '10';
+  $('#genDuree').value = r.duree || '';
+  $('#genDplus').value = r.dplus || '';
+  $('#genAllure').value = r.allure || '';
+  if (r.depart && isFinite(r.depart.lat) && isFinite(r.depart.lon)) {
+    GEN.depart = { lat: +r.depart.lat, lon: +r.depart.lon, nom: String(r.depart.nom || '') };
+    $('#genDepart').innerHTML = '<i class="fa-solid fa-location-dot text-vallee mr-1"></i>' + (GEN.depart.nom ? esc(GEN.depart.nom) : 'Point placé sur la carte');
+  }
+  ['genKm', 'genDuree', 'genDplus', 'genAllure'].forEach(id => $('#' + id).addEventListener('input', majReglagesGenerateur));
+  $('#genTrail').addEventListener('input', e => { GEN.trail = +e.target.value; majReglagesGenerateur(); });
+  $('#genAdresse').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chercherAdresseGen(); } });
+  $('#voletGenerateur').addEventListener('toggle', e => {
+    if (!e.target.open) return;
+    if (!$('#genAllure').value) $('#genAllure').placeholder = formaterAllure(reglagesGenerateur().allure).replace("'", ':');
+    majReglagesGenerateur();
+    preparerCarteGen();
+  });
+  majReglagesGenerateur();
+  majBoutonsGen();
+}
+
 let ficheCourseOuverte = false;     // onglet Courses : liste (false) ou fiche d'une course en plein écran (true)
 function rendreObjectif(remplirChamps = true) {
   const o = ETAT.objectif;
@@ -9915,6 +10596,16 @@ const ACTIONS = {
   setTech: arg => { brouillonTech = arg; saisieObjectifEnCours = true; majBoutonsObjectif(); },
   enregistrerObjectif: () => enregistrerObjectif(),
   choisirGpx: () => $('#inputGpx').click(),
+  // Générateur de parcours
+  genMode: arg => { GEN.mode = arg === 'duree' ? 'duree' : 'distance'; majReglagesGenerateur(); sauverReglagesGenerateur(); },
+  genTerrain: arg => { GEN.trail = borner(+arg || 0, 0, 100); majReglagesGenerateur(); sauverReglagesGenerateur(); },
+  genGenerer: () => lancerGeneration(true),
+  genChanger: () => lancerGeneration(false),
+  genPrecedent: () => { if (GEN.index > 0) { GEN.index--; rendreGenerateur(); } },
+  genSuivant: () => { if (GEN.index < GEN.propositions.length - 1) { GEN.index++; rendreGenerateur(); } },
+  genTelecharger: () => telechargerParcoursGen(),
+  genChercherAdresse: () => chercherAdresseGen(),
+  genMaPosition: () => maPositionGen(),
   retirerGpx: () => {
     lireFormulaireObjectif();
     ETAT.objectif.gpx = null;
@@ -10134,6 +10825,7 @@ function brancherEvenements() {
     e.target.value = '';
     if (fichiers.length) await importerFichiersActivites(fichiers);
   });
+  brancherGenerateur();
   $('#inputGpx').addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
     e.target.value = '';
