@@ -4745,7 +4745,7 @@ function genererPlan() {
   const cleAuj = cleJour(auj), lundiAuj = cleJour(lundiDe(auj));
   const passees = ancien ? toutesSeances().filter(s => s.date < cleAuj && s.date >= lundiAuj) : [];
   // Séances d'aujourd'hui et à venir déjà réalisées ou verrouillées : jamais écrasées par la régénération
-  const protegees = ancien ? toutesSeances().filter(s => s.date >= cleAuj && seanceVerrouillee(s)) : [];
+  const protegees = ancien ? toutesSeances().filter(s => s.date >= cleAuj && (seanceVerrouillee(s) || s.adaptee)) : [];
   const semainesAnterieures = ancien ? ancien.semaines.filter(w => w.lundi < lundiAuj) : [];
 
   const semaines = [];
@@ -4966,6 +4966,153 @@ function ajusterPlan(mode) {
   sauverEtat();
   rendreTout();
   return modifiees;
+}
+
+/* ==================================================================================
+   7 ter. ADAPTER UNE SÉANCE AU TEMPS DISPONIBLE (« je n'ai qu'une heure »)
+   On coupe d'abord l'endurance, puis l'échauffement et le retour au calme,
+   et en dernier les répétitions : le cœur de la séance est gardé le plus longtemps possible.
+   ================================================================================== */
+
+let adaptation = null;             // { id, minutes }
+
+/** Blocs de la séance ramenés à environ cibleS secondes (toujours à partir de la version d'origine). */
+function adapterBlocs(s, cibleS) {
+  const blocs = JSON.parse(JSON.stringify(s.blocsOrigine || s.blocs || []));
+  const zones = metriques().zones;
+  const duree = liste => mesurerSeance({ type: s.type, blocs: liste }, zones).dureeS;
+  const exces = () => duree(blocs) - cibleS;
+  if (exces() <= 30) return blocs;
+  // Raccourcit une étape simple sans descendre sous minS
+  const raccourcir = (e, minS) => {
+    const x = exces();
+    if (x <= 30) return;
+    const d = duree([e]);
+    const nd = Math.max(minS, d - x);
+    if (nd >= d - 30) return;
+    if (e.distanceM) e.distanceM = Math.max(100, Math.round(e.distanceM * nd / d / 100) * 100);
+    else e.dureeS = Math.max(60, Math.round(nd / 60) * 60);
+  };
+  const simples = nature => blocs.filter(e => !e.repetition && e.nature === nature);
+  // Retire des répétitions tant que cela rapproche de la cible
+  const moinsDeReps = min => blocs.filter(e => e.repetition).reverse().forEach(r => {
+    const unite = duree([{ repetition: 1, etapes: r.etapes }]);
+    while (r.repetition > min && exces() > unite / 2) r.repetition--;
+  });
+  const etapes = [
+    () => simples('continu').forEach(e => raccourcir(e, 20 * 60)),
+    () => simples('echauffement').forEach(e => raccourcir(e, 12 * 60)),
+    () => simples('retour').forEach(e => raccourcir(e, 5 * 60)),
+    () => moinsDeReps(2),
+    () => simples('travail').forEach(e => raccourcir(e, Math.max(5 * 60, duree([e]) / 2))),
+    () => simples('continu').forEach(e => raccourcir(e, 8 * 60)),
+    () => simples('echauffement').forEach(e => raccourcir(e, 10 * 60)),
+    () => moinsDeReps(1),
+    () => simples('travail').forEach(e => raccourcir(e, 5 * 60)),
+    () => simples('retour').forEach(e => raccourcir(e, 3 * 60))
+  ];
+  for (const f of etapes) { if (exces() <= 30) break; f(); }
+  // Dernier recours (pyramide, enchaînements) : tout le corps de séance au prorata, échauffement gardé
+  const reste = exces();
+  if (reste > 60) {
+    const corps = blocs.filter(e => e.nature !== 'echauffement');
+    const f = Math.max(0.3, 1 - reste / Math.max(1, duree(corps)));
+    const reduire = liste => liste.forEach(e => {
+      if (e.repetition) return reduire(e.etapes);
+      if (e.distanceM) e.distanceM = Math.max(100, Math.round(e.distanceM * f / 100) * 100);
+      else if (e.dureeS) e.dureeS = Math.max(10, Math.round(e.dureeS * f / (e.dureeS >= 300 ? 60 : 10)) * (e.dureeS >= 300 ? 60 : 10));
+    });
+    reduire(corps);
+  }
+  return blocs;
+}
+
+/** Durées proposées : 30 min, 45 min, 1 h… jusqu'à la durée prévue (exclue). */
+function choixDureesAdaptation(origineS) {
+  return [30, 45, 60, 75, 90, 120].filter(m => m * 60 < origineS - 4 * 60);
+}
+
+function ouvrirAdaptation(id) {
+  const s = trouverSeance(id);
+  if (!s || s.type === 'course') return;
+  const origine = mesurerSeance({ type: s.type, blocs: s.blocsOrigine || s.blocs });
+  const choix = choixDureesAdaptation(origine.dureeS);
+  if (!choix.length && !s.adaptee) { toast('Séance déjà courte : rien à adapter.', 'info'); return; }
+  const parDefaut = s.adaptee || choix.filter(m => m <= 60).pop() || choix[0];
+  adaptation = { id, minutes: parDefaut };
+  contexteFenetreSuivante = { type: 'seance', id };
+  ouvrirModale('<div id="feuilleAdaptation"></div>');
+  rendreAdaptation();
+}
+
+function rendreAdaptation() {
+  const a = adaptation, s = a && trouverSeance(a.id), cible = $('#feuilleAdaptation');
+  if (!s || !cible) return;
+  const t = TYPES_SEANCE[s.type] || TYPES_SEANCE.ef;
+  const origine = mesurerSeance({ type: s.type, blocs: s.blocsOrigine || s.blocs });
+  const choix = choixDureesAdaptation(origine.dureeS);
+  const max = Math.max(20, Math.floor(origine.dureeS / 60 / 5) * 5);
+  const apercu = { type: s.type, titre: s.titre, terrain: s.terrain, blocs: adapterBlocs(s, a.minutes * 60) };
+  const m = mesurerSeance(apercu);
+  const lignes = lignesSeance(apercu).map(l => `<li class="flex gap-2"><span class="mt-[7px] w-1 h-1 rounded-full bg-brume/60 shrink-0"></span><span>${esc(l)}</span></li>`).join('');
+  const puces = choix.map(x => `<button data-act="choisirDureeAdaptation" data-arg="${x}" class="tapable h-9 px-3 rounded-xl text-[13px] ${x === a.minutes ? 'bg-ocre text-white' : 'verre'}">${dureeLisible(x * 60)}</button>`).join('');
+  cible.innerHTML = enteteModale('fa-solid fa-hourglass-half', t.couleur, 'Adapter à mon temps', esc(s.titre) + ', ' + dateCourte(depuisCleJour(s.date))) + `
+    <div class="rounded-xl bg-nuit/50 p-3 text-[12.5px] text-brume mb-3">Prévue : <span class="text-neige">${km1(origine.distanceM)} km en ${dureeLisible(origine.dureeS)}</span>. Combien de temps as-tu ?</div>
+    <div class="flex flex-wrap gap-1.5 mb-3">${puces}</div>
+    <label for="dureeAdaptation" class="text-[12px] text-brume block mb-1.5">Ou au choix : <span class="text-neige">${dureeLisible(a.minutes * 60)}</span></label>
+    <input id="dureeAdaptation" type="range" min="15" max="${max}" step="5" value="${Math.min(a.minutes, max)}" class="w-full mb-3">
+    <div class="rounded-xl bg-nuit/50 p-3 mb-3">
+      <div class="text-[11.5px] text-brume uppercase tracking-wide mb-1">Ta séance en ${dureeLisible(m.dureeS)}</div>
+      <div class="text-[13px] mb-1.5"><span class="text-neige font-semibold">${km1(m.distanceM)} km</span><span class="text-brume"> · ${formaterAllure(m.allureMoy)}/km${m.dplus > 20 ? ' · ' + m.dplus + ' m D+' : ''}</span></div>
+      <ul class="space-y-1 text-[13px] leading-snug">${lignes}</ul>
+      <div class="text-[11.5px] text-brume mt-2">Mêmes allures : on raccourcit d’abord l’endurance, puis l’échauffement, et on garde le cœur de la séance.</div>
+    </div>
+    <button data-act="confirmerAdaptation" class="${BTN_PRINCIPAL} mb-2">Adapter à ${dureeLisible(m.dureeS)}</button>
+    ${s.adaptee ? `<button data-act="annulerAdaptation" class="${BTN_SECONDAIRE}"><i class="fa-solid fa-rotate-left mr-2"></i>Revenir à la séance prévue</button>` : ''}`;
+  $('#dureeAdaptation').addEventListener('input', e => {
+    adaptation.minutes = +e.target.value;
+    // On ne reconstruit pas le curseur pendant qu'on le fait glisser : seulement l'aperçu
+    const p = { type: s.type, titre: s.titre, terrain: s.terrain, blocs: adapterBlocs(s, adaptation.minutes * 60) };
+    const mm = mesurerSeance(p);
+    e.target.previousElementSibling.querySelector('span').textContent = dureeLisible(adaptation.minutes * 60);
+    const boite = e.target.nextElementSibling;
+    boite.children[0].textContent = 'Ta séance en ' + dureeLisible(mm.dureeS);
+    boite.children[1].innerHTML = `<span class="text-neige font-semibold">${km1(mm.distanceM)} km</span><span class="text-brume"> · ${formaterAllure(mm.allureMoy)}/km${mm.dplus > 20 ? ' · ' + mm.dplus + ' m D+' : ''}</span>`;
+    boite.children[2].innerHTML = lignesSeance(p).map(l => `<li class="flex gap-2"><span class="mt-[7px] w-1 h-1 rounded-full bg-brume/60 shrink-0"></span><span>${esc(l)}</span></li>`).join('');
+    $('#feuilleAdaptation [data-act="confirmerAdaptation"]').textContent = 'Adapter à ' + dureeLisible(mm.dureeS);
+    $$('#feuilleAdaptation [data-act="choisirDureeAdaptation"]').forEach(b => {
+      const actif = +b.dataset.arg === adaptation.minutes;
+      b.className = 'tapable h-9 px-3 rounded-xl text-[13px] ' + (actif ? 'bg-ocre text-white' : 'verre');
+    });
+  });
+}
+
+function appliquerAdaptation() {
+  const a = adaptation, s = a && trouverSeance(a.id);
+  if (!s) return;
+  const origine = mesurerSeance({ type: s.type, blocs: s.blocsOrigine || s.blocs });
+  if (a.minutes * 60 >= origine.dureeS - 60) return annulerAdaptation();
+  if (!s.blocsOrigine) s.blocsOrigine = JSON.parse(JSON.stringify(s.blocs));
+  s.blocs = adapterBlocs(s, a.minutes * 60);
+  s.adaptee = a.minutes;
+  adaptation = null;
+  sauverEtat();
+  fermerModale();
+  rendreTout();
+  toast('« ' + esc(s.titre) + ' » adaptée : ' + km1(prevuSeance(s).distanceM) + ' km en ' + dureeLisible(prevuSeance(s).dureeS) + '.', 'succes');
+}
+
+function annulerAdaptation() {
+  const a = adaptation, s = a && trouverSeance(a.id);
+  if (!s) return;
+  if (s.blocsOrigine) s.blocs = s.blocsOrigine;
+  delete s.blocsOrigine;
+  delete s.adaptee;
+  adaptation = null;
+  sauverEtat();
+  fermerModale();
+  rendreTout();
+  toast('Séance remise comme prévu.', 'succes');
 }
 
 /* ==================================================================================
@@ -6739,6 +6886,7 @@ function noteSeance(s, sem) {
   if (s.phase && NOTES_PHASES[s.phase]) contexte.push(NOTES_PHASES[s.phase]);
   if (sem && sem.relache) contexte.push('Semaine allégée : le corps assimile le travail des semaines précédentes, garde de la fraîcheur.');
   if (s.ajuste === 'allégée') contexte.push('Séance allégée par le coach pour tenir compte de ta fatigue.');
+  if (s.adaptee) contexte.push('Séance raccourcie à ' + dureeLisible(s.adaptee * 60) + ' pour tenir dans ton temps disponible : mêmes allures, l’endurance est coupée en premier pour garder le cœur de la séance.');
   if (s.ajuste === 'renforcée') contexte.push('Séance renforcée d’environ 15 % : garde les mêmes allures, c’est la durée qui augmente. Au moindre signe de fatigue, reviens à la version normale.');
   return { pourquoi, contexte: contexte.join(' '), conseils: conseils.slice(0, 3) };
 }
@@ -6769,6 +6917,7 @@ function carteSeance(s, opts = {}) {
   const ajuste = (s.ajuste === 'renforcée' ? `<span class="${PUCE} bg-ocre/15 text-ocre"><i class="fa-solid fa-dumbbell mr-1"></i>Renforcée</span>`
                  : s.ajuste ? `<span class="${PUCE} bg-violine/15 text-violine">${s.ajuste === 'allégée' ? 'Allégée' : 'Replacée ici'}</span>` : '') +
                  (s.deplacee && st !== 'fait' ? `<span class="${PUCE} bg-azur/15 text-azur">Déplacée</span>` : '') +
+                 (s.adaptee ? `<span class="${PUCE} bg-azur/15 text-azur"><i class="fa-solid fa-hourglass-half mr-1"></i>Adaptée ${dureeLisible(s.adaptee * 60)}</span>` : '') +
                  (s.manuelle ? `<span class="${PUCE} bg-granit text-brume">Ajoutée</span>` : '') +
                  (s.verrou && st !== 'fait' ? `<span class="${PUCE} bg-ocre/10 text-ocre"><i class="fa-solid fa-lock mr-1"></i>Verrouillée</span>` : '');
   // Plan : verrou (une séance réalisée l'est d'office) et suppression d'une séance non verrouillée
@@ -6794,7 +6943,10 @@ function carteSeance(s, opts = {}) {
   // Quatre boutons : icône au-dessus du libellé pour tenir sur un téléphone
   if (choix.length === 4) choix = choix.map(b => b.replace('h-9 rounded-xl', 'h-12 rounded-xl flex flex-col items-center justify-center gap-1 leading-none')
                                              .replace('text-[12.5px]', 'text-[11px]').replace(' mr-1"></i>', '"></i>'));
-  const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 1 ? 'grid-cols-1' : choix.length === 2 ? 'grid-cols-2' : choix.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>`;
+  // Pas le temps ? Lien discret pour raccourcir la séance à la durée disponible
+  const lienAdapter = !course && ['prevu', 'aujourdhui'].includes(st)
+    ? `<button data-act="adapterSeance" data-arg="${s.id}" class="tapable w-full mt-1.5 h-8 text-[12.5px] text-brume"><i class="fa-solid fa-hourglass-half mr-1.5"></i>${s.adaptee ? 'Adaptée à ' + dureeLisible(s.adaptee * 60) + ' · changer' : 'Pas le temps ? Adapter la durée'}</button>` : '';
+  const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 1 ? 'grid-cols-1' : choix.length === 2 ? 'grid-cols-2' : choix.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>` + lienAdapter;
   return `<div data-seance="${s.id}" class="rounded-2xl ${opts.compact ? 'bg-nuit/40 border border-brume/10' : 'verre'} overflow-hidden ${st === 'reporte' ? 'opacity-60' : ''}">
     <div class="flex">
       <div class="w-1.5 shrink-0" style="background:${t.couleur}"></div>
@@ -10551,6 +10703,11 @@ const ACTIONS = {
 
   // Déplacer une séance
   deplacerSeance: id => ouvrirDeplacement(id),
+  // Adapter une séance au temps disponible
+  adapterSeance: id => ouvrirAdaptation(id),
+  choisirDureeAdaptation: arg => { if (adaptation) { adaptation.minutes = +arg; rendreAdaptation(); } },
+  confirmerAdaptation: () => appliquerAdaptation(),
+  annulerAdaptation: () => annulerAdaptation(),
   choisirJourDeplacement: jour => choisirJourDeplacement(jour),
   basculerCascadeDeplacement: (arg, el) => { if (deplacement) { deplacement.cascade = !!el.checked; rendreDeplacement(); } },
   confirmerDeplacement: () => appliquerDeplacement(),
