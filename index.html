@@ -6786,10 +6786,11 @@ function carteSeance(s, opts = {}) {
   const rpe = st === 'fait' && s.realise && s.realise.rpe ? `<div class="text-[11.5px] text-brume mt-2">Ressenti ${s.realise.rpe}/10${s.realise.notes ? ', « ' + esc(s.realise.notes) + ' »' : ''}</div>` : '';
   const btnValider = `<button data-act="validerSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl ${st === 'fait' ? 'verre' : 'bg-vallee/20 text-vallee border border-vallee/30'} text-[12.5px]"><i class="fa-solid ${st === 'fait' ? 'fa-pen' : 'fa-check'} mr-1"></i>${st === 'fait' ? 'Modifier' : 'Valider'}</button>`;
   const btnMontre = `<button data-act="montreSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-stopwatch mr-1"></i>Montre</button>`;
+  const btnParcours = `<button data-act="parcoursSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-map-location-dot mr-1"></i>Parcours</button>`;
   const btnStrategie = `<button data-act="voirCourse" data-arg="${s.courseId || ''}" class="tapable h-9 rounded-xl bg-ocre/20 text-ocre border border-ocre/30 text-[12.5px]"><i class="fa-solid fa-route mr-1"></i>Stratégie</button>`;
   const btnDeplacer = `<button data-act="deplacerSeance" data-arg="${s.id}" class="tapable h-9 rounded-xl verre text-[12.5px]"><i class="fa-solid fa-calendar-day mr-1"></i>${st === 'manque' ? 'Reporter' : 'Déplacer'}</button>`;
   let choix = course ? (s.date <= cleJour(new Date()) ? [btnValider, btnStrategie] : [btnStrategie])
-                     : [btnValider].concat(seanceDeplacable(s) ? [btnDeplacer] : [], [btnMontre]);
+                     : [btnValider].concat(seanceDeplacable(s) ? [btnDeplacer] : [], [btnMontre, btnParcours]);
   // Quatre boutons : icône au-dessus du libellé pour tenir sur un téléphone
   if (choix.length === 4) choix = choix.map(b => b.replace('h-9 rounded-xl', 'h-12 rounded-xl flex flex-col items-center justify-center gap-1 leading-none')
                                              .replace('text-[12.5px]', 'text-[11px]').replace(' mr-1"></i>', '"></i>'));
@@ -8545,7 +8546,47 @@ function reglagesGenerateur() {
     if (duree > 0 && /^\s*\d{1,2}:\d{2}\s*$/.test($('#genDuree').value) && duree < 600) duree *= 60;   // « 1:15 » = 1 h 15
     km = duree > 0 ? duree / allure - 7.5 * (dplus || 0) / 1000 : NaN;                           // 100 m de D+ ≈ 0,75 km sur une boucle
   } else km = lireNombre($('#genKm').value);
-  return { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100 };
+  const reg = { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100 };
+  // Parcours préparé pour une séance du plan : on garde son nom tant que les réglages n'ont pas été modifiés
+  reg.titre = GEN.seance && GEN.seance.cle === [Math.round(km * 10), dplus, GEN.trail, reg.allure].join('|') ? GEN.seance.titre : null;
+  return reg;
+}
+
+/**
+ * Prépare le générateur pour une séance du plan : distance et allure moyenne de la séance,
+ * relief adapté (plat pour les séances d'allure, D+ de la séance pour les côtes et le trail), puis lance le calcul.
+ */
+function parcoursPourSeance(id) {
+  const s = trouverSeance(id);
+  if (!s) return;
+  const m = prevuSeance(s);
+  const km = Math.max(1, Math.round(m.distanceM / 100) / 10);
+  const trail = s.terrain === 'trail';
+  let dplus = '';
+  if (s.type === 'cotes') dplus = Math.max(m.dplus || 0, Math.round(km * 25));
+  else if (['vma', 'seuil', 'specifique', 'fartlek', 'deblocage'].includes(s.type) && !trail) dplus = 0;   // allures justes : sur le plat
+  else if (m.dplus > 20) dplus = m.dplus;
+  GEN.mode = 'distance';
+  if (trail) GEN.trail = Math.max(GEN.trail, 70);
+  else if (dplus === 0) GEN.trail = Math.min(GEN.trail, 30);
+  $('#genKm').value = String(km).replace('.', ',');
+  $('#genDplus').value = dplus === '' ? '' : String(dplus);
+  if (m.allureMoy > 0) $('#genAllure').value = formaterAllure(m.allureMoy).replace("'", ':');
+  GEN.seance = null;
+  const reg = reglagesGenerateur();
+  GEN.seance = { titre: s.titre, cle: [Math.round(reg.km * 10), reg.dplus, GEN.trail, reg.allure].join('|') };
+  majReglagesGenerateur();
+  sauverReglagesGenerateur();
+  // Onglet Courses, volet du générateur ouvert
+  if (COUCHES.modale) fermerModale();
+  ficheCourseOuverte = false;
+  allerA('objectif');
+  const volet = $('#voletGenerateur');
+  volet.open = true;
+  preparerCarteGen();
+  setTimeout(() => volet.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  if (!GEN.depart) { toast('Choisis ton point de départ, puis touche « Générer » : la boucle sera calée sur « ' + esc(s.titre) + ' ».', 'info'); return; }
+  lancerGeneration(false);
 }
 const cleReglages = r => [GEN.depart && GEN.depart.lat.toFixed(5), GEN.depart && GEN.depart.lon.toFixed(5), Math.round(r.km * 10), r.dplus, GEN.trail].join('|');
 
@@ -8571,7 +8612,7 @@ function majReglagesGenerateur() {
   const t = distanceEquivalente(r.km * 1000, r.dplus || 0) / 1000 * r.allure;
   est.textContent = GEN.mode === 'duree'
     ? 'Soit une boucle d’environ ' + String(Math.round(r.km * 10) / 10).replace('.', ',') + ' km à ' + formaterAllure(r.allure) + '/km' + (r.dplus ? ' avec ' + r.dplus + ' m D+' : '') + '.'
-    : 'Environ ' + formaterDuree(t, true).replace(/:\d\d$/, '').replace(':', ' h ') + ' à ' + formaterAllure(r.allure) + '/km' + (r.dplus ? ', D+ compris' : '') + '.';
+    : 'Environ ' + dureeLisible(Math.round(t / 60) * 60) + ' à ' + formaterAllure(r.allure) + '/km' + (r.dplus ? ', D+ compris' : '') + '.';
 }
 
 /* ---------- Génération d'une proposition ---------- */
@@ -8795,7 +8836,7 @@ function rendreGenerateur() {
   majBoutonsGen();
   if (!p) { effacerGraphique('graphProfilGen'); return; }
   const reg = p.reglages;
-  $('#genTitre').textContent = 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + ' · boucle vers ' + ['le nord', 'le nord-est', 'l’est', 'le sud-est', 'le sud', 'le sud-ouest', 'l’ouest', 'le nord-ouest'][Math.round(p.cap / 45) % 8];
+  $('#genTitre').textContent = (reg.titre ? reg.titre + ' · ' : '') + 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + ' · boucle vers ' + ['le nord', 'le nord-est', 'l’est', 'le sud-est', 'le sud', 'le sud-ouest', 'l’ouest', 'le nord-ouest'][Math.round(p.cap / 45) % 8];
   const tuile = (t, v, u) => `<div class="rounded-xl bg-nuit/50 p-2.5 text-center"><div class="text-[10.5px] text-brume">${t}</div><div class="chiffre text-[20px]">${v}</div><div class="text-[10px] text-brume">${u}</div></div>`;
   $('#genStats').innerHTML = tuile('Distance', km1(p.distanceM), 'km') + tuile('D+', p.aAltitude ? p.dplus : '—', 'm') +
     tuile('D-', p.aAltitude ? p.dmoins : '—', 'm') + tuile('Alt. max', p.altMax != null ? p.altMax : '—', 'm');
@@ -8847,7 +8888,7 @@ function telechargerParcoursGen() {
   if (!p) return;
   const km = km1(p.distanceM);
   const lieu = GEN.depart && GEN.depart.nom ? GEN.depart.nom.split(',')[0].trim() : '';
-  const nom = 'Boucle ' + km + ' km' + (lieu ? ' depuis ' + lieu : '') + (p.dplus ? ' (' + p.dplus + ' m D+)' : '');
+  const nom = (p.reglages.titre ? p.reglages.titre + ' : boucle ' : 'Boucle ') + km + ' km' + (lieu ? ' depuis ' + lieu : '') + (p.dplus ? ' (' + p.dplus + ' m D+)' : '');
   const fichier = 'RDD-boucle-' + km.replace(',', '-') + 'km' + (lieu ? '-' + lieu.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) : '') + '.gpx';
   if (telecharger(fichier, gpxDepuisParcours(p, nom), 'application/gpx+xml')) toast('GPX téléchargé : ' + esc(fichier) + '. Importe-le dans l’app de ta montre.', 'succes');
   else toast('Téléchargement impossible sur cet appareil.', 'erreur');
@@ -10640,6 +10681,7 @@ const ACTIONS = {
   genPrecedent: () => { if (GEN.index > 0) { GEN.index--; rendreGenerateur(); } },
   genSuivant: () => { if (GEN.index < GEN.propositions.length - 1) { GEN.index++; rendreGenerateur(); } },
   genTelecharger: () => telechargerParcoursGen(),
+  parcoursSeance: id => parcoursPourSeance(id),
   genChercherAdresse: () => chercherAdresseGen(),
   genMaPosition: () => maPositionGen(),
   retirerGpx: () => {
