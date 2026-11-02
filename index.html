@@ -673,10 +673,9 @@ if (window.tailwind) tailwind.config = {
         <div id="genResultat" class="hidden space-y-3">
           <div class="flex items-center gap-2">
             <button data-act="genPrecedent" id="btnGenPrec" class="tapable w-10 h-10 rounded-xl verre shrink-0" aria-label="Parcours précédent"><i class="fa-solid fa-chevron-left"></i></button>
-            <button data-act="genChanger" id="btnGenChanger" class="tapable flex-1 h-10 rounded-xl verre text-[13.5px] font-semibold">🔄 Changer de parcours</button>
+            <div id="genTitre" class="flex-1 min-w-0 text-[12px] text-brume text-center leading-snug"></div>
             <button data-act="genSuivant" id="btnGenSuiv" class="tapable w-10 h-10 rounded-xl verre shrink-0" aria-label="Parcours suivant"><i class="fa-solid fa-chevron-right"></i></button>
           </div>
-          <div id="genTitre" class="text-[12px] text-brume text-center"></div>
           <div id="genStats" class="grid grid-cols-4 gap-2"></div>
           <div id="genStats2" class="grid grid-cols-2 gap-2"></div>
           <div class="h-[170px]"><canvas id="graphProfilGen"></canvas></div>
@@ -8672,10 +8671,10 @@ async function lancerGeneration(nouvelle) {
 }
 
 function majBoutonsGen() {
-  const b = $('#btnGenGenerer'), c = $('#btnGenChanger');
-  b.disabled = c.disabled = GEN.enCours;
-  b.innerHTML = GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Calcul de la boucle…' : '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>' + (GEN.propositions.length ? 'Nouvelle série de parcours' : 'Générer un parcours');
-  c.innerHTML = GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Calcul…' : '🔄 Changer de parcours';
+  const b = $('#btnGenGenerer');
+  b.disabled = GEN.enCours;
+  b.innerHTML = GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Calcul de la boucle…'
+    : GEN.propositions.length ? '🔄 Changer de parcours' : '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Générer un parcours';
   $('#btnGenPrec').disabled = GEN.enCours || GEN.index <= 0;
   $('#btnGenSuiv').disabled = GEN.enCours || GEN.index >= GEN.propositions.length - 1;
   $('#btnGenPrec').classList.toggle('opacity-40', $('#btnGenPrec').disabled);
@@ -10599,8 +10598,7 @@ const ACTIONS = {
   // Générateur de parcours
   genMode: arg => { GEN.mode = arg === 'duree' ? 'duree' : 'distance'; majReglagesGenerateur(); sauverReglagesGenerateur(); },
   genTerrain: arg => { GEN.trail = borner(+arg || 0, 0, 100); majReglagesGenerateur(); sauverReglagesGenerateur(); },
-  genGenerer: () => lancerGeneration(true),
-  genChanger: () => lancerGeneration(false),
+  genGenerer: () => lancerGeneration(false),     // un seul bouton : nouvelle proposition, ou nouvelle série si les réglages ont changé
   genPrecedent: () => { if (GEN.index > 0) { GEN.index--; rendreGenerateur(); } },
   genSuivant: () => { if (GEN.index < GEN.propositions.length - 1) { GEN.index++; rendreGenerateur(); } },
   genTelecharger: () => telechargerParcoursGen(),

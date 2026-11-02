@@ -1,5 +1,5 @@
 /* RDD : service worker. L'app s'ouvre hors ligne ; les mises à jour arrivent au lancement suivant. */
-const VERSION = 'rdd-2026-11-02a';
+const VERSION = 'rdd-2026-11-02b';
 const COQUILLE = ['./', './index.html', './manifest.webmanifest', './favicon.svg',
   './apple-touch-icon.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
