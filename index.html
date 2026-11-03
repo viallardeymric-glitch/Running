@@ -25,7 +25,6 @@ try { if ((JSON.parse(localStorage.getItem('rdd-appareil') || '{}') || {}).theme
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23FF7C70'/%3E%3Cstop offset='.55' stop-color='%23FC5200'/%3E%3Cstop offset='1' stop-color='%23FFC98A'/%3E%3C/linearGradient%3E%3CclipPath id='c'%3E%3Crect width='180' height='180' rx='40'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg clip-path='url%28%23c%29'%3E%3Crect width='180' height='180' fill='%23F7F3EA'/%3E%3Crect width='180' height='50' fill='url%28%23b%29'/%3E%3Ccircle cx='24' cy='76' r='6' fill='%2310142B'/%3E%3Ccircle cx='156' cy='76' r='6' fill='%2310142B'/%3E%3Ctext x='90' y='150' text-anchor='middle' font-family='Impact,Arial Narrow,Arial,sans-serif' font-weight='900' font-size='80' fill='%23151A36'%3ERDD%3C/text%3E%3C/g%3E%3C/svg%3E">
 
 <!-- ===== Dépendances CDN ===== -->
-<script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,7 +34,10 @@ try { if ((JSON.parse(localStorage.getItem('rdd-appareil') || '{}') || {}).theme
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 
 <script>
-/* Configuration Tailwind : palette « petit matin du dimanche » (protégée si le CDN est injoignable) */
+/* Configuration Tailwind : palette « petit matin du dimanche ».
+   Le style Tailwind n'est plus calculé dans le téléphone : il est généré une fois (Tailwind CLI 3.4, --minify)
+   à partir de ce fichier et de cette configuration, puis intégré dans <style id="styleTailwind"> en fin d'en-tête.
+   Nouvelle classe Tailwind dans le code : régénérer ce bloc, sinon elle n'aura pas de style. */
 if (window.tailwind) tailwind.config = {
   theme: {
     extend: {
@@ -337,6 +339,8 @@ if (window.tailwind) tailwind.config = {
   .fantome-glisser{ position:fixed; z-index:80; pointer-events:none; transform:translate(-50%,-75%) scale(1.15); box-shadow:0 14px 30px -10px rgba(0,0,0,.4); }
   .case-jour.survol-glisser{ outline:2px solid var(--orange); outline-offset:-2px; background:rgba(252,82,0,.10); }
 </style>
+<!-- Tailwind précompilé (voir la configuration plus haut) : démarrage plus rapide, aucune dépendance au CDN -->
+<style id="styleTailwind">*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.\!visible{visibility:visible!important}.visible{visibility:visible}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0}.inset-x-0{left:0;right:0}.inset-x-0\.5{left:.125rem;right:.125rem}.-top-1{top:-.25rem}.bottom-0{bottom:0}.bottom-0\.5{bottom:.125rem}.right-1{right:.25rem}.right-3{right:.75rem}.top-0{top:0}.top-1{top:.25rem}.top-1\.5{top:.375rem}.z-10{z-index:10}.z-40{z-index:40}.z-50{z-index:50}.z-\[45\]{z-index:45}.z-\[55\]{z-index:55}.z-\[60\]{z-index:60}.col-span-2{grid-column:span 2/span 2}.col-span-3{grid-column:span 3/span 3}.-mx-4{margin-left:-1rem;margin-right:-1rem}.mx-3{margin-left:.75rem;margin-right:.75rem}.mx-auto{margin-left:auto;margin-right:auto}.my-2{margin-top:.5rem;margin-bottom:.5rem}.my-3{margin-top:.75rem;margin-bottom:.75rem}.my-4{margin-top:1rem;margin-bottom:1rem}.-mt-1{margin-top:-.25rem}.-mt-3{margin-top:-.75rem}.mb-0\.5{margin-bottom:.125rem}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-2\.5{margin-bottom:.625rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mb-6{margin-bottom:1.5rem}.mb-7{margin-bottom:1.75rem}.mb-8{margin-bottom:2rem}.mb-9{margin-bottom:2.25rem}.ml-0\.5{margin-left:.125rem}.ml-1{margin-left:.25rem}.ml-3{margin-left:.75rem}.ml-4{margin-left:1rem}.ml-auto{margin-left:auto}.mr-0\.5{margin-right:.125rem}.mr-1{margin-right:.25rem}.mr-1\.5{margin-right:.375rem}.mr-2{margin-right:.5rem}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.mt-2{margin-top:.5rem}.mt-2\.5{margin-top:.625rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-5{margin-top:1.25rem}.mt-\[1px\]{margin-top:1px}.mt-\[2px\]{margin-top:2px}.mt-\[3px\]{margin-top:3px}.mt-\[5px\]{margin-top:5px}.mt-\[7px\]{margin-top:7px}.block{display:block}.inline-block{display:inline-block}.inline{display:inline}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.contents{display:contents}.hidden{display:none}.h-1{height:.25rem}.h-1\.5{height:.375rem}.h-10{height:2.5rem}.h-11{height:2.75rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-2{height:.5rem}.h-2\.5{height:.625rem}.h-3\.5{height:.875rem}.h-5{height:1.25rem}.h-6{height:1.5rem}.h-64{height:16rem}.h-7{height:1.75rem}.h-8{height:2rem}.h-9{height:2.25rem}.h-\[112px\]{height:112px}.h-\[150px\]{height:150px}.h-\[160px\]{height:160px}.h-\[170px\]{height:170px}.h-\[17px\]{height:17px}.h-\[180px\]{height:180px}.h-\[22px\]{height:22px}.h-\[240px\]{height:240px}.h-\[260px\]{height:260px}.h-\[30px\]{height:30px}.h-\[56px\]{height:56px}.h-\[64px\]{height:64px}.h-\[calc\(var\(--barre\)-8px\)\]{height:calc(var(--barre) - 8px)}.h-full{height:100%}.max-h-32{max-height:8rem}.min-h-0{min-height:0}.w-1{width:.25rem}.w-1\.5{width:.375rem}.w-10{width:2.5rem}.w-11{width:2.75rem}.w-12{width:3rem}.w-14{width:3.5rem}.w-2{width:.5rem}.w-2\.5{width:.625rem}.w-3\.5{width:.875rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-6{width:1.5rem}.w-7{width:1.75rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-\[112px\]{width:112px}.w-\[50px\]{width:50px}.w-\[60\%\]{width:60%}.w-\[64px\]{width:64px}.w-full{width:100%}.min-w-0{min-width:0}.max-w-\[150px\]{max-width:150px}.max-w-\[200px\]{max-width:200px}.max-w-\[22px\]{max-width:22px}.max-w-\[230px\]{max-width:230px}.max-w-\[240px\]{max-width:240px}.max-w-\[290px\]{max-width:290px}.max-w-\[440px\]{max-width:440px}.max-w-\[640px\]{max-width:640px}.max-w-\[85\%\]{max-width:85%}.max-w-\[86\%\]{max-width:86%}.max-w-\[92\%\]{max-width:92%}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.-rotate-90{--tw-rotate:-90deg}.-rotate-90,.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}.cursor-pointer{cursor:pointer}.resize-none{resize:none}.resize{resize:both}.list-disc{list-style-type:disc}.appearance-none{-webkit-appearance:none;-moz-appearance:none;appearance:none}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}.grid-cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}.grid-cols-\[1fr_auto\]{grid-template-columns:1fr auto}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.place-items-center{place-items:center}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.items-baseline{align-items:baseline}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.gap-3\.5{gap:.875rem}.gap-4{gap:1rem}.gap-\[3px\]{gap:3px}.gap-x-3{-moz-column-gap:.75rem;column-gap:.75rem}.gap-x-4{-moz-column-gap:1rem;column-gap:1rem}.gap-y-1{row-gap:.25rem}.gap-y-7{row-gap:1.75rem}.space-y-0\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.125rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.125rem*var(--tw-space-y-reverse))}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem*var(--tw-space-y-reverse))}.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.space-y-2\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.625rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.625rem*var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem*var(--tw-space-y-reverse))}.space-y-4>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem*var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem*var(--tw-space-y-reverse))}.self-stretch{align-self:stretch}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.overscroll-contain{overscroll-behavior:contain}.truncate{overflow:hidden;text-overflow:ellipsis}.truncate,.whitespace-nowrap{white-space:nowrap}.break-words{overflow-wrap:break-word}.rounded-2xl{border-radius:1rem}.rounded-\[22px\]{border-radius:22px}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.rounded-xl2{border-radius:1.35rem}.rounded-t-xl3{border-top-left-radius:1.75rem;border-top-right-radius:1.75rem}.rounded-br-md{border-bottom-right-radius:.375rem}.rounded-tl-md{border-top-left-radius:.375rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-t-2{border-top-width:2px}.border-dashed{border-style:dashed}.border-\[\#CBD0D8\]{--tw-border-opacity:1;border-color:rgb(203 208 216/var(--tw-border-opacity,1))}.border-\[\#E6E8EC\]{--tw-border-opacity:1;border-color:rgb(230 232 236/var(--tw-border-opacity,1))}.border-\[\#EEF0F3\]{--tw-border-opacity:1;border-color:rgb(238 240 243/var(--tw-border-opacity,1))}.border-\[\#F3B13F\]{--tw-border-opacity:1;border-color:rgb(243 177 63/var(--tw-border-opacity,1))}.border-azur\/40{border-color:rgb(var(--c-azur)/.4)}.border-braise{--tw-border-opacity:1;border-color:rgb(var(--c-braise)/var(--tw-border-opacity,1))}.border-braise\/40{border-color:rgb(var(--c-braise)/.4)}.border-braise\/60{border-color:rgb(var(--c-braise)/.6)}.border-brume\/10{border-color:rgb(var(--c-brume)/.1)}.border-brume\/15{border-color:rgb(var(--c-brume)/.15)}.border-brume\/20{border-color:rgb(var(--c-brume)/.2)}.border-brume\/25{border-color:rgb(var(--c-brume)/.25)}.border-brume\/40{border-color:rgb(var(--c-brume)/.4)}.border-brume\/50{border-color:rgb(var(--c-brume)/.5)}.border-brume\/60{border-color:rgb(var(--c-brume)/.6)}.border-encre\/15{border-color:rgba(21,26,54,.15)}.border-ocre{--tw-border-opacity:1;border-color:rgb(var(--c-ocre)/var(--tw-border-opacity,1))}.border-ocre\/30{border-color:rgb(var(--c-ocre)/.3)}.border-ocre\/40{border-color:rgb(var(--c-ocre)/.4)}.border-ocre\/60{border-color:rgb(var(--c-ocre)/.6)}.border-transparent{border-color:transparent}.border-vallee\/30{border-color:rgb(var(--c-vallee)/.3)}.border-vallee\/40{border-color:rgb(var(--c-vallee)/.4)}.border-vallee\/60{border-color:rgb(var(--c-vallee)/.6)}.bg-\[\#DDE1E7\]{--tw-bg-opacity:1;background-color:rgb(221 225 231/var(--tw-bg-opacity,1))}.bg-azur{--tw-bg-opacity:1;background-color:rgb(var(--c-azur)/var(--tw-bg-opacity,1))}.bg-azur\/10{background-color:rgb(var(--c-azur)/.1)}.bg-azur\/15{background-color:rgb(var(--c-azur)/.15)}.bg-black\/55{background-color:rgba(0,0,0,.55)}.bg-black\/60{background-color:rgba(0,0,0,.6)}.bg-braise{--tw-bg-opacity:1;background-color:rgb(var(--c-braise)/var(--tw-bg-opacity,1))}.bg-braise\/10{background-color:rgb(var(--c-braise)/.1)}.bg-braise\/15{background-color:rgb(var(--c-braise)/.15)}.bg-brume{--tw-bg-opacity:1;background-color:rgb(var(--c-brume)/var(--tw-bg-opacity,1))}.bg-brume\/40{background-color:rgb(var(--c-brume)/.4)}.bg-brume\/60{background-color:rgb(var(--c-brume)/.6)}.bg-granit{--tw-bg-opacity:1;background-color:rgb(var(--c-granit)/var(--tw-bg-opacity,1))}.bg-granit\/60{background-color:rgb(var(--c-granit)/.6)}.bg-nuit\/30{background-color:rgb(var(--c-nuit)/.3)}.bg-nuit\/40{background-color:rgb(var(--c-nuit)/.4)}.bg-nuit\/50{background-color:rgb(var(--c-nuit)/.5)}.bg-nuit\/60{background-color:rgb(var(--c-nuit)/.6)}.bg-nuit\/70{background-color:rgb(var(--c-nuit)/.7)}.bg-ocre{--tw-bg-opacity:1;background-color:rgb(var(--c-ocre)/var(--tw-bg-opacity,1))}.bg-ocre\/10{background-color:rgb(var(--c-ocre)/.1)}.bg-ocre\/15{background-color:rgb(var(--c-ocre)/.15)}.bg-ocre\/20{background-color:rgb(var(--c-ocre)/.2)}.bg-ocre\/5{background-color:rgb(var(--c-ocre)/.05)}.bg-transparent{background-color:transparent}.bg-vallee{--tw-bg-opacity:1;background-color:rgb(var(--c-vallee)/var(--tw-bg-opacity,1))}.bg-vallee\/10{background-color:rgb(var(--c-vallee)/.1)}.bg-vallee\/15{background-color:rgb(var(--c-vallee)/.15)}.bg-vallee\/20{background-color:rgb(var(--c-vallee)/.2)}.bg-violine\/10{background-color:rgb(var(--c-violine)/.1)}.bg-violine\/15{background-color:rgb(var(--c-violine)/.15)}.bg-white\/70{background-color:hsla(0,0%,100%,.7)}.object-cover{-o-object-fit:cover;object-fit:cover}.p-1{padding:.25rem}.p-2{padding:.5rem}.p-2\.5{padding:.625rem}.p-3{padding:.75rem}.p-3\.5{padding:.875rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-3\.5{padding-left:.875rem;padding-right:.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-3\.5{padding-top:.875rem;padding-bottom:.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.pb-1{padding-bottom:.25rem}.pb-1\.5{padding-bottom:.375rem}.pb-2{padding-bottom:.5rem}.pb-2\.5{padding-bottom:.625rem}.pb-3{padding-bottom:.75rem}.pb-4{padding-bottom:1rem}.pb-\[calc\(var\(--barre\)\+var\(--safe-bot\)\+28px\)\]{padding-bottom:calc(var(--barre) + var(--safe-bot) + 28px)}.pl-1{padding-left:.25rem}.pl-1\.5{padding-left:.375rem}.pl-3{padding-left:.75rem}.pr-1{padding-right:.25rem}.pr-2{padding-right:.5rem}.pr-3{padding-right:.75rem}.pr-3\.5{padding-right:.875rem}.pt-0\.5{padding-top:.125rem}.pt-1{padding-top:.25rem}.pt-2{padding-top:.5rem}.pt-2\.5{padding-top:.625rem}.pt-3{padding-top:.75rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-corps{font-family:-apple-system,BlinkMacSystemFont,SF Pro Text,Segoe UI,Roboto,sans-serif}.font-sans{font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji}.text-\[10\.5px\]{font-size:10.5px}.text-\[104px\]{font-size:104px}.text-\[10px\]{font-size:10px}.text-\[11\.5px\]{font-size:11.5px}.text-\[11px\]{font-size:11px}.text-\[12\.5px\]{font-size:12.5px}.text-\[12px\]{font-size:12px}.text-\[13\.5px\]{font-size:13.5px}.text-\[13px\]{font-size:13px}.text-\[14\.5px\]{font-size:14.5px}.text-\[14px\]{font-size:14px}.text-\[15px\]{font-size:15px}.text-\[16px\]{font-size:16px}.text-\[17px\]{font-size:17px}.text-\[18px\]{font-size:18px}.text-\[19px\]{font-size:19px}.text-\[20px\]{font-size:20px}.text-\[21px\]{font-size:21px}.text-\[22px\]{font-size:22px}.text-\[23px\]{font-size:23px}.text-\[24px\]{font-size:24px}.text-\[26px\]{font-size:26px}.text-\[28px\]{font-size:28px}.text-\[30px\]{font-size:30px}.text-\[32px\]{font-size:32px}.text-\[44px\]{font-size:44px}.text-\[46px\]{font-size:46px}.text-\[9\.5px\]{font-size:9.5px}.text-\[9px\]{font-size:9px}.font-black{font-weight:900}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-normal{font-weight:400}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.capitalize{text-transform:capitalize}.normal-case{text-transform:none}.leading-\[\.8\]{line-height:.8}.leading-\[\.92\]{line-height:.92}.leading-\[44px\]{line-height:44px}.leading-none{line-height:1}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-\[\.03em\]{letter-spacing:.03em}.tracking-wide{letter-spacing:.025em}.\!text-neige{--tw-text-opacity:1!important;color:rgb(var(--c-neige)/var(--tw-text-opacity,1))!important}.text-\[\#8A5300\]{--tw-text-opacity:1;color:rgb(138 83 0/var(--tw-text-opacity,1))}.text-\[\#B26B00\]{--tw-text-opacity:1;color:rgb(178 107 0/var(--tw-text-opacity,1))}.text-\[\#B8431A\]{--tw-text-opacity:1;color:rgb(184 67 26/var(--tw-text-opacity,1))}.text-\[\#E0A100\]{--tw-text-opacity:1;color:rgb(224 161 0/var(--tw-text-opacity,1))}.text-azur{--tw-text-opacity:1;color:rgb(var(--c-azur)/var(--tw-text-opacity,1))}.text-braise{--tw-text-opacity:1;color:rgb(var(--c-braise)/var(--tw-text-opacity,1))}.text-braise\/70{color:rgb(var(--c-braise)/.7)}.text-brume{--tw-text-opacity:1;color:rgb(var(--c-brume)/var(--tw-text-opacity,1))}.text-brume\/50{color:rgb(var(--c-brume)/.5)}.text-brume\/70{color:rgb(var(--c-brume)/.7)}.text-brume\/80{color:rgb(var(--c-brume)/.8)}.text-encre{--tw-text-opacity:1;color:rgb(21 26 54/var(--tw-text-opacity,1))}.text-encre\/60{color:rgba(21,26,54,.6)}.text-encre\/65{color:rgba(21,26,54,.65)}.text-encre\/75{color:rgba(21,26,54,.75)}.text-neige{--tw-text-opacity:1;color:rgb(var(--c-neige)/var(--tw-text-opacity,1))}.text-ocre{--tw-text-opacity:1;color:rgb(var(--c-ocre)/var(--tw-text-opacity,1))}.text-roche{--tw-text-opacity:1;color:rgb(var(--c-roche)/var(--tw-text-opacity,1))}.text-vallee{--tw-text-opacity:1;color:rgb(var(--c-vallee)/var(--tw-text-opacity,1))}.text-violine{--tw-text-opacity:1;color:rgb(var(--c-violine)/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.line-through{text-decoration-line:line-through}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.accent-\[\#FC5200\]{accent-color:#fc5200}.opacity-35{opacity:.35}.opacity-40{opacity:.4}.opacity-60{opacity:.6}.opacity-70{opacity:.7}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur{--tw-blur:blur(8px)}.blur,.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-\[width\]{transition-property:width;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-300{transition-duration:.3s}.placeholder\:text-brume\/70::-moz-placeholder{color:rgb(var(--c-brume)/.7)}.placeholder\:text-brume\/70::placeholder{color:rgb(var(--c-brume)/.7)}.before\:absolute:before{content:var(--tw-content);position:absolute}.before\:left-\[3px\]:before{content:var(--tw-content);left:3px}.before\:top-\[3px\]:before{content:var(--tw-content);top:3px}.before\:h-6:before{content:var(--tw-content);height:1.5rem}.before\:w-6:before{content:var(--tw-content);width:1.5rem}.before\:rounded-full:before{content:var(--tw-content);border-radius:9999px}.before\:bg-white:before{content:var(--tw-content);--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.before\:shadow:before{content:var(--tw-content);--tw-shadow:0 1px 3px 0 rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.before\:transition-transform:before{content:var(--tw-content);transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.before\:content-\[\'\'\]:before{--tw-content:"";content:var(--tw-content)}.checked\:bg-vallee:checked{--tw-bg-opacity:1;background-color:rgb(var(--c-vallee)/var(--tw-bg-opacity,1))}.checked\:before\:translate-x-5:checked:before{content:var(--tw-content);--tw-translate-x:1.25rem;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.focus\:border-ocre:focus{--tw-border-opacity:1;border-color:rgb(var(--c-ocre)/var(--tw-border-opacity,1))}@media (min-width:640px){.sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}</style>
 </head>
 <body class="font-corps antialiased">
 
@@ -636,6 +640,7 @@ if (window.tailwind) tailwind.config = {
             <button data-act="genAjouterEtape" class="tapable w-11 h-11 rounded-xl verre shrink-0" aria-label="Ajouter l’étape"><i class="fa-solid fa-plus"></i></button>
           </div>
           <p class="text-[11.5px] text-brume mt-1.5 leading-snug">Ou touche la carte : chaque appui ajoute l’étape suivante (B, puis C…).</p>
+          <button id="btnGenPlacerDepart" data-act="genPlacerDepart" class="tapable mt-1 text-[12px] text-ocre font-semibold"><i class="fa-solid fa-location-dot mr-1"></i>Déplacer le départ A sur la carte</button>
           <label class="flex items-center gap-3 text-[13px] mt-3"><input id="genRetour" type="checkbox" class="w-5 h-5 accent-[#FC5200]">Revenir au point de départ</label>
           <label class="text-[12px] text-brume block mt-3 mb-1.5">Durée cible (facultatif, h:mm)</label>
           <input id="genDureeAB" type="text" autocomplete="off" placeholder="1:30"
@@ -1778,6 +1783,7 @@ function fusionnerEtat(lu) {
   e.activites = (Array.isArray(e.activites) ? e.activites : []).filter(a => a && typeof a === 'object' &&
     isFinite(new Date(a.date).getTime()) && isFinite(a.distanceM) && isFinite(a.tempsS));
   e.chat = (Array.isArray(e.chat) ? e.chat : []).filter(m => m && (m.role === 'moi' || m.role === 'coach') && typeof m.html === 'string');
+  e.chat.forEach(m => { m.html = nettoyerHtmlCoach(m.html); });   // sauvegarde restaurée : jamais de code dans le fil
   if (e.plan && !(Array.isArray(e.plan.semaines) && e.plan.semaines.length)) e.plan = null;
   if (!Array.isArray(e.profil.joursDispo) || !e.profil.joursDispo.length) e.profil.joursDispo = etatParDefaut().profil.joursDispo.slice();
   const n = parseInt(e.profil.seancesSemaine, 10);
@@ -2184,6 +2190,27 @@ function normaliser(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
 /** Échappement HTML pour tout texte venant de l'extérieur. */
+/** Fil du coach enregistré en HTML : seules les balises de mise en forme et leurs classes sont gardées. */
+const BALISES_COACH = new Set(['B', 'STRONG', 'I', 'EM', 'BR', 'UL', 'OL', 'LI', 'SPAN', 'P', 'DIV', 'CODE', 'SMALL']);
+function nettoyerHtmlCoach(html) {
+  if (!/<|&/.test(html)) return html;
+  try {
+    const t = document.createElement('template');      // contenu inerte : rien ne s'exécute pendant l'analyse
+    t.innerHTML = html;
+    const nettoyer = parent => Array.from(parent.childNodes).forEach(n => {
+      if (n.nodeType === 3) return;
+      if (n.nodeType !== 1 || !BALISES_COACH.has(n.tagName)) {
+        if (n.nodeType === 1 && !/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|TEMPLATE)$/.test(n.tagName)) n.replaceWith(document.createTextNode(n.textContent || ''));
+        else n.remove();
+        return;
+      }
+      Array.from(n.attributes).forEach(at => { if (at.name !== 'class') n.removeAttribute(at.name); });
+      nettoyer(n);
+    });
+    nettoyer(t.content);
+    return t.innerHTML;
+  } catch (err) { return esc(html); }
+}
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -4410,8 +4437,23 @@ function seancePlan(base, date, phase) {
 }
 /** Transforme une séance prévue en une autre, sans changer son identifiant ni sa date. */
 function remplacerContenu(s, base, ajuste) {
+  oublierAdaptation(s);
   Object.assign(s, { type: base.type, titre: base.titre, blocs: JSON.parse(JSON.stringify(base.blocs)), conseil: base.conseil, terrain: base.terrain });
   if (ajuste) s.ajuste = ajuste;
+}
+/** Séance remplacée par une autre : l'adaptation à la durée (et sa version d'origine) ne la concerne plus. */
+function oublierAdaptation(s) { delete s.adaptee; delete s.blocsOrigine; }
+/**
+ * Change le contenu d'une séance (allègement, renfort) sans casser une adaptation à la durée :
+ * la version d'origine est modifiée, puis la séance est de nouveau adaptée au temps choisi.
+ */
+function transformerBlocsSeance(s, f) {
+  if (!s.blocsOrigine || !s.adaptee) { oublierAdaptation(s); s.blocs = f(s.blocs); return; }
+  s.blocsOrigine = f(s.blocsOrigine);
+  if (mesurerSeance({ type: s.type, blocs: s.blocsOrigine }).dureeS <= s.adaptee * 60 + 60) {
+    s.blocs = s.blocsOrigine;                     // déjà dans le temps disponible : plus besoin d'adapter
+    oublierAdaptation(s);
+  } else s.blocs = adapterBlocs(s, s.adaptee * 60);
 }
 
 /**
@@ -4940,10 +4982,11 @@ function ajusterPlan(mode) {
       if (s.statut !== 'prevu' || s.verrou || s.date < auj || s.date > dans7 || s.type === 'course' || s.type === 'deblocage') return;
       if (!convertie && qualites.includes(s.type)) {
         const souple = BIBLIO.ef(35, { trail: s.terrain === 'trail', dpk: 10, titre: 'Footing souple (allègement)' });
+        oublierAdaptation(s);
         Object.assign(s, { type: souple.type, titre: souple.titre, blocs: souple.blocs, conseil: souple.conseil, ajuste: 'allégée' });
         convertie = true;
       } else {
-        s.blocs = reduireBlocs(s.blocs, 0.75);
+        transformerBlocsSeance(s, b => reduireBlocs(b, 0.75));
         s.ajuste = 'allégée';
       }
       modifiees++;
@@ -4958,7 +5001,7 @@ function ajusterPlan(mode) {
     ETAT.plan.semaines.forEach(w => w.seances.forEach(s => {
       if (s.statut !== 'prevu' || s.verrou || s.date < auj || s.date > dans7 || s.date >= limiteCourse) return;
       if (['course', 'deblocage', 'recup'].includes(s.type) || w.phase === 'affutage' || s.ajuste === 'renforcée') return;
-      s.blocs = renforcerBlocs(s.blocs);
+      transformerBlocsSeance(s, renforcerBlocs);
       s.ajuste = 'renforcée';
       modifiees++;
     }));
@@ -4977,6 +5020,7 @@ function ajusterPlan(mode) {
     if (!manquee) toast('Aucune séance clé manquée ces 4 derniers jours.', 'info');
     else if (!cible) toast('Pas de créneau facile pour la replacer : on laisse filer, c’est la bonne décision.', 'info');
     else {
+      oublierAdaptation(cible);
       Object.assign(cible, { type: manquee.type, titre: manquee.titre, blocs: JSON.parse(JSON.stringify(manquee.blocs)), conseil: manquee.conseil, terrain: manquee.terrain, ajuste: 'reportée' });
       manquee.statut = 'reporte';
       modifiees = 1;
@@ -8460,8 +8504,13 @@ const GEN = {
   prochaine: null, cleProchaine: '',
   capsUtilises: [], relief: {}, profils: {},
   facteur: { route: 1.3, trail: 1.4 },       // longueur routée / longueur du polygone des points de passage (appris au fil des calculs)
-  moteurKo: {}                               // services en échec pendant cette session
+  moteurKo: {}                               // services en échec : heure de la panne (réessayés 5 min plus tard)
 };
+const PAUSE_MOTEUR_KO = 5 * 60 * 1000;
+/** Service en panne récente : on l'évite 5 minutes, puis on le retente (l'app peut rester ouverte des jours). */
+const moteurEnPanne = nom => !!GEN.moteurKo[nom] && Date.now() - GEN.moteurKo[nom] < PAUSE_MOTEUR_KO;
+const signalerPanne = nom => { GEN.moteurKo[nom] = Date.now(); };
+const estDelaiDepasse = e => !!e && (e.name === 'AbortError' || /abort/i.test(e.message || ''));
 const URL_BROUTER = 'https://brouter.de/brouter';
 const URL_OSRM_PIETON = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/';
 const URL_ALTITUDE = 'https://api.open-meteo.com/v1/elevation';
@@ -8534,7 +8583,7 @@ async function altitudesOpenMeteo(points) {
 async function reliefAutour(dep, rayon) {
   const cle = dep.lat.toFixed(3) + ',' + dep.lon.toFixed(3) + '|' + Math.round(rayon / 250);
   if (GEN.relief[cle] !== undefined) return GEN.relief[cle];
-  if (GEN.moteurKo.altitude) return null;
+  if (moteurEnPanne('altitude')) return null;
   const caps = Array.from({ length: 12 }, (_, i) => i * 30);
   const formeReg = cap => ({ cap, n: 5, angles: [60, 120, 180, 240, 300], rayons: [1, 1, 1, 1, 1] });
   const points = [dep];
@@ -8552,8 +8601,8 @@ async function reliefAutour(dep, rayon) {
     return res;
   } catch (e) {
     console.warn('Relief non sondé :', e);
-    GEN.moteurKo.altitude = true;
-    return (GEN.relief[cle] = null);
+    if (!estDelaiDepasse(e)) signalerPanne('altitude');
+    return null;                       // pas mémorisé : le relief sera de nouveau sondé au prochain calcul
   }
 }
 
@@ -8637,9 +8686,9 @@ function tronconTrail(tags) {
 
 async function itineraireBrouter(passages, partTrail, pente, alt = 0) {
   let profil = null;
-  if (!GEN.moteurKo.profilBrouter) {
+  if (!moteurEnPanne('profilBrouter')) {
     try { profil = await idProfilBrouter(partTrail, pente); }
-    catch (e) { console.warn('Profil course BRouter refusé, profil standard utilisé :', e); GEN.moteurKo.profilBrouter = true; }
+    catch (e) { console.warn('Profil course BRouter refusé, profil standard utilisé :', e); if (!estDelaiDepasse(e)) signalerPanne('profilBrouter'); }
   }
   if (!profil) profil = partTrail >= 0.5 ? 'hiking-mountain' : 'trekking';
   const url = URL_BROUTER + '?lonlats=' + passages.map(p => p.lon.toFixed(6) + ',' + p.lat.toFixed(6)).join('|') +
@@ -8649,7 +8698,15 @@ async function itineraireBrouter(passages, partTrail, pente, alt = 0) {
   let j = null;
   try { j = JSON.parse(texte); } catch (e) { /* message d'erreur en texte brut */ }
   const f = j && j.features && j.features[0];
-  if (!r.ok || !f || !f.geometry || !Array.isArray(f.geometry.coordinates)) throw new Error(texte.slice(0, 160) || 'itinéraire introuvable');
+  if (!r.ok || !f || !f.geometry || !Array.isArray(f.geometry.coordinates)) {
+    // Profil course effacé du serveur (l'app est restée ouverte longtemps) : on le renvoie, une seule fois
+    if (profil.startsWith('custom') && /profile|profil/i.test(texte) && !/not mapped|no track found|position not/i.test(texte) && !itineraireBrouter.reessai) {
+      Object.keys(GEN.profils).forEach(k => { if (GEN.profils[k] === profil) delete GEN.profils[k]; });
+      itineraireBrouter.reessai = true;
+      try { return await itineraireBrouter(passages, partTrail, pente, alt); } finally { itineraireBrouter.reessai = false; }
+    }
+    throw new Error(texte.slice(0, 160) || 'itinéraire introuvable');
+  }
   const points = f.geometry.coordinates.map(c => ({ lon: +c[0], lat: +c[1], ele: c.length > 2 && isFinite(c[2]) ? +c[2] : null, seg: 0 }));
   // Part de trail mesurée sur les tags OSM de chaque tronçon
   let partMesuree = null;
@@ -8691,14 +8748,14 @@ async function itineraireOsrm(passages) {
 /** Itinéraire passant par les points donnés : BRouter, sinon OSRM piéton. */
 async function itineraireCourse(passages, partTrail, pente = 0, alt = 0) {
   let erreur = null;
-  if (!GEN.moteurKo.brouter) {
+  if (!moteurEnPanne('brouter')) {
     try { return await itineraireBrouter(passages, partTrail, pente, alt); }
     catch (e) {
       erreur = e;
       // Point de passage hors réseau (lac, champ…) : BRouter répond, le problème vient du point, pas du service.
       if (/not mapped|no track found|position not/i.test(e.message || '')) throw e;
       console.warn('BRouter indisponible, essai avec OSRM :', e);
-      GEN.moteurKo.brouter = true;
+      if (!estDelaiDepasse(e)) signalerPanne('brouter');     // trop lent une fois : OSRM pour ce calcul seulement
     }
   }
   if (alt > 0) throw new Error('pas d’autre itinéraire pour ce trajet');      // OSRM ne propose pas de variantes multi-étapes
@@ -8714,13 +8771,14 @@ function reglagesGenerateur() {
   const allure = lireDuree($('#genAllure').value) || Math.round(ef);
   const dplusSaisi = $('#genDplus').value.trim();
   const dplus = dplusSaisi === '' ? null : Math.max(0, Math.round(lireNombre(dplusSaisi)) || 0);
-  let km;
+  let km, dureeBoucle = 0;
   if (GEN.mode === 'duree') {
     let duree = lireDuree($('#genDuree').value);
     if (duree > 0 && /^\s*\d{1,2}:\d{2}\s*$/.test($('#genDuree').value) && duree < 600) duree *= 60;   // « 1:15 » = 1 h 15
     km = duree > 0 ? duree / allure - 7.5 * (dplus || 0) / 1000 : NaN;                           // 100 m de D+ ≈ 0,75 km sur une boucle
+    dureeBoucle = duree > 0 ? duree : 0;
   } else km = lireNombre($('#genKm').value);
-  const reg = { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100, type: GEN.type };
+  const reg = { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100, type: GEN.type, dureeBoucle };
   if (GEN.type === 'ab') {
     let cible = lireDuree($('#genDureeAB').value);
     if (cible > 0 && /^\s*\d{1,2}:\d{2}\s*$/.test($('#genDureeAB').value) && cible < 600) cible *= 60;   // « 1:30 » = 1 h 30
@@ -8803,6 +8861,7 @@ function majReglagesGenerateur() {
       : 'Durée estimée à ' + formaterAllure(r.allure) + '/km, D+ compris, une fois le trajet calculé.';
     return;
   }
+  if (GEN.mode === 'duree' && r.dureeBoucle && !(r.km >= 1)) { est.textContent = 'Trop de D+ pour cette durée : baisse le D+ ou allonge la durée.'; return; }
   if (!(r.km > 0)) { est.textContent = 'Allure par défaut : ton endurance fondamentale (' + formaterAllure(r.allure) + '/km).'; return; }
   const t = distanceEquivalente(r.km * 1000, r.dplus || 0) / 1000 * r.allure;
   est.textContent = GEN.mode === 'duree'
@@ -9020,7 +9079,12 @@ async function lancerGeneration(nouvelle) {
   const reg = reglagesGenerateur();
   if (reg.type === 'ab') {
     if (!reg.etapes.length) { toast('Ajoute au moins une étape B : une adresse, ou touche la carte.', 'alerte'); return; }
-  } else if (!(reg.km >= 1 && reg.km <= 100)) { toast(GEN.mode === 'duree' ? 'Indique une durée (par exemple 1:00).' : 'Indique une distance entre 1 et 100 km.', 'alerte'); return; }
+  } else if (!(reg.km >= 1 && reg.km <= 100)) {
+    toast(GEN.mode !== 'duree' ? 'Indique une distance entre 1 et 100 km.'
+      : !reg.dureeBoucle ? 'Indique une durée (par exemple 1:00).'
+      : reg.km < 1 ? 'Trop de D+ pour cette durée : baisse le D+ ou allonge la durée.' : 'Durée trop longue : 100 km au maximum.', 'alerte');
+    return;
+  }
   sauverReglagesGenerateur();
   const cle = cleReglages(reg);
   if (nouvelle || cle !== GEN.cle) {
@@ -9040,13 +9104,14 @@ async function lancerGeneration(nouvelle) {
       GEN.index = GEN.propositions.indexOf(doublon);
       rendreGenerateur();
       toast(GEN.propositions.length > 1 ? 'Pas d’autre itinéraire pour ce trajet : tu as vu toutes les variantes.' : 'C’est le seul itinéraire raisonnable pour ce trajet. Ajoute une étape pour passer ailleurs.', 'info');
-      if (GEN.rangTrajet < 4) precalculerSuivante(reg, cle);
+      if (GEN.rangTrajet < 4 && GEN.propositions.length > 1) precalculerSuivante(reg, cle);
       return;
     }
     GEN.propositions.push(p);
     GEN.index = GEN.propositions.length - 1;
     rendreGenerateur();
-    precalculerSuivante(reg, cle);
+    // Il a déjà demandé un autre parcours : la suivante est préparée d'avance (sinon, pas d'appels inutiles)
+    if (GEN.propositions.length > 1) precalculerSuivante(reg, cle);
   } catch (e) {
     console.error(e);
     if (reg.type === 'ab' && GEN.propositions.length) toast('Pas d’autre itinéraire pour ce trajet. Ajoute ou déplace une étape pour passer ailleurs.', 'info');
@@ -9117,10 +9182,19 @@ async function ajouterEtapeAdresseGen() {
   } catch (e) { toast(messageErreurGen(e), 'erreur'); }
 }
 
+function majBoutonPlacerDepart() {
+  const b = $('#btnGenPlacerDepart');
+  if (b) b.innerHTML = GEN.placerDepart ? '<i class="fa-solid fa-xmark mr-1"></i>Annuler : touche la carte pour placer A'
+                                        : '<i class="fa-solid fa-location-dot mr-1"></i>Déplacer le départ A sur la carte';
+}
+/** Texte du départ : nom (ou point de la carte) et coordonnées. */
+function texteDepartGen(d) {
+  return '<i class="fa-solid fa-location-dot text-vallee mr-1"></i>' + (d.nom ? esc(d.nom) : 'Point placé sur la carte') +
+    ' <span class="opacity-70">(' + d.lat.toFixed(4).replace('.', ',') + ' ; ' + d.lon.toFixed(4).replace('.', ',') + ')</span>';
+}
 function definirDepart(lat, lon, nom) {
   GEN.depart = { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, nom: nom || '' };
-  $('#genDepart').innerHTML = '<i class="fa-solid fa-location-dot text-vallee mr-1"></i>' + (nom ? esc(nom) : 'Point placé sur la carte') +
-    ' <span class="opacity-70">(' + GEN.depart.lat.toFixed(4).replace('.', ',') + ' ; ' + GEN.depart.lon.toFixed(4).replace('.', ',') + ')</span>';
+  $('#genDepart').innerHTML = texteDepartGen(GEN.depart);
   sauverReglagesGenerateur();
   centrerSurDepart(GEN.propositions.length ? null : 14);
 }
@@ -9140,13 +9214,17 @@ async function preparerCarteGen() {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(GEN.carte);
     if (GEN.depart) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 14); else GEN.carte.setView([46.6, 2.4], 5);
     GEN.carte.on('click', e => {
-      if (GEN.type === 'ab' && GEN.depart) {
+      if (GEN.type === 'ab' && GEN.depart && !GEN.placerDepart) {
         ajouterEtapeGen(e.latlng.lat, e.latlng.lng, '');
         toast('Étape ' + lettreEtape(GEN.etapes.length - 1) + ' ajoutée.', 'info');
         return;
       }
+      const deplace = GEN.placerDepart;
+      GEN.placerDepart = false;
+      majBoutonPlacerDepart();
       definirDepart(e.latlng.lat, e.latlng.lng, '');
-      toast(GEN.type === 'ab' ? 'Départ A placé. Touche la carte pour ajouter B, puis C…' : 'Départ placé. Touche « Générer » pour calculer une boucle.', 'info');
+      toast(GEN.type !== 'ab' ? 'Départ placé. Touche « Générer » pour calculer une boucle.'
+        : deplace ? 'Départ A déplacé.' : 'Départ A placé. Touche la carte pour ajouter B, puis C…', 'info');
     });
     centrerSurDepart();
     rendreEtapesGen();
@@ -9300,7 +9378,7 @@ function brancherGenerateur() {
   $('#genAllure').value = r.allure || '';
   if (r.depart && isFinite(r.depart.lat) && isFinite(r.depart.lon)) {
     GEN.depart = { lat: +r.depart.lat, lon: +r.depart.lon, nom: String(r.depart.nom || '') };
-    $('#genDepart').innerHTML = '<i class="fa-solid fa-location-dot text-vallee mr-1"></i>' + (GEN.depart.nom ? esc(GEN.depart.nom) : 'Point placé sur la carte');
+    $('#genDepart').innerHTML = texteDepartGen(GEN.depart);
   }
   ['genKm', 'genDuree', 'genDplus', 'genAllure', 'genDureeAB'].forEach(id => $('#' + id).addEventListener('input', majReglagesGenerateur));
   $('#genTrail').addEventListener('input', e => { GEN.trail = +e.target.value; majReglagesGenerateur(); });
@@ -11067,6 +11145,11 @@ const ACTIONS = {
   parcoursSeance: id => parcoursPourSeance(id),
   genChercherAdresse: () => chercherAdresseGen(),
   genMaPosition: () => maPositionGen(),
+  genPlacerDepart: () => {
+    GEN.placerDepart = !GEN.placerDepart;
+    majBoutonPlacerDepart();
+    if (GEN.placerDepart) toast('Touche la carte à l’endroit du départ A.', 'info');
+  },
   retirerGpx: () => {
     lireFormulaireObjectif();
     ETAT.objectif.gpx = null;
