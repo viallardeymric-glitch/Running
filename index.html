@@ -637,6 +637,10 @@ if (window.tailwind) tailwind.config = {
           </div>
           <p class="text-[11.5px] text-brume mt-1.5 leading-snug">Ou touche la carte : chaque appui ajoute l’étape suivante (B, puis C…).</p>
           <label class="flex items-center gap-3 text-[13px] mt-3"><input id="genRetour" type="checkbox" class="w-5 h-5 accent-[#FC5200]">Revenir au point de départ</label>
+          <label class="text-[12px] text-brume block mt-3 mb-1.5">Durée cible (facultatif, h:mm)</label>
+          <input id="genDureeAB" type="text" autocomplete="off" placeholder="1:30"
+            class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+          <p class="text-[11.5px] text-brume mt-1.5 leading-snug">Ton allure ne bouge pas : si le trajet direct est trop court, un détour est ajouté avant l’arrivée pour tenir la durée.</p>
         </div>
         <div id="carteGen" class="carte-parcours rounded-xl overflow-hidden h-[260px] bg-nuit/50"></div>
 
@@ -8717,7 +8721,11 @@ function reglagesGenerateur() {
     km = duree > 0 ? duree / allure - 7.5 * (dplus || 0) / 1000 : NaN;                           // 100 m de D+ ≈ 0,75 km sur une boucle
   } else km = lireNombre($('#genKm').value);
   const reg = { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100, type: GEN.type };
-  if (GEN.type === 'ab') Object.assign(reg, { km: NaN, dplus: null, etapes: GEN.etapes.slice(), retour: GEN.retour });
+  if (GEN.type === 'ab') {
+    let cible = lireDuree($('#genDureeAB').value);
+    if (cible > 0 && /^\s*\d{1,2}:\d{2}\s*$/.test($('#genDureeAB').value) && cible < 600) cible *= 60;   // « 1:30 » = 1 h 30
+    Object.assign(reg, { km: NaN, dplus: null, etapes: GEN.etapes.slice(), retour: GEN.retour, dureeCible: cible > 0 ? cible : null });
+  }
   // Parcours préparé pour une séance du plan : on garde son nom tant que les réglages n'ont pas été modifiés
   reg.titre = GEN.seance && GEN.seance.cle === [Math.round(km * 10), dplus, GEN.trail, reg.allure].join('|') ? GEN.seance.titre : null;
   return reg;
@@ -8762,12 +8770,12 @@ function parcoursPourSeance(id) {
   lancerGeneration(false);
 }
 const cleReglages = r => [GEN.depart && GEN.depart.lat.toFixed(5), GEN.depart && GEN.depart.lon.toFixed(5), Math.round(r.km * 10), r.dplus, GEN.trail,
-  r.type, (r.etapes || []).map(e => e.lat.toFixed(5) + ',' + e.lon.toFixed(5)).join(';'), r.retour ? 1 : 0].join('|');
+  r.type, (r.etapes || []).map(e => e.lat.toFixed(5) + ',' + e.lon.toFixed(5)).join(';'), r.retour ? 1 : 0, r.dureeCible || 0, r.dureeCible ? r.allure : 0].join('|');
 
 function sauverReglagesGenerateur() {
   APPAREIL.generateur = {
     depart: GEN.depart, mode: GEN.mode, trail: GEN.trail, type: GEN.type, etapes: GEN.etapes, retour: GEN.retour,
-    km: $('#genKm').value, duree: $('#genDuree').value, dplus: $('#genDplus').value, allure: $('#genAllure').value
+    km: $('#genKm').value, duree: $('#genDuree').value, dureeAB: $('#genDureeAB').value, dplus: $('#genDplus').value, allure: $('#genAllure').value
   };
   sauverAppareil();
 }
@@ -8789,7 +8797,12 @@ function majReglagesGenerateur() {
   $$('.btnGenTerrain').forEach(b => { const on = +b.dataset.arg === GEN.trail; b.classList.toggle('verre', !on); ['bg-ocre', 'text-white', 'font-semibold'].forEach(c => b.classList.toggle(c, on)); });
   const r = reglagesGenerateur();
   const est = $('#genEstimation');
-  if (ab) { est.textContent = 'Durée estimée à ' + formaterAllure(r.allure) + '/km, D+ compris, une fois le trajet calculé.'; return; }
+  if (ab) {
+    est.textContent = r.dureeCible
+      ? 'Trajet visé : ' + String(Math.round(r.dureeCible / r.allure * 10) / 10).replace('.', ',') + ' km, soit ' + dureeLisible(r.dureeCible) + ' à ' + formaterAllure(r.allure) + '/km.'
+      : 'Durée estimée à ' + formaterAllure(r.allure) + '/km, D+ compris, une fois le trajet calculé.';
+    return;
+  }
   if (!(r.km > 0)) { est.textContent = 'Allure par défaut : ton endurance fondamentale (' + formaterAllure(r.allure) + '/km).'; return; }
   const t = distanceEquivalente(r.km * 1000, r.dplus || 0) / 1000 * r.allure;
   est.textContent = GEN.mode === 'duree'
@@ -8900,7 +8913,91 @@ async function proposerTrajet(reg) {
     aAltitude: a.aAltitude, profil: a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: null, type: 'ab'
   };
 }
-const proposer = reg => reg.type === 'ab' ? proposerTrajet(reg) : proposerParcours(reg);
+/** Mesures d'un itinéraire : distance, profil et dénivelés filtrés. */
+function mesurerItineraire(it) {
+  const a = analyserTrace(it.points);
+  const d = denivelesProfil(a.profil);
+  const dplus = it.dplusFiltre != null ? it.dplusFiltre : d.dplus;
+  const dmoins = it.dplusFiltre != null ? Math.max(0, Math.round(dplus - (a.profil.length ? a.profil[a.profil.length - 1][1] - a.profil[0][1] : 0))) : d.dmoins;
+  return { a, dplus, dmoins };
+}
+
+/** Coordonnées planes locales (m) autour d'un point, et retour en latitude/longitude. */
+function versPlan(o, p) {
+  const k = Math.cos(o.lat * Math.PI / 180) * 111320;
+  return { x: (p.lon - o.lon) * k, y: (p.lat - o.lat) * 110540 };
+}
+function depuisPlan(o, q) {
+  const k = Math.cos(o.lat * Math.PI / 180) * 111320;
+  return { lat: o.lat + q.y / 110540, lon: o.lon + q.x / k };
+}
+/**
+ * Deux points de détour W1, W2 sur une ellipse de foyers Q et B, autour de l'angle t (radians) :
+ * le chemin Q → W1 → W2 → B forme une vraie boucle (pas un aller-retour) et mesure « longueur » à vol d'oiseau.
+ * Q = B (retour au départ) donne un cercle.
+ */
+function pointsDetour(Q, B, longueur, t) {
+  const b = versPlan(Q, B);
+  const L = Math.hypot(b.x, b.y), c = L / 2;
+  const u = L > 1 ? { x: b.x / L, y: b.y / L } : { x: 1, y: 0 }, v = { x: -u.y, y: u.x };
+  const sur = (a, ang) => { const pb = Math.sqrt(Math.max(1, a * a - c * c)); return { x: c * u.x + a * Math.cos(ang) * u.x + pb * Math.sin(ang) * v.x, y: c * u.y + a * Math.cos(ang) * u.y + pb * Math.sin(ang) * v.y }; };
+  const chemin = a => { const w1 = sur(a, t + 0.55), w2 = sur(a, t - 0.55); return [w1, w2, Math.hypot(w1.x, w1.y) + Math.hypot(w2.x - w1.x, w2.y - w1.y) + Math.hypot(b.x - w2.x, b.y - w2.y)]; };
+  let bas = c + 1, haut = Math.max(c + 2, longueur);
+  for (let i = 0; i < 40; i++) { const mil = (bas + haut) / 2; if (chemin(mil)[2] < longueur) bas = mil; else haut = mil; }
+  const [w1, w2] = chemin((bas + haut) / 2);
+  // Ordre de passage : depuis Q, d'abord le point le plus proche
+  const ordre = Math.hypot(w1.x, w1.y) <= Math.hypot(w2.x, w2.y) ? [w1, w2] : [w2, w1];
+  return ordre.map(q => depuisPlan(Q, q));
+}
+
+/**
+ * Trajet A → B (→ C…) calé sur une durée : l'allure reste celle choisie, c'est la distance qui s'ajuste.
+ * Si l'itinéraire direct est trop court, un point de détour est ajouté sur la dernière portion, avant l'arrivée,
+ * et on l'écarte ou le rapproche (4 calculs au plus) jusqu'à ±2 % de la distance visée.
+ */
+async function proposerTrajetDuree(reg) {
+  const passages = [GEN.depart, ...reg.etapes, ...(reg.retour ? [GEN.depart] : [])];
+  const cible = reg.dureeCible / reg.allure * 1000;           // distance à parcourir à l'allure choisie (m)
+  // Itinéraire direct, gardé en mémoire tant que les points ne changent pas
+  const cleDirect = passages.map(p => p.lat.toFixed(5) + ',' + p.lon.toFixed(5)).join(';') + '|' + Math.round(reg.trail * 10);
+  if (!GEN.trajetDirect || GEN.trajetDirect.cle !== cleDirect) {
+    const it = await itineraireCourse(passages, reg.trail, 0, 0);
+    GEN.trajetDirect = { cle: cleDirect, it, m: mesurerItineraire(it) };
+  }
+  const direct = GEN.trajetDirect;
+  const d0 = direct.m.a.distanceM;
+  const resultat = (it, m, detour) => ({
+    points: it.points, distanceM: m.a.distanceM, dplus: m.dplus, dmoins: m.dmoins, altMin: m.a.altMin, altMax: m.a.altMax,
+    aAltitude: m.a.aAltitude, profil: m.a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: null, type: 'ab',
+    distanceCible: cible, detour
+  });
+  if (d0 >= cible * 0.98) {
+    if (GEN.rangTrajet++ === 0) return resultat(direct.it, direct.m, false);       // déjà assez long : on ne raccourcit pas
+    throw new Error('pas d’autre itinéraire pour ce trajet');
+  }
+  // Détour sur la dernière portion (Q → arrivée), d'un côté puis de l'autre, à des angles variés
+  const Q = passages[passages.length - 2], B = passages[passages.length - 1];
+  const rang = GEN.rangTrajet++;
+  const cote = rang % 2 ? -1 : 1;
+  const t = cote * (Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.55);
+  const L = distanceHaversine(Q, B);
+  const typeTerrain = reg.trail >= 0.5 ? 'trail' : 'route';
+  let extra = (cible - d0) / GEN.facteur[typeTerrain];        // longueur ajoutée « à vol d'oiseau »
+  let meilleur = null;
+  for (let tour = 0; tour < 4; tour++) {
+    const W = pointsDetour(Q, B, L + extra, t);
+    const it = await itineraireCourse([...passages.slice(0, -1), ...W, B], reg.trail, 0, 0);
+    const m = mesurerItineraire(it);
+    const d = m.a.distanceM, ecart = Math.abs(d - cible) / cible;
+    if (!meilleur || ecart < meilleur.ecart) meilleur = { it, m, ecart };
+    if (ecart <= 0.02) break;
+    const gagne = d - d0;
+    extra *= gagne > 50 ? borner((cible - d0) / gagne, 0.4, 2.5) : 1.6;
+  }
+  return resultat(meilleur.it, meilleur.m, true);
+}
+
+const proposer = reg => reg.type === 'ab' ? (reg.dureeCible ? proposerTrajetDuree(reg) : proposerTrajet(reg)) : proposerParcours(reg);
 
 /** Prépare en arrière-plan la proposition suivante : « Changer de parcours » devient instantané. */
 function precalculerSuivante(reg, cle) {
@@ -9097,7 +9194,7 @@ function rendreGenerateur() {
   if (!p) { effacerGraphique('graphProfilGen'); return; }
   const reg = p.reglages;
   const suite = p.type === 'ab'
-    ? ' · trajet A → ' + reg.etapes.map((_, i) => lettreEtape(i)).join(' → ') + (reg.retour ? ' → A' : '')
+    ? ' · trajet A → ' + reg.etapes.map((_, i) => lettreEtape(i)).join(' → ') + (reg.retour ? ' → A' : '') + (p.detour ? ' avec détour' : '')
     : ' · boucle vers ' + ['le nord', 'le nord-est', 'l’est', 'le sud-est', 'le sud', 'le sud-ouest', 'l’ouest', 'le nord-ouest'][Math.round(p.cap / 45) % 8];
   $('#genTitre').textContent = (reg.titre ? reg.titre + ' · ' : '') + 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + suite;
   const tuile = (t, v, u) => `<div class="rounded-xl bg-nuit/50 p-2.5 text-center"><div class="text-[10.5px] text-brume">${t}</div><div class="chiffre text-[20px]">${v}</div><div class="text-[10px] text-brume">${u}</div></div>`;
@@ -9106,7 +9203,11 @@ function rendreGenerateur() {
   const duree = distanceEquivalente(p.distanceM, p.dplus || 0, p.dmoins) / 1000 * reg.allure;
   const terrain = p.partTrail == null ? '—' : Math.round((1 - p.partTrail) * 100) + ' % / ' + Math.round(p.partTrail * 100) + ' %';
   const ligne = (t, v, s) => `<div class="rounded-xl bg-nuit/50 px-3 py-2"><div class="text-[10.5px] text-brume">${t}</div><div class="text-[14px] font-semibold">${v}</div>${s ? `<div class="text-[10.5px] text-brume">${s}</div>` : ''}</div>`;
-  $('#genStats2').innerHTML = ligne('Durée estimée', formaterDuree(duree, true), 'à ' + formaterAllure(reg.allure) + '/km, D+ compris') +
+  const blocDuree = p.distanceCible
+    ? ligne('Durée à ' + formaterAllure(reg.allure) + '/km', formaterDuree(p.distanceM / 1000 * reg.allure, true),
+        'cible ' + formaterDuree(reg.dureeCible, true) + (p.detour ? ', détour inclus' : p.distanceM > p.distanceCible * 1.02 ? ', trajet direct déjà plus long' : ''))
+    : ligne('Durée estimée', formaterDuree(duree, true), 'à ' + formaterAllure(reg.allure) + '/km, D+ compris');
+  $('#genStats2').innerHTML = blocDuree +
     ligne('Route / trail', terrain, 'visé : ' + Math.round((1 - reg.trail) * 100) + ' % / ' + Math.round(reg.trail * 100) + ' %' + (reg.dplus != null ? ', D+ ' + reg.dplus + ' m' : ''));
   const dplusTropHaut = reg.dplus != null && p.dplus > reg.dplus * 1.35 + 80;
   $('#genSource').textContent = (dplusTropHaut ? 'Boucle la moins vallonnée trouvée dans cette direction : le relief autour du départ impose plus de D+ que visé. Change de parcours pour essayer ailleurs. ' : '') +
@@ -9194,13 +9295,14 @@ function brancherGenerateur() {
     .map(e => ({ lat: +e.lat, lon: +e.lon, nom: String(e.nom || '') }));
   $('#genKm').value = r.km || '10';
   $('#genDuree').value = r.duree || '';
+  $('#genDureeAB').value = r.dureeAB || '';
   $('#genDplus').value = r.dplus || '';
   $('#genAllure').value = r.allure || '';
   if (r.depart && isFinite(r.depart.lat) && isFinite(r.depart.lon)) {
     GEN.depart = { lat: +r.depart.lat, lon: +r.depart.lon, nom: String(r.depart.nom || '') };
     $('#genDepart').innerHTML = '<i class="fa-solid fa-location-dot text-vallee mr-1"></i>' + (GEN.depart.nom ? esc(GEN.depart.nom) : 'Point placé sur la carte');
   }
-  ['genKm', 'genDuree', 'genDplus', 'genAllure'].forEach(id => $('#' + id).addEventListener('input', majReglagesGenerateur));
+  ['genKm', 'genDuree', 'genDplus', 'genAllure', 'genDureeAB'].forEach(id => $('#' + id).addEventListener('input', majReglagesGenerateur));
   $('#genTrail').addEventListener('input', e => { GEN.trail = +e.target.value; majReglagesGenerateur(); });
   $('#genAdresse').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chercherAdresseGen(); } });
   $('#genAdresseEtape').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterEtapeAdresseGen(); } });
