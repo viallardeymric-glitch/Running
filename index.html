@@ -674,7 +674,7 @@ if (window.tailwind) tailwind.config = {
           </div>
         </div>
         <div>
-          <label class="text-[12px] text-brume block mb-1.5">Allure visée (min/km)</label>
+          <label class="text-[12px] text-brume block mb-1.5">Allure sur le plat (min/km)</label>
           <input id="genAllure" type="text" autocomplete="off" placeholder="5:30"
             class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
           <p id="genEstimation" class="text-[11.5px] text-brume mt-1.5 leading-snug"></p>
@@ -8810,7 +8810,12 @@ function parcoursPourSeance(id) {
   else if (dplus === 0) GEN.trail = Math.min(GEN.trail, 30);
   $('#genKm').value = String(km).replace('.', ',');
   $('#genDplus').value = dplus === '' ? '' : String(dplus);
-  if (m.allureMoy > 0) $('#genAllure').value = formaterAllure(m.allureMoy).replace("'", ':');
+  // L'allure d'une séance vallonnée est déjà ralentie pour le D+ (7'08 au lieu de 6'25…) : le générateur attend l'allure
+  // sur le plat et ajoute lui-même le D+ ; on la retrouve à partir de la durée de la séance et de sa distance d'effort.
+  if (m.dureeS > 0 && m.distanceM > 0) {
+    const allurePlat = m.dureeS / (distanceEquivalente(m.distanceM, m.dplus || 0, m.dplus || 0) / 1000);
+    $('#genAllure').value = formaterAllure(allurePlat).replace("'", ':');
+  }
   GEN.seance = null;
   const reg = reglagesGenerateur();
   GEN.seance = { titre: s.titre, cle: [Math.round(reg.km * 10), reg.dplus, GEN.trail, reg.allure].join('|') };
