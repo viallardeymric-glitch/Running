@@ -5514,12 +5514,10 @@ function ouvrirModaleMontre(id) {
     </div>
     <div class="rounded-2xl verre px-3 mb-3">${corps}</div>
     <p class="text-[12px] text-brume leading-relaxed mb-3">${APPAREIL.montre === 'workoutdoors'
-      ? 'Dans WorkOutDoors sur l’iPhone : Intervalles, nouveau programme Course à pied. Un intervalle par ligne (échauffement, efforts, récupérations, retour au calme) avec la cible « Allure » indiquée ; les répétitions se règlent en nombre de fois. Puis Réglages, Stockage et transfert, « Envoyer les programmes d’intervalles à la montre ». Le jour venu, lance Course à pied dans WorkOutDoors et choisis le programme.'
-      : 'Sur la montre : app Exercice, Course en extérieur, bouton « … », Créer un entraînement, Personnalisé. Le fichier JSON suit la structure WorkoutKit (échauffement, blocs, retour au calme) pour une import directe par une app compagnon.'}</p>
-    <div class="grid grid-cols-2 gap-2">
-      <button data-act="copierMontre" data-arg="${s.id}" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-regular fa-copy mr-1.5"></i>Copier les étapes</button>
-      <button data-act="partagerMontre" data-arg="${s.id}" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-solid fa-share-from-square mr-1.5"></i>Fichier séance</button>
-    </div>`);
+      ? '« Envoyer à l’Apple Watch » met la séance dans l’app Exercice d’Apple en un geste. Pour WorkOutDoors, saisie dans l’app iPhone : Intervalles, nouveau programme Course à pied. Un intervalle par ligne (échauffement, efforts, récupérations, retour au calme) avec la cible « Allure » indiquée ; les répétitions se règlent en nombre de fois. Puis Réglages, Stockage et transfert, « Envoyer les programmes d’intervalles à la montre ». Le jour venu, lance Course à pied dans WorkOutDoors et choisis le programme.'
+      : 'Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis Exercice, ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (Course en extérieur, bouton « … »), sur watchOS 10 et plus.'}</p>
+    <button data-act="workoutSeance" data-arg="${s.id}" class="w-full tapable h-11 rounded-xl bg-ocre text-white font-semibold text-[13.5px] mb-2"><i class="fa-brands fa-apple mr-1.5"></i>Envoyer à l’Apple Watch</button>
+    <button data-act="copierMontre" data-arg="${s.id}" class="w-full tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-regular fa-copy mr-1.5"></i>Copier les étapes</button>`);
 }
 
 async function partagerFichierSeance(id) {
@@ -9582,11 +9580,13 @@ const MARQUES_MONTRE = {
     'Enregistre et synchronise la montre. Le jour J : choisis Course, puis la séance dans les options avant de démarrer.'
   ] },
   apple: { nom: 'Apple Watch', etapes: [
-    'Sur la montre (watchOS 10 et plus) : app Exercice, Course en extérieur, bouton « … », Créer un entraînement, Personnalisé.',
-    'Ajoute une étape « Travail » par ligne ci-dessus : objectif Distance, alerte Allure avec la fourchette indiquée. Pas d’échauffement ni de récupération.',
-    'Avec beaucoup d’étapes la saisie est longue : garde le découpage par portions. Le jour J, lance la séance depuis l’app Exercice.'
+    'Sur l’iPhone, touche « Envoyer à l’Apple Watch » ci-dessous : l’app crée la séance au format de l’app Exercice (fichier .workout), gratuit et sans autre app.',
+    'Dans la feuille de partage, choisis Exercice s’il est proposé ; sinon « Enregistrer dans Fichiers », puis touche le fichier dans l’app Fichiers. L’iPhone l’importe et l’envoie sur la montre (watchOS 10 et plus).',
+    'Le jour J : app Exercice, Course en extérieur, bouton « … », et choisis la séance dans tes entraînements personnalisés.',
+    'À la main si besoin : Course en extérieur, « … », Créer un entraînement, Personnalisé, une étape « Travail » par ligne ci-dessus (distance, alerte d’allure).'
   ] },
   workoutdoors: { nom: 'WorkOutDoors', etapes: [
+    'Le plus simple : « Envoyer à l’Apple Watch » ci-dessous met la séance dans l’app Exercice d’Apple en un geste (gratuit). Pour la suivre dans WorkOutDoors, voici la saisie :',
     'Sur l’iPhone, app WorkOutDoors : Intervalles (Interval Schedules), nouveau programme pour l’activité Course à pied. L’écran du téléphone rend la saisie bien plus rapide que sur la montre.',
     'Un intervalle par ligne ci-dessus : fin à la distance indiquée, cible d’intensité « Allure » avec la fourchette. Dernier intervalle : fin manuelle (tour), sans distance.',
     'Réglages de l’app iPhone, Stockage et transfert (Storage & Transfer) : « Envoyer les programmes d’intervalles à la montre ».',
@@ -9712,6 +9712,54 @@ function fichierFitSeance(nom, etapes) {
   return new Uint8Array(tout);
 }
 
+/* ---------- Fichier .workout : entraînement personnalisé de l'app Exercice (Apple Watch) ----------
+   Format binaire protobuf d'un WorkoutPlan WorkoutKit (non documenté par Apple, relevé sur de vrais exports,
+   cf. github.com/ayaanh03/workoutgen). Ouvert sur l'iPhone, il est importé par l'app Exercice et synchronisé
+   sur la montre (watchOS 10 et plus), sans app tierce.
+   plan = { nom, echauffement, blocs: [{ fois, etapes: [{ recup, but, alerte }] }], retour }
+   but = { m } (distance) | { s } (durée) | null (ouvert) ; alerte = { lente, rapide } en s/km (allure moyenne). */
+function fichierWorkoutApple(plan) {
+  const varint = n => { const o = []; do { let b = n % 128; n = Math.floor(n / 128); o.push(n ? b | 0x80 : b); } while (n); return o; };
+  const fVarint = (champ, n) => varint(champ * 8).concat(varint(n));
+  const fDouble = (champ, x) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x, true); return varint(champ * 8 + 1).concat(Array.from(new Uint8Array(v.buffer))); };
+  const fOctets = (champ, o) => { if (typeof o === 'string') o = Array.from(new TextEncoder().encode(o)); return varint(champ * 8 + 2).concat(varint(o.length), o); };
+  const quantite = (unite, valeur) => fVarint(1, unite).concat(fDouble(2, valeur));
+  const but = b => !b ? fVarint(1, 4)
+    : b.m ? fVarint(1, 3).concat(fOctets(4, quantite(2, Math.round(b.m) / 1000)))        // distance en km (unité 2, vue dans les exports)
+    : fVarint(1, 1).concat(fOctets(2, quantite(1, Math.round(b.s))));
+  const vitesse = v => fOctets(1, quantite(1, v)).concat(fOctets(2, quantite(1, 1)));
+  const alerte = a => fVarint(1, 1).concat(fVarint(2, 2), fOctets(4, fOctets(2, fOctets(1, vitesse(1000 / a.lente)).concat(fOctets(2, vitesse(1000 / a.rapide))))));
+  const etape = e => fOctets(1, but(e.but)).concat(e.alerte ? fOctets(2, alerte(e.alerte)) : []);
+  let w = fVarint(1, 37).concat(fVarint(2, 3), fOctets(3, String(plan.nom || 'Séance').slice(0, 60)));   // course à pied, extérieur
+  if (plan.echauffement) w = w.concat(fOctets(4, etape(plan.echauffement)));
+  plan.blocs.forEach(b => {
+    const o = [].concat(...b.etapes.map(e => fOctets(1, fVarint(1, e.recup ? 2 : 1).concat(fOctets(2, etape(e))))));
+    w = w.concat(fOctets(5, o.concat(fVarint(2, Math.max(1, b.fois || 1)))));
+  });
+  if (plan.retour) w = w.concat(fOctets(6, etape(plan.retour)));
+  const uuid = plan.uuid || (crypto.randomUUID ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+  return new Uint8Array(fOctets(9, uuid.toUpperCase()).concat(fOctets(11, w), fVarint(1000, 1), fVarint(1002, 5)));
+}
+/** La course : une étape « effort » par portion, fourchette d'allure moyenne, dernière étape ouverte. */
+function workoutCourse(nom, etapes) {
+  return { nom, blocs: etapes.map(e => ({ fois: 1, etapes: [{ but: e.derniere ? null : { m: e.dist }, alerte: e.rapide ? { lente: e.lente, rapide: e.rapide } : null }] })) };
+}
+/** Une séance du plan (structure seanceVersMontre) : échauffement, blocs répétés, retour au calme. */
+function workoutSeance(s) {
+  const w = seanceVersMontre(s);
+  const conv = st => ({ recup: st.purpose === 'recovery', but: st.goal.type === 'distance' ? { m: st.goal.value } : st.goal.value > 0 ? { s: st.goal.value } : null,
+                        alerte: st.alert ? { lente: st.alert.slowest, rapide: st.alert.fastest } : null });
+  return { nom: s.titre, echauffement: w.warmup && conv(w.warmup), retour: w.cooldown && conv(w.cooldown),
+           blocs: w.blocks.map(b => ({ fois: b.iterations, etapes: b.steps.map(conv) })) };
+}
+const nomFichierWorkout = t => (normaliser(t || 'seance').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'seance') + '.workout';
+async function livrerWorkout(nomFichier, plan) {
+  const ok = await livrerFichier(nomFichier, fichierWorkoutApple(plan), 'application/octet-stream');
+  if (ok) toast('Séance prête : ouvre le fichier sur l’iPhone (Exercice, ou Enregistrer dans Fichiers puis touche-le). Elle arrive dans l’app Exercice de la montre.', 'succes');
+  else toast('Fichier impossible à créer sur cet appareil.', 'erreur');
+}
+
 /** GPX du parcours de course : tracé + un point par changement d'étape (allure cible, passage). */
 function gpxMontreCourse(o, s, etapes) {
   const g = o.gpx;
@@ -9794,9 +9842,10 @@ function rendreMontreCourse(s) {
     <div class="grid grid-cols-2 gap-2 mt-4">
       <button data-act="copierMontreCourse" class="tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-regular fa-copy mr-1.5"></i>Copier les étapes</button>
       <button data-act="fitMontreCourse" class="tapable h-11 rounded-xl ${!marque || marque === 'garmin' || marque === 'autre' ? 'bg-ocre text-white font-semibold' : 'verre'} text-[13.5px]"><i class="fa-solid fa-download mr-1.5"></i>Fichier .FIT</button>
-      ${aTrace ? `<button data-act="gpxMontreCourse" class="col-span-2 tapable h-11 rounded-xl ${marque === 'workoutdoors' ? 'bg-ocre text-white font-semibold' : 'verre'} text-[13.5px]"><i class="fa-solid fa-route mr-1.5"></i>GPX du parcours avec repères d’étapes</button>` : ''}
+      <button data-act="workoutMontreCourse" class="col-span-2 tapable h-11 rounded-xl ${marque === 'apple' || marque === 'workoutdoors' ? 'bg-ocre text-white font-semibold' : 'verre'} text-[13.5px]"><i class="fa-brands fa-apple mr-1.5"></i>Envoyer à l’Apple Watch (app Exercice)</button>
+      ${aTrace ? `<button data-act="gpxMontreCourse" class="col-span-2 tapable h-11 rounded-xl verre text-[13.5px]"><i class="fa-solid fa-route mr-1.5"></i>GPX du parcours avec repères d’étapes</button>` : ''}
     </div>
-    <p class="text-[11px] text-brume mt-2 leading-snug">Le fichier .FIT est une séance au format Garmin (à copier dans GARMIN/NewFiles). Les autres marques se programment à la main en quelques minutes avec la liste ci-dessus.${aTrace ? ' Le GPX contient le tracé de la course et un point à chaque changement d’étape (allure cible, passage) : pour la navigation dans WorkOutDoors ou l’app de ta montre.' : marque === 'workoutdoors' ? ' Ajoute le GPX de la course dans ses réglages pour aussi l’envoyer comme parcours à WorkOutDoors.' : ''}</p>`;
+    <p class="text-[11px] text-brume mt-2 leading-snug">« Envoyer à l’Apple Watch » crée un fichier .workout que l’iPhone importe dans l’app Exercice. Le fichier .FIT est une séance au format Garmin (à copier dans GARMIN/NewFiles). Les autres marques se programment à la main en quelques minutes avec la liste ci-dessus.${aTrace ? ' Le GPX contient le tracé de la course et un point à chaque changement d’étape (allure cible, passage) : pour la navigation dans WorkOutDoors ou l’app de ta montre.' : marque === 'workoutdoors' ? ' Ajoute le GPX de la course dans ses réglages pour aussi l’envoyer comme parcours à WorkOutDoors.' : ''}</p>`;
 }
 
 /* ---------- Vue 5 : profil ---------- */
@@ -11230,6 +11279,16 @@ const ACTIONS = {
     const fichier = 'course-' + (normaliser(o.nom || 'jour-j').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'jour-j') + '.fit';
     const ok = await livrerFichier(fichier, fichierFitSeance(nom, etapes), 'application/vnd.ant.fit');
     if (ok) toast('Séance .FIT prête : copie-la dans GARMIN/NewFiles.', 'succes');
+  },
+  workoutMontreCourse: async () => {
+    const s = calculerStrategie(), o = ETAT.objectif;
+    if (!s) return;
+    const { etapes } = etapesMontreCourse(s, (o.montre && o.montre.decoupage) || 'portions');
+    await livrerWorkout(nomFichierWorkout('course-' + (o.nom || 'jour-j')), workoutCourse((o.nom || 'Course') + ' ' + formaterDuree(s.tempsCible), etapes));
+  },
+  workoutSeance: async id => {
+    const s = trouverSeance(id);
+    if (s) await livrerWorkout(nomFichierWorkout(s.date + '-' + s.titre), workoutSeance(s));
   },
   gpxMontreCourse: async () => {
     const s = calculerStrategie(), o = ETAT.objectif;
