@@ -8857,7 +8857,7 @@ function majReglagesGenerateur() {
   const est = $('#genEstimation');
   if (ab) {
     est.textContent = r.dureeCible
-      ? 'Trajet visé : ' + String(Math.round(r.dureeCible / r.allure * 10) / 10).replace('.', ',') + ' km, soit ' + dureeLisible(r.dureeCible) + ' à ' + formaterAllure(r.allure) + '/km.'
+      ? 'Effort visé : ' + dureeLisible(r.dureeCible) + ' à ' + formaterAllure(r.allure) + '/km sur le plat, soit ' + String(Math.round(r.dureeCible / r.allure * 10) / 10).replace('.', ',') + ' km s’il n’y a pas de D+. Avec du dénivelé, le trajet sera plus court pour tenir la même durée.'
       : 'Durée estimée à ' + formaterAllure(r.allure) + '/km, D+ compris, une fois le trajet calculé.';
     return;
   }
@@ -9012,11 +9012,13 @@ function pointsDetour(Q, B, longueur, t) {
 /**
  * Trajet A → B (→ C…) calé sur une durée : l'allure reste celle choisie, c'est la distance qui s'ajuste.
  * Si l'itinéraire direct est trop court, un point de détour est ajouté sur la dernière portion, avant l'arrivée,
- * et on l'écarte ou le rapproche (4 calculs au plus) jusqu'à ±2 % de la distance visée.
+ * et on l'écarte ou le rapproche (4 calculs au plus) jusqu'à ±2 % de la distance d'effort visée (D+ compris).
  */
 async function proposerTrajetDuree(reg) {
   const passages = [GEN.depart, ...reg.etapes, ...(reg.retour ? [GEN.depart] : [])];
-  const cible = reg.dureeCible / reg.allure * 1000;           // distance à parcourir à l'allure choisie (m)
+  // L'allure choisie est l'allure sur le plat ; la cible est une distance d'effort (100 m de D+ ≈ 1 km, la descente en rend un quart)
+  const cible = reg.dureeCible / reg.allure * 1000;           // km-effort à parcourir à l'allure choisie (m)
+  const effort = m => distanceEquivalente(m.a.distanceM, m.dplus || 0, m.dmoins);
   // Itinéraire direct, gardé en mémoire tant que les points ne changent pas
   const cleDirect = passages.map(p => p.lat.toFixed(5) + ',' + p.lon.toFixed(5)).join(';') + '|' + Math.round(reg.trail * 10);
   if (!GEN.trajetDirect || GEN.trajetDirect.cle !== cleDirect) {
@@ -9024,7 +9026,7 @@ async function proposerTrajetDuree(reg) {
     GEN.trajetDirect = { cle: cleDirect, it, m: mesurerItineraire(it) };
   }
   const direct = GEN.trajetDirect;
-  const d0 = direct.m.a.distanceM;
+  const d0 = effort(direct.m);
   const resultat = (it, m, detour) => ({
     points: it.points, distanceM: m.a.distanceM, dplus: m.dplus, dmoins: m.dmoins, altMin: m.a.altMin, altMax: m.a.altMax,
     aAltitude: m.a.aAltitude, profil: m.a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: null, type: 'ab',
@@ -9047,7 +9049,7 @@ async function proposerTrajetDuree(reg) {
     const W = pointsDetour(Q, B, L + extra, t);
     const it = await itineraireCourse([...passages.slice(0, -1), ...W, B], reg.trail, 0, 0);
     const m = mesurerItineraire(it);
-    const d = m.a.distanceM, ecart = Math.abs(d - cible) / cible;
+    const d = effort(m), ecart = Math.abs(d - cible) / cible;
     if (!meilleur || ecart < meilleur.ecart) meilleur = { it, m, ecart };
     if (ecart <= 0.02) break;
     const gagne = d - d0;
@@ -9281,9 +9283,11 @@ function rendreGenerateur() {
   const duree = distanceEquivalente(p.distanceM, p.dplus || 0, p.dmoins) / 1000 * reg.allure;
   const terrain = p.partTrail == null ? '—' : Math.round((1 - p.partTrail) * 100) + ' % / ' + Math.round(p.partTrail * 100) + ' %';
   const ligne = (t, v, s) => `<div class="rounded-xl bg-nuit/50 px-3 py-2"><div class="text-[10.5px] text-brume">${t}</div><div class="text-[14px] font-semibold">${v}</div>${s ? `<div class="text-[10.5px] text-brume">${s}</div>` : ''}</div>`;
+  const effortP = distanceEquivalente(p.distanceM, p.dplus || 0, p.dmoins);
   const blocDuree = p.distanceCible
-    ? ligne('Durée à ' + formaterAllure(reg.allure) + '/km', formaterDuree(p.distanceM / 1000 * reg.allure, true),
-        'cible ' + formaterDuree(reg.dureeCible, true) + (p.detour ? ', détour inclus' : p.distanceM > p.distanceCible * 1.02 ? ', trajet direct déjà plus long' : ''))
+    ? ligne('Durée, D+ compris', formaterDuree(duree, true),
+        'cible ' + formaterDuree(reg.dureeCible, true) + (p.detour ? ', détour inclus' : effortP > p.distanceCible * 1.02 ? ', trajet direct déjà plus long' : '') +
+        '<br>' + formaterAllure(reg.allure) + '/km sur le plat, moyenne réelle ≈ ' + formaterAllure(duree / (p.distanceM / 1000)) + '/km')
     : ligne('Durée estimée', formaterDuree(duree, true), 'à ' + formaterAllure(reg.allure) + '/km, D+ compris');
   $('#genStats2').innerHTML = blocDuree +
     ligne('Route / trail', terrain, 'visé : ' + Math.round((1 - reg.trail) * 100) + ' % / ' + Math.round(reg.trail * 100) + ' %' + (reg.dplus != null ? ', D+ ' + reg.dplus + ' m' : ''));
