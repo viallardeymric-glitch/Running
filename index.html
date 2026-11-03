@@ -5490,7 +5490,7 @@ function ouvrirModaleMontre(id) {
       </div>
     </div>
     <div class="rounded-2xl verre px-3 mb-3">${corps}</div>
-    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis Exercice, ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (Course en extérieur, bouton « … »), sur watchOS 10 et plus.</p>
+    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (Course en extérieur, bouton « … »), sur watchOS 10 et plus.</p>
     <button data-act="workoutSeance" data-arg="${s.id}" class="w-full tapable h-11 rounded-xl bg-ocre text-white font-semibold text-[13.5px]"><i class="fa-brands fa-apple mr-1.5"></i>Envoyer à l’Apple Watch</button>`);
 }
 
@@ -9540,7 +9540,7 @@ const MARQUES_MONTRE = {
   ] },
   apple: { nom: 'Apple Watch', etapes: [
     'Sur l’iPhone, touche « Apple Watch » ci-dessous : l’app crée la séance au format de l’app Exercice (fichier .workout), gratuit et sans autre app.',
-    'Dans la feuille de partage, choisis Exercice s’il est proposé ; sinon « Enregistrer dans Fichiers », puis touche le fichier dans l’app Fichiers. L’iPhone l’importe et l’envoie sur la montre (watchOS 10 et plus).',
+    'Dans la feuille de partage, choisis ton raccourci « Ouvrir dans Exercice » (action « Ouvrir le fichier », reçoit les Fichiers de la feuille de partage) ; sinon « Enregistrer dans Fichiers », puis touche le fichier dans l’app Fichiers. L’iPhone l’importe et l’envoie sur la montre (watchOS 10 et plus).',
     'Le jour J : app Exercice, Course en extérieur, bouton « … », et choisis la séance dans tes entraînements personnalisés.',
     'À la main si besoin : Course en extérieur, « … », Créer un entraînement, Personnalisé, une étape « Travail » par ligne ci-dessus (distance, alerte d’allure).'
   ] },
@@ -9695,8 +9695,8 @@ function workoutSeance(s) {
 const nomFichierWorkout = t => (normaliser(t || 'seance').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'seance') + '.workout';
 async function livrerWorkout(nomFichier, plan) {
   const ok = await livrerFichier(nomFichier, fichierWorkoutApple(plan), 'application/octet-stream');
-  if (ok) toast('Séance prête : ouvre le fichier sur l’iPhone (Exercice, ou Enregistrer dans Fichiers puis touche-le). Elle arrive dans l’app Exercice de la montre.', 'succes');
-  else toast('Fichier impossible à créer sur cet appareil.', 'erreur');
+  // Faux = feuille de partage fermée ou raccourci lancé (iOS rend alors la main sans succès) : pas d'alerte.
+  if (ok) toast('Séance envoyée : elle arrive dans l’app Exercice de la montre.', 'succes');
 }
 
 
