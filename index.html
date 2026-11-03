@@ -1415,7 +1415,7 @@ async function livrerFichier(nomFichier, contenu, type) {
   if (mobile && navigator.canShare) {
     try {
       const f = new File([contenu], nomFichier, { type });
-      if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: nomFichier }); return true; }
+      if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return true; }   // fichier seul : un titre arriverait comme 2e élément (texte) dans les raccourcis
     } catch (e) { if (e && e.name === 'AbortError') return false; }
   }
   return telecharger(nomFichier, contenu, type);
