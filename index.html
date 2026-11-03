@@ -612,8 +612,12 @@ if (window.tailwind) tailwind.config = {
         <i class="fa-solid fa-chevron-right text-[11px] text-brume chevron"></i>
       </summary>
       <div class="px-4 pb-4 pt-3 space-y-4 border-t border-[#EEF0F3]">
+        <div id="genChoixType" class="segments">
+          <button data-act="genType" data-arg="boucle"><i class="fa-solid fa-rotate mr-1"></i>Boucle</button>
+          <button data-act="genType" data-arg="ab"><i class="fa-solid fa-route mr-1"></i>Trajet A → B</button>
+        </div>
         <div>
-          <label class="text-[12px] text-brume block mb-1.5">Départ et arrivée</label>
+          <label id="genLibelleDepart" class="text-[12px] text-brume block mb-1.5">Départ et arrivée</label>
           <div class="flex gap-2">
             <input id="genAdresse" type="text" autocomplete="off" placeholder="Adresse, ville, lieu…" enterkeyhint="search"
               class="flex-1 min-w-0 h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
@@ -622,16 +626,28 @@ if (window.tailwind) tailwind.config = {
           </div>
           <p id="genDepart" class="text-[11.5px] text-brume mt-1.5 leading-snug">Cherche une adresse, prends ta position ou touche la carte.</p>
         </div>
+        <!-- Trajet A → B → C… : étapes dans l'ordre, ajoutées par adresse ou en touchant la carte -->
+        <div id="genBlocEtapes" class="hidden">
+          <label class="text-[12px] text-brume block mb-1.5">Étapes et arrivée</label>
+          <div id="genListeEtapes" class="space-y-1.5 mb-2"></div>
+          <div class="flex gap-2">
+            <input id="genAdresseEtape" type="text" autocomplete="off" placeholder="Ajouter une étape : adresse, lieu…" enterkeyhint="search"
+              class="flex-1 min-w-0 h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
+            <button data-act="genAjouterEtape" class="tapable w-11 h-11 rounded-xl verre shrink-0" aria-label="Ajouter l’étape"><i class="fa-solid fa-plus"></i></button>
+          </div>
+          <p class="text-[11.5px] text-brume mt-1.5 leading-snug">Ou touche la carte : chaque appui ajoute l’étape suivante (B, puis C…).</p>
+          <label class="flex items-center gap-3 text-[13px] mt-3"><input id="genRetour" type="checkbox" class="w-5 h-5 accent-[#FC5200]">Revenir au point de départ</label>
+        </div>
         <div id="carteGen" class="carte-parcours rounded-xl overflow-hidden h-[260px] bg-nuit/50"></div>
 
-        <div>
+        <div id="genBlocMode">
           <label class="text-[12px] text-brume block mb-1.5">Je règle</label>
           <div id="genChoixMode" class="segments">
             <button data-act="genMode" data-arg="distance">La distance</button>
             <button data-act="genMode" data-arg="duree">La durée</button>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div id="genBlocObjectif" class="grid grid-cols-2 gap-3">
           <div id="genBlocKm">
             <label class="text-[12px] text-brume block mb-1.5">Distance (km)</label>
             <input id="genKm" type="text" inputmode="decimal" autocomplete="off" placeholder="10"
@@ -8435,6 +8451,7 @@ function rendreCarteParcours(o) {
 const GEN = {
   carte: null, coucheTrace: null, coucheDepart: null, coucheCurseur: null, coucheKm: null,
   mode: 'distance', trail: 0, depart: null,
+  type: 'boucle', etapes: [], retour: false, coucheEtapes: null, rangTrajet: 0,     // trajet A → B → C… (type 'ab')
   propositions: [], index: -1, cle: '', enCours: false,
   prochaine: null, cleProchaine: '',
   capsUtilises: [], relief: {}, profils: {},
@@ -8614,7 +8631,7 @@ function tronconTrail(tags) {
   return false;
 }
 
-async function itineraireBrouter(passages, partTrail, pente) {
+async function itineraireBrouter(passages, partTrail, pente, alt = 0) {
   let profil = null;
   if (!GEN.moteurKo.profilBrouter) {
     try { profil = await idProfilBrouter(partTrail, pente); }
@@ -8622,7 +8639,7 @@ async function itineraireBrouter(passages, partTrail, pente) {
   }
   if (!profil) profil = partTrail >= 0.5 ? 'hiking-mountain' : 'trekking';
   const url = URL_BROUTER + '?lonlats=' + passages.map(p => p.lon.toFixed(6) + ',' + p.lat.toFixed(6)).join('|') +
-              '&profile=' + encodeURIComponent(profil) + '&alternativeidx=0&format=geojson';
+              '&profile=' + encodeURIComponent(profil) + '&alternativeidx=' + alt + '&format=geojson';
   const r = await fetchDelai(url);
   const texte = await r.text();
   let j = null;
@@ -8668,10 +8685,10 @@ async function itineraireOsrm(passages) {
 }
 
 /** Itinéraire passant par les points donnés : BRouter, sinon OSRM piéton. */
-async function itineraireCourse(passages, partTrail, pente = 0) {
+async function itineraireCourse(passages, partTrail, pente = 0, alt = 0) {
   let erreur = null;
   if (!GEN.moteurKo.brouter) {
-    try { return await itineraireBrouter(passages, partTrail, pente); }
+    try { return await itineraireBrouter(passages, partTrail, pente, alt); }
     catch (e) {
       erreur = e;
       // Point de passage hors réseau (lac, champ…) : BRouter répond, le problème vient du point, pas du service.
@@ -8680,6 +8697,7 @@ async function itineraireCourse(passages, partTrail, pente = 0) {
       GEN.moteurKo.brouter = true;
     }
   }
+  if (alt > 0) throw new Error('pas d’autre itinéraire pour ce trajet');      // OSRM ne propose pas de variantes multi-étapes
   try { return await itineraireOsrm(passages); }
   catch (e) { throw erreur || e; }
 }
@@ -8698,7 +8716,8 @@ function reglagesGenerateur() {
     if (duree > 0 && /^\s*\d{1,2}:\d{2}\s*$/.test($('#genDuree').value) && duree < 600) duree *= 60;   // « 1:15 » = 1 h 15
     km = duree > 0 ? duree / allure - 7.5 * (dplus || 0) / 1000 : NaN;                           // 100 m de D+ ≈ 0,75 km sur une boucle
   } else km = lireNombre($('#genKm').value);
-  const reg = { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100 };
+  const reg = { km, dplus, allure: allureSaine(allure), trail: GEN.trail / 100, type: GEN.type };
+  if (GEN.type === 'ab') Object.assign(reg, { km: NaN, dplus: null, etapes: GEN.etapes.slice(), retour: GEN.retour });
   // Parcours préparé pour une séance du plan : on garde son nom tant que les réglages n'ont pas été modifiés
   reg.titre = GEN.seance && GEN.seance.cle === [Math.round(km * 10), dplus, GEN.trail, reg.allure].join('|') ? GEN.seance.titre : null;
   return reg;
@@ -8719,6 +8738,8 @@ function parcoursPourSeance(id) {
   else if (['vma', 'seuil', 'specifique', 'fartlek', 'deblocage'].includes(s.type) && !trail) dplus = 0;   // allures justes : sur le plat
   else if (m.dplus > 20) dplus = m.dplus;
   GEN.mode = 'distance';
+  GEN.type = 'boucle';
+  rendreEtapesGen();
   if (trail) GEN.trail = Math.max(GEN.trail, 70);
   else if (dplus === 0) GEN.trail = Math.min(GEN.trail, 30);
   $('#genKm').value = String(km).replace('.', ',');
@@ -8740,11 +8761,12 @@ function parcoursPourSeance(id) {
   if (!GEN.depart) { toast('Choisis ton point de départ, puis touche « Générer » : la boucle sera calée sur « ' + esc(s.titre) + ' ».', 'info'); return; }
   lancerGeneration(false);
 }
-const cleReglages = r => [GEN.depart && GEN.depart.lat.toFixed(5), GEN.depart && GEN.depart.lon.toFixed(5), Math.round(r.km * 10), r.dplus, GEN.trail].join('|');
+const cleReglages = r => [GEN.depart && GEN.depart.lat.toFixed(5), GEN.depart && GEN.depart.lon.toFixed(5), Math.round(r.km * 10), r.dplus, GEN.trail,
+  r.type, (r.etapes || []).map(e => e.lat.toFixed(5) + ',' + e.lon.toFixed(5)).join(';'), r.retour ? 1 : 0].join('|');
 
 function sauverReglagesGenerateur() {
   APPAREIL.generateur = {
-    depart: GEN.depart, mode: GEN.mode, trail: GEN.trail,
+    depart: GEN.depart, mode: GEN.mode, trail: GEN.trail, type: GEN.type, etapes: GEN.etapes, retour: GEN.retour,
     km: $('#genKm').value, duree: $('#genDuree').value, dplus: $('#genDplus').value, allure: $('#genAllure').value
   };
   sauverAppareil();
@@ -8752,6 +8774,13 @@ function sauverReglagesGenerateur() {
 
 /** Texte « Route 70 % · Trail 30 % » et estimation de durée. */
 function majReglagesGenerateur() {
+  const ab = GEN.type === 'ab';
+  $$('#genChoixType button').forEach(b => b.classList.toggle('actif', b.dataset.arg === GEN.type));
+  $('#genBlocEtapes').classList.toggle('hidden', !ab);
+  $('#genBlocMode').classList.toggle('hidden', ab);
+  $('#genBlocObjectif').classList.toggle('hidden', ab);
+  $('#genLibelleDepart').textContent = ab ? 'Départ (A)' : 'Départ et arrivée';
+  $('#genRetour').checked = GEN.retour;
   $$('#genChoixMode button').forEach(b => b.classList.toggle('actif', b.dataset.arg === GEN.mode));
   $('#genBlocKm').classList.toggle('hidden', GEN.mode !== 'distance');
   $('#genBlocDuree').classList.toggle('hidden', GEN.mode !== 'duree');
@@ -8760,6 +8789,7 @@ function majReglagesGenerateur() {
   $$('.btnGenTerrain').forEach(b => { const on = +b.dataset.arg === GEN.trail; b.classList.toggle('verre', !on); ['bg-ocre', 'text-white', 'font-semibold'].forEach(c => b.classList.toggle(c, on)); });
   const r = reglagesGenerateur();
   const est = $('#genEstimation');
+  if (ab) { est.textContent = 'Durée estimée à ' + formaterAllure(r.allure) + '/km, D+ compris, une fois le trajet calculé.'; return; }
   if (!(r.km > 0)) { est.textContent = 'Allure par défaut : ton endurance fondamentale (' + formaterAllure(r.allure) + '/km).'; return; }
   const t = distanceEquivalente(r.km * 1000, r.dplus || 0) / 1000 * r.allure;
   est.textContent = GEN.mode === 'duree'
@@ -8853,10 +8883,29 @@ async function proposerParcours(reg) {
   };
 }
 
+/**
+ * Trajet A → B → C… : l'itinéraire passe par les étapes dans l'ordre (retour en A si demandé).
+ * Les variantes viennent des itinéraires alternatifs de BRouter (4 au plus).
+ */
+async function proposerTrajet(reg) {
+  const passages = [GEN.depart, ...reg.etapes, ...(reg.retour ? [GEN.depart] : [])];
+  const alt = GEN.rangTrajet++ % 4;
+  const it = await itineraireCourse(passages, reg.trail, 0, alt);
+  const a = analyserTrace(it.points);
+  const d = denivelesProfil(a.profil);
+  const dplus = it.dplusFiltre != null ? it.dplusFiltre : d.dplus;
+  const dmoins = it.dplusFiltre != null ? Math.max(0, Math.round(dplus - (a.profil.length ? a.profil[a.profil.length - 1][1] - a.profil[0][1] : 0))) : d.dmoins;
+  return {
+    points: it.points, distanceM: a.distanceM, dplus, dmoins, altMin: a.altMin, altMax: a.altMax,
+    aAltitude: a.aAltitude, profil: a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: null, type: 'ab'
+  };
+}
+const proposer = reg => reg.type === 'ab' ? proposerTrajet(reg) : proposerParcours(reg);
+
 /** Prépare en arrière-plan la proposition suivante : « Changer de parcours » devient instantané. */
 function precalculerSuivante(reg, cle) {
   GEN.cleProchaine = cle;
-  GEN.prochaine = proposerParcours(reg).catch(e => { console.warn(e); return null; });
+  GEN.prochaine = proposer(reg).catch(e => { console.warn(e); return null; });
 }
 
 function messageErreurGen(e) {
@@ -8872,11 +8921,13 @@ async function lancerGeneration(nouvelle) {
   if (GEN.enCours) return;
   if (!GEN.depart) { toast('Choisis d’abord un point de départ : adresse, ta position ou touche la carte.', 'alerte'); return; }
   const reg = reglagesGenerateur();
-  if (!(reg.km >= 1 && reg.km <= 100)) { toast(GEN.mode === 'duree' ? 'Indique une durée (par exemple 1:00).' : 'Indique une distance entre 1 et 100 km.', 'alerte'); return; }
+  if (reg.type === 'ab') {
+    if (!reg.etapes.length) { toast('Ajoute au moins une étape B : une adresse, ou touche la carte.', 'alerte'); return; }
+  } else if (!(reg.km >= 1 && reg.km <= 100)) { toast(GEN.mode === 'duree' ? 'Indique une durée (par exemple 1:00).' : 'Indique une distance entre 1 et 100 km.', 'alerte'); return; }
   sauverReglagesGenerateur();
   const cle = cleReglages(reg);
   if (nouvelle || cle !== GEN.cle) {
-    GEN.propositions = []; GEN.index = -1; GEN.cle = cle; GEN.capsUtilises = [];
+    GEN.propositions = []; GEN.index = -1; GEN.cle = cle; GEN.capsUtilises = []; GEN.rangTrajet = 0;
     if (GEN.cleProchaine !== cle) GEN.prochaine = null;
   }
   GEN.enCours = true;
@@ -8884,15 +8935,25 @@ async function lancerGeneration(nouvelle) {
   try {
     let p = null;
     if (GEN.prochaine && GEN.cleProchaine === cle) { p = await GEN.prochaine; GEN.prochaine = null; }
-    if (!p) p = await proposerParcours(reg);
-    GEN.capsUtilises.push(p.cap);
+    if (!p) p = await proposer(reg);
+    if (p.cap != null) GEN.capsUtilises.push(p.cap);
+    // Trajet : BRouter n'a parfois qu'un ou deux itinéraires vraiment différents ; pas de doublon dans la liste
+    const doublon = p.type === 'ab' && GEN.propositions.find(q => Math.abs(q.distanceM - p.distanceM) < 30 && Math.abs(q.dplus - p.dplus) < 5);
+    if (doublon) {
+      GEN.index = GEN.propositions.indexOf(doublon);
+      rendreGenerateur();
+      toast(GEN.propositions.length > 1 ? 'Pas d’autre itinéraire pour ce trajet : tu as vu toutes les variantes.' : 'C’est le seul itinéraire raisonnable pour ce trajet. Ajoute une étape pour passer ailleurs.', 'info');
+      if (GEN.rangTrajet < 4) precalculerSuivante(reg, cle);
+      return;
+    }
     GEN.propositions.push(p);
     GEN.index = GEN.propositions.length - 1;
     rendreGenerateur();
     precalculerSuivante(reg, cle);
   } catch (e) {
     console.error(e);
-    toast(messageErreurGen(e), 'erreur');
+    if (reg.type === 'ab' && GEN.propositions.length) toast('Pas d’autre itinéraire pour ce trajet. Ajoute ou déplace une étape pour passer ailleurs.', 'info');
+    else toast(messageErreurGen(e), 'erreur');
   } finally {
     GEN.enCours = false;
     majBoutonsGen();
@@ -8902,8 +8963,9 @@ async function lancerGeneration(nouvelle) {
 function majBoutonsGen() {
   const b = $('#btnGenGenerer');
   b.disabled = GEN.enCours;
-  b.innerHTML = GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Calcul de la boucle…'
-    : GEN.propositions.length ? '🔄 Changer de parcours' : '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Générer un parcours';
+  const ab = GEN.type === 'ab';
+  b.innerHTML = GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>' + (ab ? 'Calcul du trajet…' : 'Calcul de la boucle…')
+    : GEN.propositions.length ? '🔄 Changer de parcours' : '<i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>' + (ab ? 'Calculer le trajet' : 'Générer un parcours');
   $('#btnGenPrec').disabled = GEN.enCours || GEN.index <= 0;
   $('#btnGenSuiv').disabled = GEN.enCours || GEN.index >= GEN.propositions.length - 1;
   $('#btnGenPrec').classList.toggle('opacity-40', $('#btnGenPrec').disabled);
@@ -8915,9 +8977,49 @@ function majBoutonsGen() {
 function centrerSurDepart(zoom) {
   if (!GEN.carte || !GEN.depart || !window.L) return;
   if (GEN.coucheDepart) GEN.coucheDepart.setLatLng([GEN.depart.lat, GEN.depart.lon]);
-  else GEN.coucheDepart = L.circleMarker([GEN.depart.lat, GEN.depart.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#16A34A', fillOpacity: 1 }).addTo(GEN.carte).bindTooltip('Départ et arrivée');
+  else GEN.coucheDepart = L.circleMarker([GEN.depart.lat, GEN.depart.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#16A34A', fillOpacity: 1 }).addTo(GEN.carte).bindTooltip('Départ');
   if (zoom) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], zoom);
 }
+/** Liste des étapes (B, C…) et leurs repères sur la carte. */
+const lettreEtape = i => String.fromCharCode(66 + i);
+function rendreEtapesGen() {
+  $('#genListeEtapes').innerHTML = GEN.etapes.map((e, i) => `<div class="flex items-center gap-2 rounded-xl bg-nuit/50 px-3 py-2">
+      <span class="w-6 h-6 rounded-full grid place-items-center bg-ocre text-white text-[11px] font-bold shrink-0">${lettreEtape(i)}</span>
+      <span class="flex-1 min-w-0 text-[12.5px] truncate">${e.nom ? esc(e.nom) : 'Point placé sur la carte'}</span>
+      <button data-act="genRetirerEtape" data-arg="${i}" class="tapable w-8 h-8 rounded-lg grid place-items-center text-brume shrink-0" aria-label="Retirer l’étape ${lettreEtape(i)}"><i class="fa-solid fa-xmark"></i></button>
+    </div>`).join('') || '<div class="text-[12px] text-brume">Aucune étape pour l’instant.</div>';
+  if (!GEN.carte || !window.L) return;
+  if (GEN.coucheEtapes) GEN.coucheEtapes.remove();
+  GEN.coucheEtapes = null;
+  if (GEN.type !== 'ab') return;
+  GEN.coucheEtapes = L.layerGroup(GEN.etapes.map((e, i) => L.marker([e.lat, e.lon], {
+    icon: L.divIcon({ className: '', iconSize: [24, 24], iconAnchor: [12, 12],
+      html: '<span style="display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#FC5200;color:#fff;font:700 12px/1 sans-serif;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">' + lettreEtape(i) + '</span>' })
+  }).bindTooltip('Étape ' + lettreEtape(i) + (e.nom ? ' : ' + esc(e.nom.split(',')[0]) : '')))).addTo(GEN.carte);
+}
+function ajouterEtapeGen(lat, lon, nom) {
+  if (GEN.etapes.length >= 8) { toast('8 étapes au maximum.', 'alerte'); return; }
+  GEN.etapes.push({ lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, nom: nom || '' });
+  sauverReglagesGenerateur();
+  rendreEtapesGen();
+}
+async function geocoderGen(q) {
+  const r = await fetchDelai(URL_GEOCODAGE + '?format=json&limit=1&accept-language=fr&q=' + encodeURIComponent(q), {}, 12000);
+  const j = await r.json();
+  return Array.isArray(j) && j.length ? { lat: +j[0].lat, lon: +j[0].lon, nom: j[0].display_name } : null;
+}
+async function ajouterEtapeAdresseGen() {
+  const q = $('#genAdresseEtape').value.trim();
+  if (!q) { toast('Écris l’adresse ou le lieu de l’étape.', 'alerte'); return; }
+  try {
+    const g = await geocoderGen(q);
+    if (!g) { toast('Lieu introuvable. Essaie avec la ville.', 'alerte'); return; }
+    ajouterEtapeGen(g.lat, g.lon, g.nom);
+    $('#genAdresseEtape').value = '';
+    if (GEN.carte) GEN.carte.panTo([g.lat, g.lon]);
+  } catch (e) { toast(messageErreurGen(e), 'erreur'); }
+}
+
 function definirDepart(lat, lon, nom) {
   GEN.depart = { lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, nom: nom || '' };
   $('#genDepart').innerHTML = '<i class="fa-solid fa-location-dot text-vallee mr-1"></i>' + (nom ? esc(nom) : 'Point placé sur la carte') +
@@ -8941,10 +9043,16 @@ async function preparerCarteGen() {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(GEN.carte);
     if (GEN.depart) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 14); else GEN.carte.setView([46.6, 2.4], 5);
     GEN.carte.on('click', e => {
+      if (GEN.type === 'ab' && GEN.depart) {
+        ajouterEtapeGen(e.latlng.lat, e.latlng.lng, '');
+        toast('Étape ' + lettreEtape(GEN.etapes.length - 1) + ' ajoutée.', 'info');
+        return;
+      }
       definirDepart(e.latlng.lat, e.latlng.lng, '');
-      toast('Départ placé. Touche « Générer » pour calculer une boucle.', 'info');
+      toast(GEN.type === 'ab' ? 'Départ A placé. Touche la carte pour ajouter B, puis C…' : 'Départ placé. Touche « Générer » pour calculer une boucle.', 'info');
     });
     centrerSurDepart();
+    rendreEtapesGen();
     if (GEN.index >= 0) dessinerTraceGen(GEN.propositions[GEN.index]);
   } catch (e) {
     zone.innerHTML = '<div class="h-full grid place-items-center text-center px-6 text-[12.5px] text-brume">Carte indisponible pour le moment. Tu peux quand même chercher une adresse ou prendre ta position.</div>';
@@ -8988,7 +9096,10 @@ function rendreGenerateur() {
   majBoutonsGen();
   if (!p) { effacerGraphique('graphProfilGen'); return; }
   const reg = p.reglages;
-  $('#genTitre').textContent = (reg.titre ? reg.titre + ' · ' : '') + 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + ' · boucle vers ' + ['le nord', 'le nord-est', 'l’est', 'le sud-est', 'le sud', 'le sud-ouest', 'l’ouest', 'le nord-ouest'][Math.round(p.cap / 45) % 8];
+  const suite = p.type === 'ab'
+    ? ' · trajet A → ' + reg.etapes.map((_, i) => lettreEtape(i)).join(' → ') + (reg.retour ? ' → A' : '')
+    : ' · boucle vers ' + ['le nord', 'le nord-est', 'l’est', 'le sud-est', 'le sud', 'le sud-ouest', 'l’ouest', 'le nord-ouest'][Math.round(p.cap / 45) % 8];
+  $('#genTitre').textContent = (reg.titre ? reg.titre + ' · ' : '') + 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + suite;
   const tuile = (t, v, u) => `<div class="rounded-xl bg-nuit/50 p-2.5 text-center"><div class="text-[10.5px] text-brume">${t}</div><div class="chiffre text-[20px]">${v}</div><div class="text-[10px] text-brume">${u}</div></div>`;
   $('#genStats').innerHTML = tuile('Distance', km1(p.distanceM), 'km') + tuile('D+', p.aAltitude ? p.dplus : '—', 'm') +
     tuile('D-', p.aAltitude ? p.dmoins : '—', 'm') + tuile('Alt. max', p.altMax != null ? p.altMax : '—', 'm');
@@ -9040,8 +9151,12 @@ function telechargerParcoursGen() {
   if (!p) return;
   const km = km1(p.distanceM);
   const lieu = GEN.depart && GEN.depart.nom ? GEN.depart.nom.split(',')[0].trim() : '';
-  const nom = (p.reglages.titre ? p.reglages.titre + ' : boucle ' : 'Boucle ') + km + ' km' + (lieu ? ' depuis ' + lieu : '') + (p.dplus ? ' (' + p.dplus + ' m D+)' : '');
-  const fichier = 'RDD-boucle-' + km.replace(',', '-') + 'km' + (lieu ? '-' + lieu.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) : '') + '.gpx';
+  const derniere = p.type === 'ab' && p.reglages.etapes.length ? p.reglages.etapes[p.reglages.etapes.length - 1] : null;
+  const arrivee = derniere && derniere.nom && !p.reglages.retour ? derniere.nom.split(',')[0].trim() : '';
+  const nom = p.type === 'ab'
+    ? 'Trajet ' + km + ' km' + (lieu ? ' de ' + lieu : '') + (arrivee ? ' à ' + arrivee : '') + (p.reglages.retour ? ' (aller-retour par ' + p.reglages.etapes.length + ' étape' + (p.reglages.etapes.length > 1 ? 's' : '') + ')' : '') + (p.dplus ? ', ' + p.dplus + ' m D+' : '')
+    : (p.reglages.titre ? p.reglages.titre + ' : boucle ' : 'Boucle ') + km + ' km' + (lieu ? ' depuis ' + lieu : '') + (p.dplus ? ' (' + p.dplus + ' m D+)' : '');
+  const fichier = 'RDD-' + (p.type === 'ab' ? 'trajet-' : 'boucle-') + km.replace(',', '-') + 'km' + (lieu ? '-' + lieu.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) : '') + '.gpx';
   if (telecharger(fichier, gpxDepuisParcours(p, nom), 'application/gpx+xml')) toast('GPX téléchargé : ' + esc(fichier) + '. Importe-le dans l’app de ta montre.', 'succes');
   else toast('Téléchargement impossible sur cet appareil.', 'erreur');
 }
@@ -9052,10 +9167,9 @@ async function chercherAdresseGen() {
   const q = $('#genAdresse').value.trim();
   if (!q) { toast('Écris une adresse ou une ville.', 'alerte'); return; }
   try {
-    const r = await fetchDelai(URL_GEOCODAGE + '?format=json&limit=1&accept-language=fr&q=' + encodeURIComponent(q), {}, 12000);
-    const j = await r.json();
-    if (!Array.isArray(j) || !j.length) { toast('Adresse introuvable. Essaie avec la ville.', 'alerte'); return; }
-    definirDepart(+j[0].lat, +j[0].lon, j[0].display_name);
+    const g = await geocoderGen(q);
+    if (!g) { toast('Adresse introuvable. Essaie avec la ville.', 'alerte'); return; }
+    definirDepart(g.lat, g.lon, g.nom);
     if (GEN.carte) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 14);
   } catch (e) { toast(messageErreurGen(e), 'erreur'); }
 }
@@ -9074,6 +9188,10 @@ function brancherGenerateur() {
   const r = APPAREIL.generateur || {};
   GEN.mode = r.mode === 'duree' ? 'duree' : 'distance';
   GEN.trail = borner(Math.round((+r.trail || 0) / 10) * 10, 0, 100);
+  GEN.type = r.type === 'ab' ? 'ab' : 'boucle';
+  GEN.retour = !!r.retour;
+  GEN.etapes = (Array.isArray(r.etapes) ? r.etapes : []).filter(e => e && isFinite(e.lat) && isFinite(e.lon)).slice(0, 8)
+    .map(e => ({ lat: +e.lat, lon: +e.lon, nom: String(e.nom || '') }));
   $('#genKm').value = r.km || '10';
   $('#genDuree').value = r.duree || '';
   $('#genDplus').value = r.dplus || '';
@@ -9085,6 +9203,8 @@ function brancherGenerateur() {
   ['genKm', 'genDuree', 'genDplus', 'genAllure'].forEach(id => $('#' + id).addEventListener('input', majReglagesGenerateur));
   $('#genTrail').addEventListener('input', e => { GEN.trail = +e.target.value; majReglagesGenerateur(); });
   $('#genAdresse').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chercherAdresseGen(); } });
+  $('#genAdresseEtape').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterEtapeAdresseGen(); } });
+  $('#genRetour').addEventListener('change', e => { GEN.retour = e.target.checked; sauverReglagesGenerateur(); });
   $('#voletGenerateur').addEventListener('toggle', e => {
     if (!e.target.open) return;
     if (!$('#genAllure').value) $('#genAllure').placeholder = formaterAllure(reglagesGenerateur().allure).replace("'", ':');
@@ -9092,6 +9212,7 @@ function brancherGenerateur() {
     preparerCarteGen();
   });
   majReglagesGenerateur();
+  rendreEtapesGen();
   majBoutonsGen();
 }
 
@@ -10838,6 +10959,9 @@ const ACTIONS = {
   genPrecedent: () => { if (GEN.index > 0) { GEN.index--; rendreGenerateur(); } },
   genSuivant: () => { if (GEN.index < GEN.propositions.length - 1) { GEN.index++; rendreGenerateur(); } },
   genTelecharger: () => telechargerParcoursGen(),
+  genType: arg => { GEN.type = arg === 'ab' ? 'ab' : 'boucle'; majReglagesGenerateur(); rendreEtapesGen(); sauverReglagesGenerateur(); majBoutonsGen(); },
+  genAjouterEtape: () => ajouterEtapeAdresseGen(),
+  genRetirerEtape: arg => { GEN.etapes.splice(+arg, 1); sauverReglagesGenerateur(); rendreEtapesGen(); },
   parcoursSeance: id => parcoursPourSeance(id),
   genChercherAdresse: () => chercherAdresseGen(),
   genMaPosition: () => maPositionGen(),
