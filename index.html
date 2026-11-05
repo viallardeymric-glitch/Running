@@ -5777,7 +5777,7 @@ function resumeSeanceIA(x) {
 }
 
 /** Dossier du coureur transmis à l'IA : uniquement des chiffres calculés par l'application. */
-function contexteIA() {
+function contexteIA(compact = false) {
   const c = contexteCoach();
   const z = c.m.zones;
   const a = x => formaterAllure(x) + '/km';
@@ -5800,13 +5800,13 @@ function contexteIA() {
       tempsProbable: s && !s.niveauInconnu ? formaterDuree(s.tempsModele) : null,
       verdictObjectif: s && s.verdict ? s.verdict.texte : null, vmaNecessaire: s ? s.vmaNecessaire : null,
       allureMoyenneCible: s ? a(s.allureMoy) : null,
-      ravitaillement: (() => {
+      ravitaillement: compact ? null : (() => {
         const p = s ? planNutrition(s) : null;
         return p ? { glucidesGParHeure: p.glucidesParHeure, eauMlParHeure: p.eauParHeure, sodiumMgParHeure: p.sodiumParHeure || null, gels: p.nbGels, barres: p.nbBarres,
                      prises: p.prises.slice(0, 16).map(x => tempsCourse(x.tempsS) + ' km ' + fr1(x.km) + ' ' + x.quoi),
                      ravitaillementsKm: p.ravitos.map(r => r.km), poidsKg: p.poids + (p.poidsSaisi ? '' : ' (par défaut)'), conditions: p.conditions } : null;
       })(),
-      parKm: s ? s.kms.filter((k, i) => s.kms.length <= 30 || i % Math.ceil(s.kms.length / 30) === 0 || i === s.kms.length - 1)
+      parKm: s && !compact ? s.kms.filter((k, i) => s.kms.length <= 30 || i % Math.ceil(s.kms.length / 30) === 0 || i === s.kms.length - 1)
                   .map(k => ({ km: k.km, allure: formaterAllure(k.allure), dplus: Math.round(k.dplus), dmoins: Math.round(k.dmoins), consigne: k.consigne.texte })) : null
     } : null,
     saison: coursesTriees().filter(courseComplete).map(x => ({
@@ -5816,19 +5816,19 @@ function contexteIA() {
     plan: ETAT.plan ? {
       approche: (APPROCHES[ETAT.profil.approche] || APPROCHES.equilibree).libelle,
       semaines: ETAT.plan.semaines.length,
-      semaineEnCours: c.semaine ? { numero: c.semaine.numero, phase: PHASES[c.semaine.phase].libelle, allegee: !!c.semaine.relache, seances: c.semaine.seances.map(resume) } : null,
+      semaineEnCours: c.semaine ? { numero: c.semaine.numero, phase: PHASES[c.semaine.phase].libelle, allegee: !!c.semaine.relache, seances: c.semaine.seances.map(resume).map(x => compact ? Object.assign(x, { deroule: undefined }) : x) } : null,
       prochaineSeance: c.prochaine ? resume(c.prochaine) : null,
-      aVenir: toutesSeances().filter(x => x.date >= cleJour(new Date()) && x.type !== 'course' && ['prevu', 'aujourdhui'].includes(statutSeance(x))).slice(0, 12).map(resume),
+      aVenir: toutesSeances().filter(x => x.date >= cleJour(new Date()) && x.type !== 'course' && ['prevu', 'aujourdhui'].includes(statutSeance(x))).slice(0, compact ? 5 : 12).map(resume).map(x => compact ? Object.assign(x, { deroule: undefined }) : x),
       respect: c.respect.echues ? c.respect.faites + ' séances faites sur ' + c.respect.echues : null
     } : null,
-    sortiesRecentes: ETAT.activites.slice(0, 8).map(x => ({
+    sortiesRecentes: ETAT.activites.slice(0, compact ? 4 : 8).map(x => ({
       date: cleJour(x.date), nom: x.nom, type: x.type, km: Math.round(x.distanceM / 100) / 10, duree: formaterDuree(x.tempsS),
       allure: formaterAllure(x.tempsS / (x.distanceM / 1000)), dplus: x.dplus, fcMoy: x.fcMoy || null, effortMax: !!x.effortMax }))
   };
 }
 
 /** Consignes données à l'IA : rôle, règles de sécurité, actions possibles, dossier du coureur et écran affiché. */
-function promptSystemeCoach(ecran = null) {
+function promptSystemeCoach(ecran = null, compact = false) {
   return [
     'Tu es le coach de RDD (« Runner du dimanche »), une application de course à pied et de trail.',
     'Tu parles en français à ' + (ETAT.profil.prenom || 'un coureur amateur') + ', tu le tutoies, avec un ton chaleureux, direct et motivant, jamais condescendant.',
@@ -5846,8 +5846,8 @@ function promptSystemeCoach(ecran = null) {
     '- Tu peux proposer une action en ajoutant, à la toute fin de ta réponse, une ou plusieurs balises parmi : [[alleger]] (alléger les 7 prochains jours), [[decaler]] (replacer une séance clé manquée), [[plan]] (générer ou mettre à jour le plan), [[montre]] (envoyer la prochaine séance à la montre), [[course]] (ouvrir la fiche de la course), [[strava]] (connecter Strava). L’utilisateur confirme d’un geste : ne dis jamais que tu as modifié le plan toi-même.',
     '',
     'CONTEXTE (JSON) :',
-    JSON.stringify(contexteIA())
-  ].concat(ecran ? [
+    JSON.stringify(contexteIA(compact))
+  ].concat(ecran && !compact ? [
     '',
     'ÉCRAN AFFICHÉ (ce que ' + (ETAT.profil.prenom || 'le coureur') + ' a sous les yeux au moment de la question, lu dans l’app) :',
     JSON.stringify(ecranPourIA(ecran)),
@@ -5856,10 +5856,10 @@ function promptSystemeCoach(ecran = null) {
 }
 
 /** Fil de discussion au format de l'API : rôles alternés, premier message de l'utilisateur. */
-function historiqueIA() {
+function historiqueIA(nbMessages = 12) {
   const msgs = [];
   const dernierMoi = ETAT.chat.filter(m => m.role === 'moi').slice(-1)[0];     // ses pièces sont jointes en entier à la requête
-  ETAT.chat.filter(m => !['annule', 'erreur', 'local-secours'].includes(m.source)).slice(-12).forEach(m => {
+  ETAT.chat.filter(m => !['annule', 'erreur', 'local-secours'].includes(m.source)).slice(-nbMessages).forEach(m => {
     const role = m.role === 'moi' ? 'user' : 'assistant';
     let contenu = String(m.role === 'moi' ? (m.texte || texteBrut(m.html)) : texteBrut(m.html)).trim();
     if (m.role === 'moi' && Array.isArray(m.pieces) && m.pieces.length) {
@@ -6075,7 +6075,8 @@ async function appelerCompatible(mode, systeme, messages, maxTokens = 1500, sign
     let detail = '';
     try { const j = await rep.json(); const err = (j && j.error) || j || {}; detail = typeof err === 'string' ? err : (err.message || err.detail || ''); } catch (e) { /* corps illisible */ }
     const apres = parseInt(rep.headers.get('retry-after') || '', 10);
-    throw Object.assign(new Error(String(detail || 'statut ' + rep.status)), { statut: rep.status, fournisseur: mode, delai: isFinite(apres) ? apres : null, definitif: rep.status === 402 });
+    const trop = rep.status === 413 || (rep.status !== 429 && /request too large|context.?length|maximum context/i.test(String(detail)));
+    throw Object.assign(new Error(String(detail || 'statut ' + rep.status)), { statut: rep.status, fournisseur: mode, delai: isFinite(apres) ? apres : null, definitif: rep.status === 402 || trop, tropLong: trop });
   }
   const data = await rep.json();
   if (data && data.error) {                                         // OpenRouter peut répondre 200 avec une erreur du modèle en amont
@@ -6293,13 +6294,17 @@ function messageErreurIA(e) {
     if (e.statut === 404) return 'Modèle « ' + esc(modeleFournisseur(e.fournisseur)) + ' » introuvable chez ' + f.nom + ' : choisis-en un autre dans les réglages.';
     if (e.statut === 429) return 'Limite de requêtes ' + f.nom + ' atteinte' + (f.gratuit ? ' (offre gratuite)' : '') + (e.delai ? ' : réessaie dans ' + e.delai + ' s.' : '.');
     if (e.statut >= 500) return f.nom + ' est surchargé, réessaie dans un instant.';
+    if (e.tropLong || e.statut === 413) return 'Question trop volumineuse pour la limite ' + (f.gratuit ? 'de l’offre gratuite ' : '') + 'de ' + f.nom + ', même avec un dossier résumé. Réessaie dans une minute, choisis un modèle plus généreux dans les réglages ou efface le fil.';
     if (e.statut === 400) return 'Requête refusée par ' + f.nom + (m2 ? ' (' + esc(m2.slice(0, 120)) + ').' : '.');
+    if (e.statut) return f.nom + ' a renvoyé une erreur (statut ' + e.statut + (m2 ? ' : ' + esc(m2.slice(0, 120)) : '') + ').';
   }
   if (e.statut === 401) return 'Clé API refusée par Anthropic.';
   if (e.statut === 403) return 'Cette clé n’a pas accès à ce modèle.';
   if (e.statut === 404) return 'Modèle ou adresse introuvable.';
   if (e.statut === 429 || e.statut === 529) return 'L’IA est très sollicitée en ce moment.';
   if (e.statut === 400) return 'Requête refusée' + (m ? ' (' + esc(m.slice(0, 120)) + ').' : '.');
+  if (e.statut) return nom + ' a renvoyé une erreur (statut ' + e.statut + (m ? ' : ' + esc(m.slice(0, 120)) : '') + ').';
+  if (!e.code && m) return 'Erreur inattendue pendant l’appel à ' + nom + ' (' + esc(m.slice(0, 120)) + ').';
   return nom + ' est injoignable (connexion ?).';
 }
 
@@ -6315,7 +6320,14 @@ async function repondreClaude(ecran, opts = {}) {
 }
 
 async function repondreCompatible(mode, ecran, opts = {}) {
-  const { texte, tronque } = await avecPatience(() => appelerCompatible(mode, promptSystemeCoach(ecran), historiqueIA(), 1500, opts.signal, opts.pieces), opts);
+  let resultat;
+  try { resultat = await avecPatience(() => appelerCompatible(mode, promptSystemeCoach(ecran), historiqueIA(), 1500, opts.signal, opts.pieces), opts); }
+  catch (e) {
+    if (!e || !e.tropLong) throw e;
+    // Question trop lourde pour la limite du fournisseur (ex. Groq gratuit : jetons par minute) : nouvel essai avec un dossier résumé
+    resultat = await avecPatience(() => appelerCompatible(mode, promptSystemeCoach(null, true), historiqueIA(4), 800, opts.signal, opts.pieces), opts);
+  }
+  const { texte, tronque } = resultat;
   return Object.assign(miseEnFormeIA(texte + (tronque ? ' […]' : '')), { source: mode });
 }
 
