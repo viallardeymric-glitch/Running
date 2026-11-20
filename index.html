@@ -259,6 +259,42 @@ if (window.tailwind) tailwind.config = {
   .scroll-x::-webkit-scrollbar{ display:none; }
   .carte-parcours{ position:relative; isolation:isolate; }          /* les calques de la carte restent sous l'en-tête */
   .carte-parcours .leaflet-container{ background:transparent; font:inherit; }
+  /* Carte du générateur en plein écran (la carte Leaflet y est déplacée telle quelle) */
+  .pec-agrandir{ position:absolute; top:8px; right:8px; z-index:2; width:38px; height:38px; border-radius:12px; background:#fff; color:#1F2430;
+                 box-shadow:0 2px 8px rgba(16,24,40,.25); display:grid; place-items:center; font-size:15px; }
+  html.pec-ouvert, html.pec-ouvert body{ overflow:hidden; overscroll-behavior:none; }
+  .pec{ display:none; position:fixed; inset:0; z-index:57; flex-direction:column; background:#E9ECF1; color:#1F2430; }
+  .pec.ouvert{ display:flex; }
+  .pec-carte{ flex:1; min-height:0; position:relative; }
+  .pec-carte > .leaflet-container{ position:absolute; inset:0; width:100%; height:100%; background:#E5E3DF; }
+  .pec-haut{ position:absolute; top:0; left:0; right:0; z-index:1000; display:flex; align-items:center; gap:8px;
+             padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px; pointer-events:none; }
+  .pec-haut > *{ pointer-events:auto; }
+  .pec-rond{ width:44px; height:44px; border-radius:50%; background:#fff; color:#1F2430; box-shadow:0 2px 10px rgba(16,24,40,.28);
+             display:grid; place-items:center; font-size:18px; flex-shrink:0; }
+  .pec .pec-fonds{ flex:1; max-width:300px; margin:0 auto; background:rgba(255,255,255,.94); box-shadow:0 2px 10px rgba(16,24,40,.22); }
+  .pec .pec-fonds > button{ color:#5B6475; }
+  .pec .pec-fonds > button.actif{ background:#1F2430; color:#fff; }
+  .pec-bas{ position:relative; z-index:1000; margin-top:-16px; background:#fff; color:#1F2430; border-radius:20px 20px 0 0;
+            box-shadow:0 -6px 24px rgba(16,24,40,.18); padding:12px 14px calc(env(safe-area-inset-bottom, 0px) + 12px); }
+  .pec-bas .ed-chiffre{ font-size:28px; font-weight:700; letter-spacing:-.02em; line-height:1; font-variant-numeric:tabular-nums; }
+  .pec-bas .ed-pastille{ display:inline-block; padding:3px 8px; border-radius:99px; font-size:12px; font-weight:600; }
+  .ed-ok{ background:rgba(22,163,74,.12); color:#15803D; } .ed-moyen{ background:rgba(252,82,0,.12); color:#C2410C; } .ed-loin{ background:rgba(220,38,38,.12); color:#B91C1C; }
+  .pec-bas .ed-aide{ font-size:12px; color:#5B6475; line-height:1.4; margin:8px 0 10px; }
+  .pec-bas .ed-outils{ display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:8px; }
+  .pec-bas .ed-btn{ height:46px; border-radius:14px; background:#F1F3F6; color:#1F2430; font-weight:600; font-size:13.5px; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .pec-bas .ed-btn.principal{ background:#FC5200; color:#fff; }
+  .pec-bas .ed-btn:disabled{ opacity:.4; }
+  .pec-bas .ed-ligne{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; font-size:13px; }
+  .pec-bas .ed-lien{ color:#FC5200; font-weight:600; font-size:13px; }
+  .ed-poignee{ display:grid; place-items:center; width:40px; height:40px; }
+  .ed-poignee > span{ display:block; border-radius:50%; box-shadow:0 1px 5px rgba(0,0,0,.45); }
+  .ed-poignee.auto > span{ width:16px; height:16px; background:#fff; border:3.5px solid #FC5200; }
+  .ed-poignee.fixe > span{ width:24px; height:24px; background:#FC5200; border:3px solid #fff; display:grid; place-items:center; color:#fff; font:700 11px/1 sans-serif; }
+  .ed-poignee.leaflet-drag-target > span, .ed-poignee:active > span{ transform:scale(1.35); }
+  .ed-popup .leaflet-popup-content{ margin:10px 12px; }
+  .pec-carte .leaflet-bottom{ bottom:16px; }                         /* au-dessus du bord arrondi du panneau */
+  .pec-carte .leaflet-control-attribution{ font-size:9.5px; max-width:70vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .zone-depot.survol{ border-color:var(--orange); background:rgba(252,82,0,.06); }
   .bulle-coach{ background:var(--bulle); }
   .bulle-moi{ background:var(--orange); color:#fff; }
@@ -647,7 +683,10 @@ if (window.tailwind) tailwind.config = {
             class="w-full h-11 px-3 rounded-xl bg-nuit/60 border border-brume/20 outline-none focus:border-ocre text-[16px]">
           <p class="text-[11.5px] text-brume mt-1.5 leading-snug">Ton allure ne bouge pas : si le trajet direct est trop court, un détour est ajouté avant l’arrivée pour tenir la durée.</p>
         </div>
-        <div id="carteGen" class="carte-parcours rounded-xl overflow-hidden h-[260px] bg-nuit/50"></div>
+        <div class="relative">
+          <div id="carteGen" class="carte-parcours rounded-xl overflow-hidden h-[260px] bg-nuit/50"></div>
+          <button data-act="genPleinEcran" class="pec-agrandir tapable" aria-label="Carte en plein écran"><i class="fa-solid fa-expand"></i></button>
+        </div>
 
         <div id="genBlocMode">
           <label class="text-[12px] text-brume block mb-1.5">Je règle</label>
@@ -703,6 +742,9 @@ if (window.tailwind) tailwind.config = {
           </div>
           <div id="genStats" class="grid grid-cols-4 gap-2"></div>
           <div id="genStats2" class="grid grid-cols-2 gap-2"></div>
+          <button data-act="genPleinEcran" class="tapable w-full h-11 rounded-2xl verre font-semibold text-[14px]">
+            <i class="fa-solid fa-pen-ruler mr-1.5 text-ocre"></i>Voir en grand et retoucher le tracé
+          </button>
           <div class="h-[170px]"><canvas id="graphProfilGen"></canvas></div>
           <button data-act="genTelecharger" class="tapable w-full h-12 rounded-2xl bg-ocre text-white font-semibold text-[15px]">
             <i class="fa-solid fa-download mr-1.5"></i>Télécharger en GPX
@@ -1203,6 +1245,21 @@ if (window.tailwind) tailwind.config = {
     </div>
     <div id="corpsModale" class="gouttieres pb-4"></div>
   </div>
+</div>
+
+<!-- Générateur : carte du parcours en plein écran, avec retouche du tracé (points de passage déplaçables) -->
+<div id="pleinEcranGen" class="pec" role="dialog" aria-modal="true" aria-label="Carte du parcours">
+  <div id="pecCarte" class="pec-carte carte-parcours"></div>
+  <div class="pec-haut">
+    <button data-act="genFermerPleinEcran" class="pec-rond tapable" aria-label="Fermer la carte"><i class="fa-solid fa-xmark"></i></button>
+    <div id="pecFonds" class="segments pec-fonds">
+      <button data-act="genFond" data-arg="plan">Plan</button>
+      <button data-act="genFond" data-arg="relief">Relief</button>
+      <button data-act="genFond" data-arg="satellite">Satellite</button>
+    </div>
+    <button data-act="genLocaliser" class="pec-rond tapable" aria-label="Ma position"><i class="fa-solid fa-location-crosshairs" style="color:#2F80ED"></i></button>
+  </div>
+  <div id="pecBas" class="pec-bas"></div>
 </div>
 
 <div id="zoneToasts" class="fixed z-[60] inset-x-0 flex flex-col items-center gap-2 pointer-events-none" style="top:calc(var(--safe-top) + 62px)"></div>
@@ -8911,7 +8968,7 @@ async function proposerParcours(reg) {
         const dplus = it.dplusFiltre != null ? it.dplusFiltre : d.dplus;
         const dmoins = it.dplusFiltre != null ? Math.max(0, Math.round(dplus - (a.profil.length ? a.profil[a.profil.length - 1][1] - a.profil[0][1] : 0))) : d.dmoins;
         const ecart = Math.abs(a.distanceM - cible) / cible;
-        if (!meilleur || ecart < meilleur.ecart) meilleur = { it, a, ecart, dplus, dmoins, cap: forme.cap };
+        if (!meilleur || ecart < meilleur.ecart) meilleur = { it, a, ecart, dplus, dmoins, cap: forme.cap, passages };
         // Apprentissage du rapport tracé réel / polygone, pour viser juste du premier coup la fois suivante
         const rapport = a.distanceM / longueurPolyligne(passages);
         if (isFinite(rapport) && rapport > 1 && rapport < 3) GEN.facteur[typeTerrain] = GEN.facteur[typeTerrain] * 0.6 + rapport * 0.4;
@@ -8927,7 +8984,8 @@ async function proposerParcours(reg) {
   const { it, a } = retenu;
   return {
     points: it.points, distanceM: a.distanceM, dplus: retenu.dplus, dmoins: retenu.dmoins, altMin: a.altMin, altMax: a.altMax,
-    aAltitude: a.aAltitude, profil: a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: retenu.cap
+    aAltitude: a.aAltitude, profil: a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: retenu.cap,
+    passages: marquerPassages(retenu.passages, (q, i, t) => i > 0 && i < t.length - 1)     // points de la forme : déplaçables et recalables
   };
 }
 
@@ -8945,9 +9003,13 @@ async function proposerTrajet(reg) {
   const dmoins = it.dplusFiltre != null ? Math.max(0, Math.round(dplus - (a.profil.length ? a.profil[a.profil.length - 1][1] - a.profil[0][1] : 0))) : d.dmoins;
   return {
     points: it.points, distanceM: a.distanceM, dplus, dmoins, altMin: a.altMin, altMax: a.altMax,
-    aAltitude: a.aAltitude, profil: a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: null, type: 'ab'
+    aAltitude: a.aAltitude, profil: a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: null, type: 'ab',
+    passages: marquerPassages(passages, () => false)
   };
 }
+/** Points de passage d'une proposition, gardés pour la retouche : « auto » = point calculé, que le recalage peut déplacer. */
+const marquerPassages = (pts, estAuto) => pts.map((q, i, t) => ({ lat: q.lat, lon: q.lon, auto: !!estAuto(q, i, t) }));
+
 /** Mesures d'un itinéraire : distance, profil et dénivelés filtrés. */
 function mesurerItineraire(it) {
   const a = analyserTrace(it.points);
@@ -9003,13 +9065,13 @@ async function proposerTrajetDuree(reg) {
   }
   const direct = GEN.trajetDirect;
   const d0 = effort(direct.m);
-  const resultat = (it, m, detour) => ({
+  const resultat = (it, m, detour, pass) => ({
     points: it.points, distanceM: m.a.distanceM, dplus: m.dplus, dmoins: m.dmoins, altMin: m.a.altMin, altMax: m.a.altMax,
     aAltitude: m.a.aAltitude, profil: m.a.profil, partTrail: it.partTrail, source: it.source, reglages: reg, cap: null, type: 'ab',
-    distanceCible: cible, detour
+    distanceCible: cible, detour, passages: pass
   });
   if (d0 >= cible * 0.98) {
-    if (GEN.rangTrajet++ === 0) return resultat(direct.it, direct.m, false);       // déjà assez long : on ne raccourcit pas
+    if (GEN.rangTrajet++ === 0) return resultat(direct.it, direct.m, false, marquerPassages(passages, () => false));       // déjà assez long : on ne raccourcit pas
     throw new Error('pas d’autre itinéraire pour ce trajet');
   }
   // Détour sur la dernière portion (Q → arrivée), d'un côté puis de l'autre, à des angles variés
@@ -9026,12 +9088,12 @@ async function proposerTrajetDuree(reg) {
     const it = await itineraireCourse([...passages.slice(0, -1), ...W, B], reg.trail, 0, 0);
     const m = mesurerItineraire(it);
     const d = effort(m), ecart = Math.abs(d - cible) / cible;
-    if (!meilleur || ecart < meilleur.ecart) meilleur = { it, m, ecart };
+    if (!meilleur || ecart < meilleur.ecart) meilleur = { it, m, ecart, W };
     if (ecart <= 0.02) break;
     const gagne = d - d0;
     extra *= gagne > 50 ? borner((cible - d0) / gagne, 0.4, 2.5) : 1.6;
   }
-  return resultat(meilleur.it, meilleur.m, true);
+  return resultat(meilleur.it, meilleur.m, true, [...marquerPassages(passages.slice(0, -1), () => false), ...marquerPassages(meilleur.W, () => true), ...marquerPassages([B], () => false)]);
 }
 
 const proposer = reg => reg.type === 'ab' ? (reg.dureeCible ? proposerTrajetDuree(reg) : proposerTrajet(reg)) : proposerParcours(reg);
@@ -9110,6 +9172,7 @@ function majBoutonsGen() {
   $('#btnGenSuiv').disabled = GEN.enCours || GEN.index >= GEN.propositions.length - 1;
   $('#btnGenPrec').classList.toggle('opacity-40', $('#btnGenPrec').disabled);
   $('#btnGenSuiv').classList.toggle('opacity-40', $('#btnGenSuiv').disabled);
+  if (PEC.ouvert) majPanneauPec();
 }
 
 /* ---------- Carte ---------- */
@@ -9189,9 +9252,13 @@ async function preparerCarteGen() {
     div.className = 'w-full h-full';
     zone.appendChild(div);
     GEN.carte = L.map(div, { scrollWheelZoom: false, attributionControl: true });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(GEN.carte);
+    appliquerFondGen(APPAREIL.fondCarte);
     if (GEN.depart) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 14); else GEN.carte.setView([46.6, 2.4], 5);
+    // Retouche en plein écran : un toucher simple ajoute un passage, un double toucher zoome seulement
+    GEN.carte.on('dblclick', () => clearTimeout(ED.clicDiffere));
+    GEN.carte.on('popupclose', () => { ED.popupFermee = Date.now(); });
     GEN.carte.on('click', e => {
+      if (ED.actif) { clearTimeout(ED.clicDiffere); ED.clicDiffere = setTimeout(() => editeurClicCarte(e), 300); return; }
       if (GEN.type === 'ab' && GEN.depart && !GEN.placerDepart) {
         ajouterEtapeGen(e.latlng.lat, e.latlng.lng, '');
         toast('Étape ' + lettreEtape(GEN.etapes.length - 1) + ' ajoutée.', 'info');
@@ -9241,6 +9308,425 @@ function curseurCarteGen(kmPos) {
   else GEN.coucheCurseur = L.circleMarker(pt, { radius: 6, color: '#fff', weight: 2, fillColor: '#2F80ED', fillOpacity: 1, interactive: false }).addTo(GEN.carte);
 }
 
+/* ---------- Carte plein écran et retouche du tracé ----------
+   La carte Leaflet du générateur est déplacée dans une fenêtre plein écran (puis remise à sa place).
+   Retouche : le tracé est découpé en tronçons entre ses points de passage. Glisser un point (ou toucher la carte)
+   ne recalcule que les tronçons voisins ; ensuite, si « Garder la distance » est actif, les points calculés
+   (« auto ») sont rapprochés ou écartés pour revenir à la distance visée, sans toucher aux points choisis. */
+
+const FONDS_CARTE = {
+  plan: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', o: { maxZoom: 19, attribution: '© OpenStreetMap' } },
+  relief: { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', o: { maxZoom: 17, subdomains: 'abc', attribution: '© OpenStreetMap, SRTM · style © OpenTopoMap (CC-BY-SA)' } },
+  satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', o: { maxZoom: 19, attribution: 'Imagerie © Esri, Maxar, Earthstar Geographics' } }
+};
+function appliquerFondGen(nom) {
+  const f = FONDS_CARTE[nom] ? nom : 'plan';
+  $$('#pecFonds button').forEach(b => b.classList.toggle('actif', b.dataset.arg === f));
+  if (!GEN.carte || !window.L) return;
+  if (GEN.fond && GEN.nomFond === f) return;
+  if (GEN.fond) GEN.fond.remove();
+  GEN.nomFond = f;
+  GEN.carte.setMaxZoom(FONDS_CARTE[f].o.maxZoom);
+  GEN.fond = L.tileLayer(FONDS_CARTE[f].url, FONDS_CARTE[f].o).addTo(GEN.carte);
+  GEN.fond.bringToBack();
+}
+
+const PEC = { ouvert: false };
+const ED = { actif: false, p: null, passages: [], troncons: [], historique: [], occupe: false, statut: '', garder: true,
+             cible: null, effort: false, mesures: null, couches: null, apercu: null, source: '' };
+
+async function ouvrirPleinEcranGen() {
+  if (PEC.ouvert) return;
+  if (!GEN.carte) await preparerCarteGen();
+  if (!GEN.carte || !window.L) { toast('Carte indisponible pour le moment (connexion ?).', 'erreur'); return; }
+  PEC.ouvert = true;
+  $('#pleinEcranGen').classList.add('ouvert');
+  document.documentElement.classList.add('pec-ouvert');
+  figerFond();
+  $('#pecCarte').appendChild(GEN.carte.getContainer());
+  GEN.carte.scrollWheelZoom.enable();
+  GEN.carte.zoomControl.setPosition('bottomright');
+  appliquerFondGen(GEN.nomFond);
+  GEN.carte.invalidateSize();
+  if (GEN.propositions[GEN.index]) demarrerEditeur();
+  else {
+    majPanneauPec();
+    if (GEN.depart) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], Math.max(GEN.carte.getZoom(), 15));
+  }
+}
+function fermerPleinEcranGen() {
+  if (!PEC.ouvert) return;
+  arreterEditeur();
+  PEC.ouvert = false;
+  $('#pleinEcranGen').classList.remove('ouvert');
+  document.documentElement.classList.remove('pec-ouvert');
+  libererFond();
+  if (!GEN.carte) return;
+  $('#carteGen').appendChild(GEN.carte.getContainer());
+  GEN.carte.scrollWheelZoom.disable();
+  GEN.carte.zoomControl.setPosition('topleft');
+  GEN.carte.invalidateSize();
+  rendreEtapesGen();
+  if (GEN.propositions[GEN.index]) rendreGenerateur();          // tracé retouché, chiffres et profil à jour
+  else centrerSurDepart();
+}
+function recentrerPec() {
+  if (!GEN.carte) return;
+  GEN.carte.invalidateSize({ pan: false });          // le panneau du bas a pu changer de hauteur
+  const pts = ED.actif ? pointsEditeur() : null;
+  if (pts && pts.length > 1) GEN.carte.fitBounds(L.latLngBounds(pts.map(q => [q.lat, q.lon])), { paddingTopLeft: [24, 80], paddingBottomRight: [24, 40] });
+  else if (GEN.depart) GEN.carte.setView([GEN.depart.lat, GEN.depart.lon], 15);
+}
+function localiserPec() {
+  if (!navigator.geolocation) { toast('Position indisponible sur cet appareil.', 'erreur'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    if (!GEN.carte) return;
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+    if (GEN.coucheMoi) GEN.coucheMoi.setLatLng(ll);
+    else GEN.coucheMoi = L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2.5, fillColor: '#2F80ED', fillOpacity: 1, interactive: false }).addTo(GEN.carte);
+    GEN.carte.setView(ll, Math.max(GEN.carte.getZoom(), 16));
+  }, err => toast(err && err.code === 1 ? 'Accès à la position refusé : autorise-le dans les réglages.' : 'Position introuvable pour le moment.', 'erreur'),
+  { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+}
+
+/* --- Tronçons --- */
+
+/** Découpe un tracé aux points de passage (dans l'ordre) : un tronçon par portion, extrémités partagées. */
+function decouperTroncons(points, passages) {
+  const coupes = [0];
+  for (let j = 1; j < passages.length - 1; j++) {
+    const depuis = coupes[coupes.length - 1];
+    const d = [];
+    let min = Infinity;
+    for (let i = depuis; i < points.length; i++) { const x = distanceHaversine(points[i], passages[j]); d.push(x); if (x < min) min = x; }
+    coupes.push(depuis + Math.max(0, d.findIndex(x => x <= min + 20)));     // premier passage près du point (boucles qui se croisent)
+  }
+  coupes.push(points.length - 1);
+  return coupes.slice(0, -1).map((c, j) => {
+    const pts = points.slice(c, coupes[j + 1] + 1);
+    return { pts, m: longueurPolyligne(pts) };
+  });
+}
+function pointsEditeur() {
+  const res = [];
+  ED.troncons.forEach((t, j) => t.pts.forEach((q, i) => { if (j === 0 || i > 0) res.push(q); }));
+  return res;
+}
+const distanceEditeur = () => ED.troncons.reduce((s, t) => s + t.m, 0);
+function mesurerEditeur() {
+  ED.mesures = mesurerItineraire({ points: pointsEditeur(), dplusFiltre: null });
+}
+function valeurEditeur() {
+  const d = distanceEditeur();
+  return ED.effort && ED.mesures ? distanceEquivalente(d, ED.mesures.dplus || 0, ED.mesures.dmoins) : d;
+}
+/** Points par défaut (proposition sans points de passage connus) : 4 points répartis sur le tracé. */
+function passagesParDefaut(p) {
+  const pts = p.points, n = pts.length - 1;
+  return [{ lat: pts[0].lat, lon: pts[0].lon, auto: false },
+    ...[0.2, 0.4, 0.6, 0.8].map(f => ({ lat: pts[Math.round(n * f)].lat, lon: pts[Math.round(n * f)].lon, auto: true })),
+    { lat: pts[n].lat, lon: pts[n].lon, auto: false }];
+}
+
+/** Recalcule les tronçons entre les points de passage a et b (un seul appel au service d'itinéraire). */
+async function routerChaine(a, b) {
+  const reg = ED.p.reglages;
+  const pass = ED.passages.slice(a, b + 1);
+  const it = await itineraireCourse(pass, reg.trail, reg.type === 'ab' ? 0 : penteVisee(reg));
+  const nouveaux = decouperTroncons(it.points, pass).map(t => Object.assign(t, { trail: it.partTrail }));
+  ED.troncons.splice(a, b - a, ...nouveaux);
+  // Les points se recalent sur le chemin réellement emprunté
+  for (let j = a + 1; j < b; j++) { const q = ED.troncons[j].pts[0]; ED.passages[j] = Object.assign({}, ED.passages[j], { lat: q.lat, lon: q.lon }); }
+  ED.source = it.source;
+}
+
+const instantaneEditeur = () => ({ passages: ED.passages.map(q => Object.assign({}, q)), troncons: ED.troncons.slice(), mesures: ED.mesures });
+function restaurerEditeur(e) { ED.passages = e.passages; ED.troncons = e.troncons; ED.mesures = e.mesures; }
+
+/**
+ * Remet la distance (ou la distance d'effort) près de la cible en écartant ou rapprochant les points « auto »
+ * autour du milieu de leurs voisins choisis : les endroits imposés restent sur le tracé. 3 calculs au plus.
+ */
+async function recalerDistance() {
+  const n = ED.passages.length;
+  const autos = ED.passages.map((q, j) => j).filter(j => j > 0 && j < n - 1 && ED.passages[j].auto);
+  if (!autos.length || !ED.cible) return false;
+  const centres = {}, base = {};
+  autos.forEach(j => {
+    let a = j - 1; while (a > 0 && ED.passages[a].auto) a--;
+    let b = j + 1; while (b < n - 1 && ED.passages[b].auto) b++;
+    const A = ED.passages[a], B = ED.passages[b];
+    centres[j] = { lat: (A.lat + B.lat) / 2, lon: (A.lon + B.lon) / 2 };
+    base[j] = versPlan(centres[j], ED.passages[j]);
+  });
+  // Tronçons à recalculer : ceux qui touchent un point auto, regroupés en suites continues
+  const touche = ED.troncons.map((t, j) => ED.passages[j].auto || ED.passages[j + 1].auto);
+  const chaines = [];
+  touche.forEach((x, j) => { if (!x) return; const c = chaines[chaines.length - 1]; if (c && c[1] === j) c[1] = j + 1; else chaines.push([j, j + 1]); });
+  let k = 1, prec = null, meilleur = null;
+  for (let tour = 0; tour < 4; tour++) {
+    const v = valeurEditeur(), ecart = Math.abs(v - ED.cible) / ED.cible;
+    if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, etat: instantaneEditeur() };
+    if (ecart <= 0.025 || tour === 3) break;
+    let suivant;
+    if (prec && Math.abs(v - prec.v) > 30) suivant = k + (ED.cible - v) * (k - prec.k) / (v - prec.v);     // sécante
+    else {
+      const total = distanceEditeur();
+      const libre = ED.troncons.reduce((s, t, j) => s + (touche[j] ? t.m : 0), 0);
+      suivant = k * Math.max(0.15, (libre + (ED.cible - v) * total / v) / Math.max(libre, 1));
+    }
+    prec = { k, v };
+    k = borner(suivant, k * 0.3, k * 3);
+    if (k < 0.04) k = 0.04;
+    autos.forEach(j => { ED.passages[j] = Object.assign(depuisPlan(centres[j], { x: base[j].x * k, y: base[j].y * k }), { auto: true }); });
+    await Promise.all(chaines.map(([a, b]) => routerChaine(a, b)));
+    mesurerEditeur();
+  }
+  restaurerEditeur(meilleur.etat);
+  return true;
+}
+
+/** Une retouche : calcul, recalage éventuel de la distance, puis la proposition est mise à jour (annulable). */
+async function operationEditeur(fn, statut, recaler = ED.garder) {
+  if (ED.occupe || !ED.actif) return;
+  const avant = instantaneEditeur();
+  ED.occupe = true; ED.statut = statut || 'Calcul du tracé…';
+  majPanneauPec(); dessinerEditeur();
+  try {
+    await fn();
+    mesurerEditeur();
+    if (recaler && ED.cible && Math.abs(valeurEditeur() - ED.cible) / ED.cible > 0.025) {
+      if (ED.passages.some((q, j) => q.auto && j > 0 && j < ED.passages.length - 1)) {
+        ED.statut = 'Recalage sur ' + km1(ED.cible) + ' km…';
+        dessinerEditeur(); majPanneauPec();
+        try {
+          await recalerDistance();
+          const e = (valeurEditeur() - ED.cible) / ED.cible;
+          if (Math.abs(e) > 0.06) toast('Avec ce passage imposé, le plus proche de ' + km1(ED.cible) + ' km est ' + km1(distanceEditeur()) + ' km. ' +
+            (e > 0 ? 'Retire un point ou rapproche-le du départ pour raccourcir.' : 'Éloigne un point pour allonger.'), 'info');
+        }
+        catch (e) { console.warn(e); toast('Tracé modifié, mais distance non recalée : ' + messageErreurGen(e), 'alerte'); }
+      } else toast('Tous les points sont imposés : la distance ne peut plus être recalée. Retire un point pour retrouver de la marge.', 'info');
+    }
+    ED.historique.push(avant);
+    if (ED.historique.length > 40) ED.historique.shift();
+    appliquerEditionProposition();
+  } catch (e) {
+    console.warn(e);
+    restaurerEditeur(avant);
+    toast(messageErreurGen(e), 'erreur');
+  } finally {
+    ED.occupe = false; ED.statut = '';
+    if (ED.actif) { dessinerEditeur(); majPanneauPec(); }
+  }
+}
+/** Écrit le tracé retouché dans la proposition affichée (chiffres, profil et GPX suivent). */
+function appliquerEditionProposition() {
+  const p = ED.p, m = ED.mesures || mesurerItineraire({ points: pointsEditeur(), dplusFiltre: null });
+  const tr = ED.troncons.filter(t => t.trail != null);
+  const partTrail = tr.length === ED.troncons.length ? tr.reduce((s, t) => s + t.trail * t.m, 0) / Math.max(1, distanceEditeur()) : null;
+  Object.assign(p, {
+    points: pointsEditeur(), distanceM: m.a.distanceM, dplus: m.dplus, dmoins: m.dmoins, altMin: m.a.altMin, altMax: m.a.altMax,
+    aAltitude: m.a.aAltitude, profil: m.a.profil, partTrail, passages: ED.passages.map(q => Object.assign({}, q)), modifie: true,
+    source: ED.source || p.source
+  });
+}
+
+/* --- Gestes --- */
+
+/** Tronçon le plus proche d'un point (pour savoir entre quels points de passage l'insérer). */
+function tronconLePlusProche(ll) {
+  let best = { j: 0, i: 0, d: Infinity };
+  ED.troncons.forEach((t, j) => t.pts.forEach((q, i) => { const d = distanceHaversine(q, ll); if (d < best.d) best = { j, i, d }; }));
+  return best;
+}
+/** Toucher la carte hors du tracé : le parcours passera par cet endroit. */
+function editeurClicCarte(e) {
+  if (ED.occupe || Date.now() - (ED.popupFermee || 0) < 450) return;     // toucher la carte pour fermer une bulle n'ajoute pas de point
+  const X = { lat: e.latlng.lat, lon: e.latlng.lng };
+  const { j } = tronconLePlusProche(X);
+  operationEditeur(async () => {
+    ED.passages.splice(j + 1, 0, { lat: X.lat, lon: X.lon, auto: false });
+    ED.troncons.splice(j, 1, ED.troncons[j], ED.troncons[j]);
+    await routerChaine(j, j + 2);
+  }, 'Passage par ce point…');
+}
+/** Toucher le tracé : une poignée apparaît à cet endroit, sans changer le parcours ; il suffit de la glisser. */
+function editeurClicTrace(e) {
+  if (ED.occupe) return;
+  const X = { lat: e.latlng.lat, lon: e.latlng.lng };
+  const { j, i } = tronconLePlusProche(X);
+  const t = ED.troncons[j];
+  if (i === 0 || i === t.pts.length - 1) return;
+  ED.historique.push(instantaneEditeur());
+  const q = t.pts[i];
+  const t1 = t.pts.slice(0, i + 1), t2 = t.pts.slice(i);
+  ED.troncons.splice(j, 1, { pts: t1, m: longueurPolyligne(t1), trail: t.trail }, { pts: t2, m: longueurPolyligne(t2), trail: t.trail });
+  ED.passages.splice(j + 1, 0, { lat: q.lat, lon: q.lon, auto: false });
+  appliquerEditionProposition();
+  dessinerEditeur(); majPanneauPec();
+  toast('Poignée ajoutée : fais-la glisser jusqu’au chemin voulu.', 'info');
+}
+function deplacerPassage(j, ll) {
+  operationEditeur(async () => {
+    ED.passages[j] = { lat: ll.lat, lon: ll.lng, auto: false };
+    await routerChaine(j - 1, j + 1);
+  }, 'Nouveau tracé…');
+}
+function retirerPassage(j) {
+  if (GEN.carte) GEN.carte.closePopup();
+  if (!(j > 0 && j < ED.passages.length - 1)) return;
+  operationEditeur(async () => {
+    ED.passages.splice(j, 1);
+    ED.troncons.splice(j - 1, 2, ED.troncons[j - 1]);
+    await routerChaine(j - 1, j);
+  }, 'Point retiré, nouveau tracé…');
+}
+function annulerEdition() {
+  if (ED.occupe || !ED.historique.length) return;
+  restaurerEditeur(ED.historique.pop());
+  if (!ED.mesures) mesurerEditeur();
+  appliquerEditionProposition();
+  dessinerEditeur(); majPanneauPec();
+}
+
+/* --- Dessin --- */
+
+function demarrerEditeur() {
+  arreterEditeur();
+  const p = GEN.propositions[GEN.index];
+  if (!p || !GEN.carte || !window.L || !PEC.ouvert) { majPanneauPec(); return; }
+  [GEN.coucheTrace, GEN.coucheKm, GEN.coucheCurseur, GEN.coucheEtapes].forEach(c => { if (c) c.remove(); });
+  GEN.coucheTrace = GEN.coucheKm = GEN.coucheCurseur = GEN.coucheEtapes = null;
+  const passages = Array.isArray(p.passages) && p.passages.length >= 2 ? p.passages.map(q => Object.assign({}, q)) : passagesParDefaut(p);
+  Object.assign(ED, {
+    actif: true, p, passages, troncons: decouperTroncons(p.points, passages), historique: [], occupe: false, statut: '', source: p.source,
+    mesures: { a: { distanceM: p.distanceM, altMin: p.altMin, altMax: p.altMax, aAltitude: p.aAltitude, profil: p.profil }, dplus: p.dplus, dmoins: p.dmoins },
+    effort: !!p.distanceCible, cible: p.distanceCible || (p.type !== 'ab' && p.reglages.km > 0 ? p.reglages.km * 1000 : null)
+  });
+  dessinerEditeur();
+  majPanneauPec();
+  recentrerPec();
+}
+function arreterEditeur() {
+  if (ED.couches) ED.couches.remove();
+  if (ED.apercu) ED.apercu.remove();
+  ED.couches = ED.apercu = null;
+  ED.actif = false;
+}
+const iconePoignee = q => L.divIcon({ className: 'ed-poignee ' + (q.auto ? 'auto' : 'fixe'), iconSize: [40, 40], iconAnchor: [20, 20], html: '<span></span>' });
+function dessinerEditeur() {
+  if (!ED.actif || !GEN.carte) return;
+  if (ED.couches) ED.couches.remove();
+  const trace = pointsEditeur().map(q => [q.lat, q.lon]);
+  const groupe = L.layerGroup();
+  L.polyline(trace, { color: '#fff', weight: 8.5, opacity: 0.9, interactive: false }).addTo(groupe);
+  L.polyline(trace, { color: '#FC5200', weight: 5, opacity: ED.occupe ? 0.55 : 1, interactive: false, dashArray: ED.occupe ? '8 8' : null }).addTo(groupe);
+  // Zone de toucher large et invisible autour du tracé
+  const touche = L.polyline(trace, { color: '#000', weight: 26, opacity: 0, bubblingMouseEvents: false }).addTo(groupe);
+  touche.on('click', e => { L.DomEvent.stop(e); editeurClicTrace(e); });
+  // Bornes kilométriques
+  const dist = distanceEditeur(), km = dist / 1000, pas = km > 40 ? 5 : km > 15 ? 2 : 1;
+  const kms = []; for (let x = pas; x < km - pas / 3; x += pas) kms.push(x);
+  pointsAuxKm({ trace, distanceM: dist }, kms).forEach((pt, i) => L.marker(pt, {
+    interactive: false, keyboard: false, icon: L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 9],
+      html: '<span style="display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#1F2430;color:#fff;font:700 9.5px/1 sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.35)">' + kms[i] + '</span>' })
+  }).addTo(groupe));
+  // Arrivée (trajets) puis poignées
+  const n = ED.passages.length, fin = ED.passages[n - 1];
+  if (distanceHaversine(fin, ED.passages[0]) > 30) L.circleMarker([fin.lat, fin.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#1F2430', fillOpacity: 1, interactive: false }).addTo(groupe);
+  ED.passages.forEach((q, j) => {
+    if (j === 0 || j === n - 1) return;
+    const m = L.marker([q.lat, q.lon], { icon: iconePoignee(q), draggable: !ED.occupe, autoPan: true, autoPanPadding: [60, 90], keyboard: false, zIndexOffset: q.auto ? 0 : 500 }).addTo(groupe);
+    m.on('dragstart', () => debutGlisser(j));
+    m.on('drag', ev => pendantGlisser(j, ev.target.getLatLng()));
+    m.on('dragend', ev => { finGlisser(); deplacerPassage(j, ev.target.getLatLng()); });
+    m.on('click', () => {
+      if (ED.occupe) return;
+      L.popup({ className: 'ed-popup', offset: [0, -12], closeButton: false }).setLatLng(m.getLatLng())
+        .setContent('<div style="font:500 13px/1.35 inherit;color:#1F2430;max-width:210px">' + (q.auto ? 'Point calculé (déplacé au besoin pour tenir la distance).' : 'Point imposé : le parcours passe ici.') +
+          '<br><span style="color:#5B6475">Fais-le glisser pour changer de chemin.</span>' +
+          '<button data-act="edRetirer" data-arg="' + j + '" style="display:block;width:100%;margin-top:8px;height:36px;border-radius:10px;background:#FDECEC;color:#B91C1C;font-weight:600"><i class="fa-solid fa-trash-can" style="margin-right:6px"></i>Retirer ce point</button></div>')
+        .openOn(GEN.carte);
+    });
+  });
+  groupe.addTo(GEN.carte);
+  ED.couches = groupe;
+  if (GEN.coucheDepart) GEN.coucheDepart.bringToFront();
+}
+
+/* Pendant le glisser : traits pointillés vers les voisins et distance estimée, sans attendre le calcul. */
+function debutGlisser(j) {
+  if (GEN.carte) GEN.carte.closePopup();
+  const a = ED.passages[j - 1], b = ED.passages[j + 1], q = ED.passages[j];
+  const vol = distanceHaversine(a, q) + distanceHaversine(q, b);
+  ED.glisse = { j, ratio: borner((ED.troncons[j - 1].m + ED.troncons[j].m) / Math.max(vol, 1), 1.05, 1.8), raf: 0 };
+  ED.apercu = L.polyline([[a.lat, a.lon], [q.lat, q.lon], [b.lat, b.lon]], { color: '#1F2430', weight: 3, opacity: 0.7, dashArray: '6 7', interactive: false }).addTo(GEN.carte);
+}
+function pendantGlisser(j, ll) {
+  const g = ED.glisse;
+  if (!g || g.raf) return;
+  g.raf = requestAnimationFrame(() => {
+    g.raf = 0;
+    const a = ED.passages[j - 1], b = ED.passages[j + 1], q = { lat: ll.lat, lon: ll.lng };
+    if (ED.apercu) ED.apercu.setLatLngs([[a.lat, a.lon], [q.lat, q.lon], [b.lat, b.lon]]);
+    const estime = distanceEditeur() - ED.troncons[j - 1].m - ED.troncons[j].m + (distanceHaversine(a, q) + distanceHaversine(q, b)) * g.ratio;
+    majChiffresPec(estime, true);
+  });
+}
+function finGlisser() {
+  if (ED.glisse && ED.glisse.raf) cancelAnimationFrame(ED.glisse.raf);
+  ED.glisse = null;
+  if (ED.apercu) { ED.apercu.remove(); ED.apercu = null; }
+}
+
+/* --- Panneau du bas --- */
+
+function pastilleEcart(v, cible) {
+  if (!cible) return '';
+  const e = (v - cible) / cible, cls = Math.abs(e) <= 0.03 ? 'ed-ok' : Math.abs(e) <= 0.08 ? 'ed-moyen' : 'ed-loin';
+  return '<span class="ed-pastille ' + cls + '">' + (e >= 0 ? '+' : '−') + Math.abs(Math.round(e * 100)) + ' %</span>';
+}
+/** Distance affichée (estimée pendant un glisser), comparée à la cible. */
+function majChiffresPec(distance, estime) {
+  const z = $('#pecChiffres');
+  if (!z) return;
+  const m = ED.mesures || {};
+  const v = ED.effort ? distanceEquivalente(distance, m.dplus || 0, m.dmoins) : distance;
+  z.innerHTML = '<div class="flex items-end gap-2 flex-wrap"><span class="ed-chiffre">' + (estime ? '≈ ' : '') + km1(distance) + '<span style="font-size:15px;font-weight:600"> km</span></span>' +
+    (ED.cible ? '<span style="font-size:12.5px;color:#5B6475;padding-bottom:2px">' + (ED.effort ? 'effort visé ' : 'visé ') + km1(ED.cible) + ' km</span> ' + pastilleEcart(v, ED.cible) : '') + '</div>' +
+    '<div style="font-size:12.5px;color:#5B6475;margin-top:4px">' + (m.dplus != null && (!m.a || m.a.aAltitude !== false) ? '<i class="fa-solid fa-arrow-trend-up mr-1"></i>' + m.dplus + ' m D+ · ' : '') +
+    formaterDuree(distanceEquivalente(distance, m.dplus || 0, m.dmoins) / 1000 * ED.p.reglages.allure, true) + ' estimées</div>';
+}
+function majPanneauPec() {
+  const z = $('#pecBas');
+  if (!z || !PEC.ouvert) return;
+  if (!ED.actif) {
+    const ab = GEN.type === 'ab';
+    const aide = !GEN.depart ? 'Touche la carte pour placer ton départ.' : ab ? 'Touche la carte pour ajouter les étapes B, C… dans l’ordre.' : 'Départ placé. Lance le calcul : tu pourras ensuite retoucher le tracé ici.';
+    z.innerHTML = '<p class="ed-aide" style="margin-top:2px">' + aide + '</p>' +
+      '<button data-act="genGenerer" class="ed-btn principal w-full"' + (GEN.enCours ? ' disabled' : '') + '>' +
+      (GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin"></i>Calcul…' : '<i class="fa-solid fa-wand-magic-sparkles"></i>' + (ab ? 'Calculer le trajet' : 'Générer un parcours')) + '</button>';
+    return;
+  }
+  const autos = ED.passages.some((q, j) => q.auto && j > 0 && j < ED.passages.length - 1);
+  z.innerHTML = '<div class="flex items-start justify-between gap-3"><div id="pecChiffres" class="min-w-0"></div>' +
+      (ED.occupe ? '<div style="font-size:12px;color:#FC5200;font-weight:600;text-align:right;padding-top:6px"><i class="fa-solid fa-spinner fa-spin mr-1"></i>' + esc(ED.statut) + '</div>' : '') + '</div>' +
+    '<p class="ed-aide"><b>Glisse</b> un point pour changer de chemin, <b>touche le tracé</b> pour ajouter un point, ou <b>touche la carte</b> pour passer par un endroit précis.</p>' +
+    '<div class="ed-outils">' +
+      '<button data-act="edAnnuler" class="ed-btn"' + (ED.occupe || !ED.historique.length ? ' disabled' : '') + '><i class="fa-solid fa-rotate-left"></i>Annuler</button>' +
+      '<button data-act="edRecaler" class="ed-btn"' + (ED.occupe || !ED.cible || !autos ? ' disabled' : '') + '><i class="fa-solid fa-ruler-horizontal"></i>Recaler</button>' +
+      '<button data-act="genFermerPleinEcran" class="ed-btn principal"' + (ED.occupe ? ' disabled' : '') + '><i class="fa-solid fa-check"></i>Terminé</button>' +
+    '</div>' +
+    '<div class="ed-ligne">' +
+      (ED.cible ? '<label class="flex items-center gap-2"><input type="checkbox" data-act="edGarder" class="w-5 h-5 accent-[#FC5200]"' + (ED.garder ? ' checked' : '') + '>Garder ~' + km1(ED.cible) + ' km</label>' : '<span style="color:#5B6475">Trajet sans distance visée</span>') +
+      '<span class="flex items-center gap-4"><button data-act="genRecentrer" class="ed-lien"><i class="fa-solid fa-expand mr-1"></i>Recentrer</button>' +
+      '<button data-act="genGenerer" class="ed-lien"' + (ED.occupe || GEN.enCours ? ' disabled' : '') + '>' + (GEN.enCours ? '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Calcul…' : '🔄 Autre') + '</button></span>' +
+    '</div>';
+  majChiffresPec(distanceEditeur(), false);
+  if (GEN.carte) GEN.carte.invalidateSize({ pan: false });
+}
+
 /* ---------- Affichage d'une proposition ---------- */
 
 function rendreGenerateur() {
@@ -9252,7 +9738,7 @@ function rendreGenerateur() {
   const suite = p.type === 'ab'
     ? ' · trajet A → ' + reg.etapes.map((_, i) => lettreEtape(i)).join(' → ') + (reg.retour ? ' → A' : '') + (p.detour ? ' avec détour' : '')
     : ' · boucle vers ' + ['le nord', 'le nord-est', 'l’est', 'le sud-est', 'le sud', 'le sud-ouest', 'l’ouest', 'le nord-ouest'][Math.round(p.cap / 45) % 8];
-  $('#genTitre').textContent = (reg.titre ? reg.titre + ' · ' : '') + 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + suite;
+  $('#genTitre').textContent = (reg.titre ? reg.titre + ' · ' : '') + 'Proposition ' + (GEN.index + 1) + (GEN.propositions.length > 1 ? ' sur ' + GEN.propositions.length : '') + suite + (p.modifie ? ' · retouchée' : '');
   const tuile = (t, v, u) => `<div class="rounded-xl bg-nuit/50 p-2.5 text-center"><div class="text-[10.5px] text-brume">${t}</div><div class="chiffre text-[20px]">${v}</div><div class="text-[10px] text-brume">${u}</div></div>`;
   $('#genStats').innerHTML = tuile('Distance', km1(p.distanceM), 'km') + tuile('D+', p.aAltitude ? p.dplus : '—', 'm') +
     tuile('D-', p.aAltitude ? p.dmoins : '—', 'm') + tuile('Alt. max', p.altMax != null ? p.altMax : '—', 'm');
@@ -9290,6 +9776,7 @@ function rendreGenerateur() {
       plugins: { tooltip: { callbacks: { title: i => 'Km ' + i[0].parsed.x.toFixed(1).replace('.', ','), label: i => Math.round(i.parsed.y) + ' m' } } }
     }
   });
+  if (PEC.ouvert) demarrerEditeur();
 }
 
 /* ---------- Export GPX ---------- */
@@ -9365,6 +9852,7 @@ function brancherGenerateur() {
   $('#genAdresse').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chercherAdresseGen(); } });
   $('#genAdresseEtape').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ajouterEtapeAdresseGen(); } });
   $('#genRetour').addEventListener('change', e => { GEN.retour = e.target.checked; sauverReglagesGenerateur(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && PEC.ouvert) fermerPleinEcranGen(); });
   $('#voletGenerateur').addEventListener('toggle', e => {
     if (!e.target.open) return;
     if (!$('#genAllure').value) $('#genAllure').placeholder = formaterAllure(reglagesGenerateur().allure).replace("'", ':');
@@ -11149,6 +11637,15 @@ const ACTIONS = {
   genPrecedent: () => { if (GEN.index > 0) { GEN.index--; rendreGenerateur(); } },
   genSuivant: () => { if (GEN.index < GEN.propositions.length - 1) { GEN.index++; rendreGenerateur(); } },
   genTelecharger: () => telechargerParcoursGen(),
+  genPleinEcran: () => ouvrirPleinEcranGen(),
+  genFermerPleinEcran: () => fermerPleinEcranGen(),
+  genFond: arg => { appliquerFondGen(arg); APPAREIL.fondCarte = GEN.nomFond || 'plan'; sauverAppareil(); },
+  genLocaliser: () => localiserPec(),
+  genRecentrer: () => recentrerPec(),
+  edAnnuler: () => annulerEdition(),
+  edRecaler: () => operationEditeur(async () => { if (!(await recalerDistance())) toast('Rien à recaler : tous les points sont imposés.', 'info'); }, 'Recalage de la distance…', false),
+  edRetirer: arg => retirerPassage(+arg),
+  edGarder: (arg, el) => { ED.garder = !!el.checked; },
   genType: arg => { GEN.type = arg === 'ab' ? 'ab' : 'boucle'; majReglagesGenerateur(); rendreEtapesGen(); sauverReglagesGenerateur(); majBoutonsGen(); },
   genAjouterEtape: () => ajouterEtapeAdresseGen(),
   genRetirerEtape: arg => { GEN.etapes.splice(+arg, 1); sauverReglagesGenerateur(); rendreEtapesGen(); },
