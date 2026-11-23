@@ -4506,6 +4506,17 @@ function oublierAdaptation(s) { delete s.adaptee; delete s.blocsOrigine; }
  * la version d'origine est modifiée, puis la séance est de nouveau adaptée au temps choisi.
  */
 function transformerBlocsSeance(s, f) {
+  if (s.tapis && s.tapis.blocsAvant) {
+    // Sortie longue coupée pour le tapis : on transforme la version d'origine (celle qu'on retrouve en la remettant dehors), puis on la recoupe
+    s.tapis.blocsAvant = f(s.tapis.blocsAvant);
+    if (s.tapis.blocsOrigineAvant) s.tapis.blocsOrigineAvant = f(s.tapis.blocsOrigineAvant);
+    oublierAdaptation(s);
+    const prep = preparerTapis(s);
+    s.blocs = prep.blocs;
+    s.tapis.coupe = prep.coupe;
+    if (!prep.coupe) { s.tapis.blocsAvant = null; delete s.tapis.adapteeAvant; delete s.tapis.blocsOrigineAvant; }
+    return;
+  }
   if (!s.blocsOrigine || !s.adaptee) { oublierAdaptation(s); s.blocs = f(s.blocs); return; }
   s.blocsOrigine = f(s.blocsOrigine);
   if (mesurerSeance({ type: s.type, blocs: s.blocsOrigine }).dureeS <= s.adaptee * 60 + 60) {
@@ -5041,6 +5052,7 @@ function ajusterPlan(mode) {
       if (!convertie && qualites.includes(s.type)) {
         const souple = BIBLIO.ef(35, { trail: s.terrain === 'trail', dpk: 10, titre: 'Footing souple (allègement)' });
         oublierAdaptation(s);
+        delete s.tapis;
         Object.assign(s, { type: souple.type, titre: souple.titre, blocs: souple.blocs, conseil: souple.conseil, ajuste: 'allégée' });
         convertie = true;
       } else {
@@ -5080,7 +5092,7 @@ function ajusterPlan(mode) {
     else {
       oublierAdaptation(cible);
       delete cible.tapis;
-      Object.assign(cible, { type: manquee.type, titre: manquee.titre, blocs: JSON.parse(JSON.stringify(manquee.blocs)), conseil: manquee.conseil, terrain: manquee.terrain, ajuste: 'reportée' });
+      Object.assign(cible, { type: manquee.type, titre: manquee.titre, blocs: JSON.parse(JSON.stringify((manquee.tapis && manquee.tapis.blocsAvant) || manquee.blocsOrigine || manquee.blocs)), conseil: manquee.conseil, terrain: manquee.terrain, ajuste: 'reportée' });
       manquee.statut = 'reporte';
       modifiees = 1;
       toast('« ' + esc(cible.titre) + ' » replacée au ' + dateCourte(depuisCleJour(cible.date)) + '.', 'succes');
@@ -5450,7 +5462,12 @@ function appliquerTapis() {
   if (v.refus) return rendreTapis();
   const prep = preparerTapis(s);
   s.tapis = { le: cleJour(new Date()), blocsAvant: prep.coupe ? prep.base : null, coupe: prep.coupe };
-  if (prep.coupe) s.blocs = prep.blocs;
+  if (prep.coupe) {
+    // On garde l'état exact d'avant (y compris une adaptation à la durée) pour le retrouver en la remettant dehors
+    if (s.adaptee) { s.tapis.adapteeAvant = s.adaptee; s.tapis.blocsOrigineAvant = s.blocsOrigine; }
+    oublierAdaptation(s);
+    s.blocs = prep.blocs;
+  }
   tapisOuvert = null;
   sauverEtat();
   fermerModale();
@@ -5461,7 +5478,15 @@ function appliquerTapis() {
 function annulerTapis() {
   const s = tapisOuvert && trouverSeance(tapisOuvert);
   if (!s || !s.tapis) return;
-  if (s.tapis.blocsAvant) { s.blocs = s.tapis.blocsAvant; oublierAdaptation(s); }
+  if (s.tapis.blocsAvant) {
+    s.blocs = s.tapis.blocsAvant;
+    oublierAdaptation(s);
+    if (s.tapis.adapteeAvant && s.tapis.blocsOrigineAvant) {
+      s.adaptee = s.tapis.adapteeAvant; s.blocsOrigine = s.tapis.blocsOrigineAvant;
+      // Séance allégée entre-temps : si elle tient déjà dans le temps choisi, plus besoin d'adaptation
+      if (mesurerSeance({ type: s.type, blocs: s.blocsOrigine }).dureeS <= s.adaptee * 60 + 60) { s.blocs = s.blocsOrigine; oublierAdaptation(s); }
+    }
+  }
   delete s.tapis;
   tapisOuvert = null;
   sauverEtat();
@@ -5716,6 +5741,7 @@ function etapeMontre(e, seance, zones, but) {
       fastest: Math.round(allure * 0.97), slowest: Math.round(allure * 1.03),
       label: formaterAllure(allure * 0.97) + ' à ' + formaterAllure(allure * 1.03)
     },
+    vitesseTapis: seance.tapis && e.nature !== 'recup' ? Math.round(1e6 / allure) / 1000 : null,
     tapis: seance.tapis ? kmhAllure(allure) + (e.pente > 0 ? ', pente ' + Math.round(e.pente * 100) + '\u00a0%' : ', pente ' + TAPIS.pente + '\u00a0%') : null,
     note: seance.tapis ? texteEtapeTapis(e, zones, seance) : texteEtape(e, zones, seance)
   };
@@ -5785,7 +5811,7 @@ function ouvrirModaleMontre(id) {
       </div>
     </div>
     <div class="rounded-2xl verre px-3 mb-3">${corps}</div>
-    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (${s.tapis ? 'Course en salle' : 'Course en extérieur'}, bouton « … »), sur watchOS 10 et plus.${s.tapis ? ' Sur tapis, les étapes sont au temps et sans alerte d’allure : c’est la machine qui tient la vitesse.' : ''}</p>
+    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (${s.tapis ? 'Course (tapis)' : 'Course en extérieur'}, bouton « … »), sur watchOS 10 et plus.${s.tapis ? ' Sur tapis, les étapes sont au temps avec la vitesse cible affichée : c’est la machine qui tient l’allure.' : ''}</p>
     <button data-act="workoutSeance" data-arg="${s.id}" class="w-full tapable h-11 rounded-xl bg-ocre text-white font-semibold text-[13.5px]"><i class="fa-brands fa-apple mr-1.5"></i>Envoyer à l’Apple Watch</button>`);
 }
 
@@ -6066,7 +6092,8 @@ function resumeSeanceIA(x) {
   const m = mesurerSeance(x);
   return {
     id: x.id, date: x.date, jour: JOURS_LONGS[depuisCleJour(x.date).getDay()], titre: x.titre, type: (TYPES_SEANCE[x.type] || {}).libelle,
-    statut: statutSeance(x), distanceKm: Math.round(m.distanceM / 100) / 10, duree: dureeLisible(m.dureeS), deroule: lignesSeance(x),
+    statut: statutSeance(x), distanceKm: Math.round(m.distanceM / 100) / 10, duree: dureeLisible(m.dureeS), deroule: x.tapis ? lignesTapis(x) : lignesSeance(x),
+    surTapis: x.tapis ? true : undefined,
     realise: x.realise ? { km: Math.round(x.realise.distanceM / 100) / 10, duree: formaterDuree(x.realise.tempsS), ressenti: x.realise.rpe || null, notes: x.realise.notes || '' } : null
   };
 }
@@ -10411,9 +10438,11 @@ function fichierWorkoutApple(plan) {
     : b.m ? fVarint(1, 3).concat(fOctets(4, quantite(2, Math.round(b.m) / 1000)))        // distance en km (unité 2, vue dans les exports)
     : fVarint(1, 1).concat(fOctets(2, quantite(1, Math.round(b.s))));
   const vitesse = v => fOctets(1, quantite(1, v)).concat(fOctets(2, quantite(1, 1)));
-  const alerte = a => fVarint(1, 1).concat(fVarint(2, 2), fOctets(4, fOctets(2, fOctets(1, vitesse(1000 / a.lente)).concat(fOctets(2, vitesse(1000 / a.rapide))))));
+  // Allure cible unique (comme l'app Exercice en « Course (tapis) ») : genre 2, forme 1, une vitesse en m/s
+  const alerte = a => a.vitesse ? fVarint(1, 2).concat(fVarint(2, 1), fOctets(4, fOctets(1, vitesse(a.vitesse))))
+    : fVarint(1, 1).concat(fVarint(2, 2), fOctets(4, fOctets(2, fOctets(1, vitesse(1000 / a.lente)).concat(fOctets(2, vitesse(1000 / a.rapide))))));
   const etape = e => fOctets(1, but(e.but)).concat(e.alerte ? fOctets(2, alerte(e.alerte)) : []);
-  let w = fVarint(1, 37).concat(fVarint(2, plan.interieur ? 2 : 3), fOctets(3, String(plan.nom || 'Séance').slice(0, 60)));   // course à pied, en salle (2) ou extérieur (3)
+  let w = fVarint(1, 37).concat(fVarint(2, plan.interieur ? 2 : 3), fOctets(3, String(plan.nom || 'Séance').slice(0, 60)));   // course à pied, en salle (2, relevé sur un export « Course (tapis) » de l'iPhone) ou extérieur (3)
   if (plan.echauffement) w = w.concat(fOctets(4, etape(plan.echauffement)));
   plan.blocs.forEach(b => {
     const o = [].concat(...b.etapes.map(e => fOctets(1, fVarint(1, e.recup ? 2 : 1).concat(fOctets(2, etape(e))))));
@@ -10432,7 +10461,7 @@ function workoutCourse(nom, etapes) {
 function workoutSeance(s) {
   const w = seanceVersMontre(s);
   const conv = st => ({ recup: st.purpose === 'recovery', but: st.goal.type === 'distance' ? { m: st.goal.value } : st.goal.value > 0 ? { s: st.goal.value } : null,
-                        alerte: st.alert ? { lente: st.alert.slowest, rapide: st.alert.fastest } : null });
+                        alerte: st.alert ? { lente: st.alert.slowest, rapide: st.alert.fastest } : st.vitesseTapis ? { vitesse: st.vitesseTapis } : null });
   return { nom: s.titre, interieur: !!s.tapis, echauffement: w.warmup && conv(w.warmup), retour: w.cooldown && conv(w.cooldown),
            blocs: w.blocks.map(b => ({ fois: b.iterations, etapes: b.steps.map(conv) })) };
 }
