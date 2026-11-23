@@ -5785,7 +5785,7 @@ function ouvrirModaleMontre(id) {
       </div>
     </div>
     <div class="rounded-2xl verre px-3 mb-3">${corps}</div>
-    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (${s.tapis ? 'Course en salle' : 'Course en extérieur'}, bouton « … »), sur watchOS 10 et plus.${s.tapis ? ' Sur tapis, les étapes sont au temps et sans alerte d’allure : c’est la machine qui tient la vitesse.' : ''}</p>
+    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (${s.tapis ? 'Course (tapis)' : 'Course en extérieur'}, bouton « … »), sur watchOS 10 et plus.${s.tapis ? ' Sur tapis, les étapes sont au temps et sans alerte d’allure : c’est la machine qui tient la vitesse.' : ''}</p>
     <button data-act="workoutSeance" data-arg="${s.id}" class="w-full tapable h-11 rounded-xl bg-ocre text-white font-semibold text-[13.5px]"><i class="fa-brands fa-apple mr-1.5"></i>Envoyer à l’Apple Watch</button>`);
 }
 
