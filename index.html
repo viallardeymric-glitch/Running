@@ -5741,6 +5741,7 @@ function etapeMontre(e, seance, zones, but) {
       fastest: Math.round(allure * 0.97), slowest: Math.round(allure * 1.03),
       label: formaterAllure(allure * 0.97) + ' à ' + formaterAllure(allure * 1.03)
     },
+    vitesseTapis: seance.tapis && e.nature !== 'recup' ? Math.round(1e6 / allure) / 1000 : null,
     tapis: seance.tapis ? kmhAllure(allure) + (e.pente > 0 ? ', pente ' + Math.round(e.pente * 100) + '\u00a0%' : ', pente ' + TAPIS.pente + '\u00a0%') : null,
     note: seance.tapis ? texteEtapeTapis(e, zones, seance) : texteEtape(e, zones, seance)
   };
@@ -5810,7 +5811,7 @@ function ouvrirModaleMontre(id) {
       </div>
     </div>
     <div class="rounded-2xl verre px-3 mb-3">${corps}</div>
-    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (Course en extérieur, bouton « … »), sur watchOS 10 et plus.${s.tapis ? ' Sur tapis, lance-la quand même depuis « Course en extérieur » : les étapes sont au temps et sans alerte d’allure, c’est la machine qui tient la vitesse (la distance de la montre ne compte pas).' : ''}</p>
+    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (${s.tapis ? 'Course (tapis)' : 'Course en extérieur'}, bouton « … »), sur watchOS 10 et plus.${s.tapis ? ' Sur tapis, les étapes sont au temps avec la vitesse cible affichée : c’est la machine qui tient l’allure.' : ''}</p>
     <button data-act="workoutSeance" data-arg="${s.id}" class="w-full tapable h-11 rounded-xl bg-ocre text-white font-semibold text-[13.5px]"><i class="fa-brands fa-apple mr-1.5"></i>Envoyer à l’Apple Watch</button>`);
 }
 
@@ -10437,9 +10438,11 @@ function fichierWorkoutApple(plan) {
     : b.m ? fVarint(1, 3).concat(fOctets(4, quantite(2, Math.round(b.m) / 1000)))        // distance en km (unité 2, vue dans les exports)
     : fVarint(1, 1).concat(fOctets(2, quantite(1, Math.round(b.s))));
   const vitesse = v => fOctets(1, quantite(1, v)).concat(fOctets(2, quantite(1, 1)));
-  const alerte = a => fVarint(1, 1).concat(fVarint(2, 2), fOctets(4, fOctets(2, fOctets(1, vitesse(1000 / a.lente)).concat(fOctets(2, vitesse(1000 / a.rapide))))));
+  // Allure cible unique (comme l'app Exercice en « Course (tapis) ») : genre 2, forme 1, une vitesse en m/s
+  const alerte = a => a.vitesse ? fVarint(1, 2).concat(fVarint(2, 1), fOctets(4, fOctets(1, vitesse(a.vitesse))))
+    : fVarint(1, 1).concat(fVarint(2, 2), fOctets(4, fOctets(2, fOctets(1, vitesse(1000 / a.lente)).concat(fOctets(2, vitesse(1000 / a.rapide))))));
   const etape = e => fOctets(1, but(e.but)).concat(e.alerte ? fOctets(2, alerte(e.alerte)) : []);
-  let w = fVarint(1, 37).concat(fVarint(2, 3), fOctets(3, String(plan.nom || 'Séance').slice(0, 60)));   // course à pied, extérieur (3) : le lieu « en salle » n'est pas encore relevé sur un vrai export, l'app Exercice refuse notre essai
+  let w = fVarint(1, 37).concat(fVarint(2, plan.interieur ? 2 : 3), fOctets(3, String(plan.nom || 'Séance').slice(0, 60)));   // course à pied, en salle (2, relevé sur un export « Course (tapis) » de l'iPhone) ou extérieur (3)
   if (plan.echauffement) w = w.concat(fOctets(4, etape(plan.echauffement)));
   plan.blocs.forEach(b => {
     const o = [].concat(...b.etapes.map(e => fOctets(1, fVarint(1, e.recup ? 2 : 1).concat(fOctets(2, etape(e))))));
@@ -10458,7 +10461,7 @@ function workoutCourse(nom, etapes) {
 function workoutSeance(s) {
   const w = seanceVersMontre(s);
   const conv = st => ({ recup: st.purpose === 'recovery', but: st.goal.type === 'distance' ? { m: st.goal.value } : st.goal.value > 0 ? { s: st.goal.value } : null,
-                        alerte: st.alert ? { lente: st.alert.slowest, rapide: st.alert.fastest } : null });
+                        alerte: st.alert ? { lente: st.alert.slowest, rapide: st.alert.fastest } : st.vitesseTapis ? { vitesse: st.vitesseTapis } : null });
   return { nom: s.titre, interieur: !!s.tapis, echauffement: w.warmup && conv(w.warmup), retour: w.cooldown && conv(w.cooldown),
            blocs: w.blocks.map(b => ({ fois: b.iterations, etapes: b.steps.map(conv) })) };
 }
