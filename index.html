@@ -4495,6 +4495,7 @@ function seancePlan(base, date, phase) {
 /** Transforme une séance prévue en une autre, sans changer son identifiant ni sa date. */
 function remplacerContenu(s, base, ajuste) {
   oublierAdaptation(s);
+  delete s.tapis;
   Object.assign(s, { type: base.type, titre: base.titre, blocs: JSON.parse(JSON.stringify(base.blocs)), conseil: base.conseil, terrain: base.terrain });
   if (ajuste) s.ajuste = ajuste;
 }
@@ -4864,7 +4865,7 @@ function genererPlan() {
   const cleAuj = cleJour(auj), lundiAuj = cleJour(lundiDe(auj));
   const passees = ancien ? toutesSeances().filter(s => s.date < cleAuj && s.date >= lundiAuj) : [];
   // Séances d'aujourd'hui et à venir déjà réalisées ou verrouillées : jamais écrasées par la régénération
-  const protegees = ancien ? toutesSeances().filter(s => s.date >= cleAuj && (seanceVerrouillee(s) || s.adaptee)) : [];
+  const protegees = ancien ? toutesSeances().filter(s => s.date >= cleAuj && (seanceVerrouillee(s) || s.adaptee || s.tapis)) : [];
   const semainesAnterieures = ancien ? ancien.semaines.filter(w => w.lundi < lundiAuj) : [];
 
   const semaines = [];
@@ -5078,6 +5079,7 @@ function ajusterPlan(mode) {
     else if (!cible) toast('Pas de créneau facile pour la replacer : on laisse filer, c’est la bonne décision.', 'info');
     else {
       oublierAdaptation(cible);
+      delete cible.tapis;
       Object.assign(cible, { type: manquee.type, titre: manquee.titre, blocs: JSON.parse(JSON.stringify(manquee.blocs)), conseil: manquee.conseil, terrain: manquee.terrain, ajuste: 'reportée' });
       manquee.statut = 'reporte';
       modifiees = 1;
@@ -5234,6 +5236,238 @@ function annulerAdaptation() {
   fermerModale();
   rendreTout();
   toast('Séance remise comme prévu.', 'succes');
+}
+
+/* ==================================================================================
+   7 quater. FAIRE LA SÉANCE SUR TAPIS (froid, pluie, nuit…)
+   Comme un coach : la séance garde son intention (mêmes allures converties en km/h, pente de 1\u00a0%
+   pour compenser l'absence de vent, le dénivelé devient des montées à pente réglée).
+   Garde-fous : pas trop de tapis sur 4 semaines, et dans les 6 semaines avant l'objectif
+   les séances clés (sortie longue, allure marathon / course) se font dehors.
+   ================================================================================== */
+
+const TAPIS = { pente: 1, penteMax: 15, slMaxMin: 75, fenetreJours: 42, joursGlissants: 28 };
+let tapisOuvert = null;            // id de la séance dont la feuille « tapis » est ouverte
+
+/** Minutes passées à allure marathon / course dans une séance. */
+function minutesAllureCourse(blocs, zones = metriques().zones) {
+  let t = 0;
+  const parcourir = (etapes, fois) => etapes.forEach(e => {
+    if (e.repetition) return parcourir(e.etapes, fois * e.repetition);
+    if (!['marathon', 'course'].includes(e.zone) || e.nature === 'recup') return;
+    t += (e.dureeS || (e.distanceM ? e.distanceM / 1000 * allureEtape(e, zones) : 0)) * fois;
+  });
+  parcourir(blocs || [], 1);
+  return t / 60;
+}
+/** Séance clé de la préparation : sortie longue, allure spécifique ou au moins 15 min à allure marathon / course. */
+function seanceCleTapis(s) {
+  if (['sl', 'specifique'].includes(s.type)) return true;
+  return minutesAllureCourse((s.tapis && s.tapis.blocsAvant) || s.blocs) >= 15;
+}
+/** Objectif (course A ou course active, hors remise en forme) à 6 semaines ou moins de la séance. */
+function objectifProcheTapis(s) {
+  const jour = depuisCleJour(s.date);
+  return coursesAVenir().map(c => ({ c, jours: ecartJours(jour, depuisCleJour(c.date)) }))
+    .find(x => x.jours >= 0 && x.jours <= TAPIS.fenetreJours && natureCourse(x.c) !== 'forme'
+               && (x.c.priorite === 'A' || x.c.id === ETAT.courseActive)) || null;
+}
+/** Combien de séances sur tapis sur les 4 dernières semaines et dans la semaine, avec celle-ci, et les plafonds de la phase. */
+function bilanTapis(s) {
+  const debut = cleJour(ajouterJours(depuisCleJour(s.date), -(TAPIS.joursGlissants - 1)));
+  const lundi = cleJour(lundiDe(depuisCleJour(s.date))), dimanche = cleJour(ajouterJours(depuisCleJour(lundi), 6));
+  const autres = toutesSeances().filter(x => x !== s && x.type !== 'course' && x.statut !== 'reporte');
+  const fenetre = autres.filter(x => x.date >= debut && x.date <= (dimanche > s.date ? dimanche : s.date));
+  const exigeante = ['specifique', 'affutage'].includes(s.phase);
+  // Base du « mois » : les séances prévues sur 4 semaines (le plan peut être plus jeune que la fenêtre)
+  const total = Math.max(fenetre.length + 1, 4 * (ETAT.profil.seancesSemaine || 3));
+  const mois = fenetre.filter(x => x.tapis).length + 1;                       // avec celle-ci
+  const semaine = autres.filter(x => x.tapis && x.date >= lundi && x.date <= dimanche).length + 1;
+  const maxSemaine = exigeante ? 1 : 2;
+  const maxMois = Math.max(2, Math.floor(total * (exigeante ? 0.2 : 0.3)));
+  return { mois, semaine, maxMois, maxSemaine, total, exigeante,
+           ok: mois <= maxMois && semaine <= maxSemaine,
+           dernier: mois === maxMois ? 'mois' : semaine === maxSemaine ? 'semaine' : null };
+}
+/** Avis du coach : refus (séance clé trop près de l'objectif, trop de tapis) ou feu vert. */
+function verdictTapis(s) {
+  const proche = objectifProcheTapis(s);
+  const bilan = bilanTapis(s);
+  if (proche && seanceCleTapis(s)) return { refus: 'cle', proche, bilan };
+  if (!bilan.ok) return { refus: 'quota', proche, bilan };
+  return { refus: null, proche, bilan };
+}
+/** Contenu de la séance sur tapis : une sortie longue est ramenée à 1 h 15 au plus (l'excédent se fait dehors ou est reporté). */
+function preparerTapis(s) {
+  const base = JSON.parse(JSON.stringify((s.tapis && s.tapis.blocsAvant) || s.blocs || []));
+  const avant = mesurerSeance({ type: s.type, blocs: base });
+  if (s.type === 'sl' && avant.dureeS > (TAPIS.slMaxMin + 3) * 60) {
+    const blocs = adapterBlocs({ type: s.type, blocs: base }, TAPIS.slMaxMin * 60);
+    return { blocs, base, coupe: { avant, apres: mesurerSeance({ type: s.type, blocs }) } };
+  }
+  return { blocs: base, base, coupe: null };
+}
+/** Étapes adaptées à la machine : pas de descente possible (trot à plat), pente plafonnée à 15\u00a0%. */
+function blocsTapis(blocs) {
+  const conv = e => {
+    if (e.repetition) return Object.assign({}, e, { etapes: e.etapes.map(conv) });
+    const x = Object.assign({}, e);
+    if (x.pente < 0) { delete x.pente; x.nature = 'recup'; x.zone = 'recup'; x.descente = true; }
+    else if (x.pente > TAPIS.penteMax / 100) x.pente = TAPIS.penteMax / 100;
+    return x;
+  };
+  return (blocs || []).map(conv);
+}
+const kmhAllure = allure => fKmh(3600 / allure);
+/** Texte d'une étape sur tapis : vitesse en km/h, pente, montées pour retrouver le dénivelé. */
+function texteEtapeTapis(e, zones, seance, court = false) {
+  const allure = allureEtape(e, zones, seance);
+  const mesure = e.distanceM ? distanceLisible(e.distanceM) : dureeLisible(e.dureeS);
+  if (e.descente) return mesure + ' de trot à ' + kmhAllure(allure) + ' (la descente ne se fait pas sur tapis)';
+  if (e.nature === 'recup') return mesure + ' de trot à ' + kmhAllure(allure);
+  if (e.pente > 0) return mesure + ' à ' + kmhAllure(allure) + ', pente ' + Math.round(e.pente * 100) + '\u00a0%' + (court ? '' : ' (' + (LIBELLE_ZONE[e.zone] || 'EF') + ' en côte)');
+  const zone = LIBELLE_ZONE[e.zone] || 'EF';
+  if (e.dpk >= 8 && !court) {
+    // Dénivelé : des montées de 3 min à pente réglée, réparties dans le bloc (le reste à 1\u00a0%)
+    const plat = allureSaine(zones[e.zone] || zones.ef);
+    const duree = e.dureeS || (e.distanceM / 1000 * allure);
+    const dplus = (duree / allure) * e.dpk;
+    const p = e.dpk >= 30 ? 0.08 : 0.05;
+    const allureMontee = allureSaine(plat * ratioAllurePente(p, 'moyen'));
+    const gainParMontee = 180 / allureMontee * 1000 * p;
+    const n = Math.max(1, Math.min(Math.floor(duree * 0.6 / 180), Math.round(dplus / gainParMontee)));
+    return mesure + ' ' + zone + ' à ' + kmhAllure(plat) + ' (pente 1\u00a0%), dont ' + n + ' × 3 min à ' + Math.round(p * 100) + '\u00a0% et ' +
+           kmhAllure(allureMontee) + ' réparties, pour retrouver environ ' + Math.round(n * gainParMontee / 10) * 10 + ' m D+';
+  }
+  return mesure + ' à ' + kmhAllure(allure) + (court ? '' : ' (' + zone + ', ' + formaterAllure(allure) + '/km)');
+}
+/** Description ligne par ligne de la séance sur tapis. */
+function lignesTapis(s, zones = metriques().zones) {
+  const blocs = blocsTapis(s.blocs);
+  const decrire = e => e.repetition
+    ? e.repetition + ' × (' + e.etapes.map(x => x.repetition
+        ? x.repetition + ' × (' + x.etapes.map(y => texteEtapeTapis(y, zones, s, true)).join(' + ') + ')'
+        : texteEtapeTapis(x, zones, s, true)).join(' + ') + ')'
+    : texteEtapeTapis(e, zones, s);
+  return ['Tapis à ' + TAPIS.pente + '\u00a0% de pente, sauf indication'].concat(blocs.map(e =>
+    (e.nature === 'echauffement' ? 'Échauffement : ' : e.nature === 'retour' ? 'Retour au calme : ' : '') + decrire(e)));
+}
+/** Conseils du coach pour cette séance sur tapis. */
+function conseilsTapis(s, prep) {
+  const c = [];
+  const blocs = prep ? prep.blocs : s.blocs;
+  const courtes = [];
+  const parcourir = (etapes, rep) => etapes.forEach(e => {
+    if (e.repetition) return parcourir(e.etapes, true);
+    if (rep && e.nature === 'travail' && !(e.pente > 0) && (e.dureeS ? e.dureeS < 120 : e.distanceM < 500)) courtes.push(e);
+  });
+  parcourir(blocs, false);
+  c.push('Pente à 1\u00a0% : elle compense l’absence de vent et rend l’effort proche de celui de dehors, aux mêmes vitesses.');
+  if (['vma', 'seuil', 'fartlek', 'cotes', 'specifique'].includes(s.type))
+    c.push('Même intention que dehors : mêmes vitesses, mêmes récupérations. Le tapis impose l’allure, ne cours pas plus vite que prévu.');
+  if (courtes.length) c.push('Fractions courtes : le tapis met 5 à 10 s à changer de vitesse. Lance l’accélération quelques secondes avant le top, ou cours-les au temps plutôt qu’à la distance.');
+  const desc = JSON.stringify(blocs).includes('"pente":-');
+  if (desc || s.terrain === 'trail') c.push('Le tapis ne travaille pas la descente : garde une sortie vallonnée dehors dans la semaine pour tes quadriceps.');
+  if (prep && prep.coupe) c.push('Sortie longue ramenée à ' + dureeLisible(prep.coupe.apres.dureeS) + ' : au-delà, le tapis use la tête et la foulée répétitive charge les tendons. Si tu peux, ajoute les ' +
+    km1(Math.max(0, prep.coupe.avant.distanceM - prep.coupe.apres.distanceM)) + ' km manquants dehors plus tard dans la journée, sinon déplace plutôt la sortie longue à un jour plus clément.');
+  if (s.type === 'specifique' || minutesAllureCourse(blocs) >= 15) c.push('Allure de course sur tapis : vérifie aussi le ressenti et le cardio, la vitesse affichée n’est pas toujours juste. La prochaine se fera dehors.');
+  c.push('Ventilateur et bouteille à portée de main : on transpire plus qu’à l’extérieur, sans air pour refroidir.');
+  return c;
+}
+
+function ouvrirTapis(id) {
+  const s = trouverSeance(id);
+  if (!s || s.type === 'course') return;
+  tapisOuvert = id;
+  contexteFenetreSuivante = { type: 'seance', id };
+  ouvrirModale('<div id="feuilleTapis"></div>');
+  rendreTapis();
+}
+
+function rendreTapis() {
+  const s = tapisOuvert && trouverSeance(tapisOuvert), cible = $('#feuilleTapis');
+  if (!s || !cible) return;
+  const v = verdictTapis(s);
+  const b = v.bilan;
+  const entete = enteteModale('fa-solid fa-person-running', '#2F80ED', s.tapis ? 'Séance sur tapis' : 'Faire sur tapis', esc(s.titre) + ', ' + dateCourte(depuisCleJour(s.date)));
+  const puce = l => `<li class="flex gap-2"><span class="mt-[7px] w-1 h-1 rounded-full bg-brume/60 shrink-0"></span><span>${esc(l)}</span></li>`;
+  const conseil = l => `<li class="flex gap-2"><i class="fa-solid fa-check text-[10px] text-vallee mt-[5px]"></i><span>${esc(l)}</span></li>`;
+  const phase = s.phase && PHASES[s.phase] ? PHASES[s.phase].libelle.toLowerCase() : null;
+  const ligneQuota = `${s.tapis ? 'Autres séances' : 'Déjà'} sur tapis : <span class="text-neige">${b.mois - 1} sur 4 semaines</span> (max ${b.maxMois}), <span class="text-neige">${b.semaine - 1} cette semaine</span> (max ${b.maxSemaine}${phase ? ' en phase ' + phase : ''}).`;
+  const alternatives = `
+    <div class="text-[11.5px] text-brume uppercase tracking-wide mb-1.5">Ce que je te propose</div>
+    <ul class="space-y-1 text-[13px] leading-snug mb-3">
+      ${conseil('Dehors quand même, bien couvert : couches fines, gants, bonnet, 10 min d’échauffement au chaud (gainage, gammes) avant de sortir.')}
+      ${conseil(v.refus === 'cle' ? 'Ou déplace-la à un jour plus clément de la semaine, et fais aujourd’hui un footing facile (celui-là peut se faire sur tapis si ton quota le permet).'
+                                   : 'Ou déplace-la à un jour plus clément de la semaine (en gardant au moins un jour facile avant une séance dure).')}
+      ${conseil(v.refus === 'cle' ? 'Ou garde-la aujourd’hui dehors en la raccourcissant : c’est mieux qu’une séance clé sur tapis.'
+                                   : 'Ou fais-la dehors en plus court : une séance raccourcie dehors vaut mieux qu’un tapis de trop.')}
+    </ul>
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      ${seanceDeplacable(s) ? `<button data-act="deplacerSeance" data-arg="${s.id}" class="tapable h-11 rounded-2xl verre text-[13.5px]"><i class="fa-solid fa-calendar-day mr-1.5"></i>Déplacer</button>` : ''}
+      <button data-act="adapterSeance" data-arg="${s.id}" class="tapable h-11 rounded-2xl verre text-[13.5px] ${seanceDeplacable(s) ? '' : 'col-span-2'}"><i class="fa-solid fa-hourglass-half mr-1.5"></i>Raccourcir</button>
+    </div>`;
+  const remettre = s.tapis ? `<button data-act="annulerTapis" class="${BTN_SECONDAIRE}"><i class="fa-solid fa-sun mr-2"></i>Remettre dehors</button>` : '';
+
+  if (v.refus && !s.tapis) {
+    const sem = Math.ceil(v.proche ? v.proche.jours / 7 : 0);
+    const texte = v.refus === 'cle'
+      ? `À ${v.proche.jours <= 7 ? v.proche.jours + ' jour' + (v.proche.jours > 1 ? 's' : '') : sem + ' semaines'} de ${esc(nomCourse(v.proche.c))}, ${s.type === 'sl' ? 'la sortie longue' : 'une séance à allure de course'} se fait dehors : c’est elle qui habitue tes jambes au bitume, au vent et à tenir l’allure seul, comme le jour J. Le tapis ne prépare pas ça, je ne te le propose pas sur cette séance.`
+      : `${b.semaine > b.maxSemaine ? 'Tu as déjà ' + nbTexte(b.semaine - 1, 'séance', 'séances') + ' sur tapis cette semaine' : 'Tu as déjà ' + nbTexte(b.mois - 1, 'séance', 'séances') + ' sur tapis sur 4 semaines'}. En phase ${phase || 'actuelle'}, je plafonne à ${b.maxSemaine} par semaine et ${b.maxMois} sur 4 semaines : au-delà, tes jambes perdent l’habitude du sol, des virages et de l’allure que tu dois tenir seul.`;
+    cible.innerHTML = entete + `
+      <div class="rounded-xl bg-braise/10 border border-braise/40 p-3 text-[13px] leading-relaxed mb-3"><i class="fa-solid fa-hand mr-1.5 text-braise"></i>${texte}</div>
+      ${alternatives}
+      <div class="text-[11.5px] text-brume mt-1">${ligneQuota}</div>`;
+    return;
+  }
+
+  const prep = s.tapis ? { blocs: s.blocs, coupe: s.tapis.coupe || null } : preparerTapis(s);
+  const apercu = Object.assign({}, s, { blocs: prep.blocs });
+  const m = mesurerSeance(Object.assign({}, apercu, { blocs: blocsTapis(prep.blocs) }));
+  const alerte = v.refus === 'cle'
+    ? `<div class="rounded-xl bg-braise/10 border border-braise/40 p-3 text-[12.5px] leading-relaxed mb-3"><i class="fa-solid fa-triangle-exclamation mr-1.5 text-braise"></i>Séance clé à moins de 6 semaines de ${esc(nomCourse(v.proche.c))} : remets-la dehors si tu le peux.</div>`
+    : v.refus === 'quota' ? `<div class="rounded-xl bg-braise/10 border border-braise/40 p-3 text-[12.5px] leading-relaxed mb-3"><i class="fa-solid fa-triangle-exclamation mr-1.5 text-braise"></i>Tu dépasses le nombre de séances sur tapis que je conseille pour cette phase.</div>`
+    : !s.tapis && (b.dernier || v.proche) ? `<div class="rounded-xl bg-ocre/10 border border-ocre/30 p-3 text-[12.5px] leading-relaxed mb-3"><i class="fa-solid fa-circle-info mr-1.5 text-ocre"></i>${[
+        v.proche ? 'OK sur tapis : ce n’est pas une séance clé. Les sorties longues et l’allure de course restent dehors d’ici ' + esc(nomCourse(v.proche.c)) + '.' : 'D’accord pour celle-ci.',
+        b.dernier === 'mois' ? 'Ce sera la dernière sur tapis avant un moment : les prochaines se font dehors.'
+        : b.dernier === 'semaine' ? 'C’est ta séance sur tapis de la semaine : les autres se font dehors.' : ''].filter(Boolean).join(' ')}</div>` : '';
+  cible.innerHTML = entete + alerte + `
+    <div class="rounded-xl bg-nuit/50 p-3 mb-3">
+      <div class="text-[11.5px] text-brume uppercase tracking-wide mb-1">Ta séance sur tapis</div>
+      <div class="text-[13px] mb-1.5"><span class="text-neige font-semibold">${km1(m.distanceM)} km</span><span class="text-brume"> · ${dureeLisible(m.dureeS)}${m.dplus > 20 ? ' · ' + m.dplus + ' m D+' : ''}</span></div>
+      <ul class="space-y-1 text-[13px] leading-snug">${lignesTapis(apercu).map(puce).join('')}</ul>
+    </div>
+    <div class="text-[11.5px] text-brume uppercase tracking-wide mb-1.5">L’avis du coach</div>
+    <ul class="space-y-1.5 text-[12.5px] leading-snug mb-3">${conseilsTapis(s, prep).map(conseil).join('')}</ul>
+    <div class="text-[11.5px] text-brume mb-3">${ligneQuota}</div>
+    ${s.tapis ? remettre : `<button data-act="confirmerTapis" class="${BTN_PRINCIPAL}"><i class="fa-solid fa-person-running mr-2"></i>La faire sur tapis</button>`}`;
+}
+
+function appliquerTapis() {
+  const s = tapisOuvert && trouverSeance(tapisOuvert);
+  if (!s || s.tapis) return;
+  const v = verdictTapis(s);
+  if (v.refus) return rendreTapis();
+  const prep = preparerTapis(s);
+  s.tapis = { le: cleJour(new Date()), blocsAvant: prep.coupe ? prep.base : null, coupe: prep.coupe };
+  if (prep.coupe) s.blocs = prep.blocs;
+  tapisOuvert = null;
+  sauverEtat();
+  fermerModale();
+  rendreTout();
+  toast('« ' + esc(s.titre) + ' » passe sur tapis : vitesses en km/h, pente 1\u00a0%.', 'succes');
+}
+
+function annulerTapis() {
+  const s = tapisOuvert && trouverSeance(tapisOuvert);
+  if (!s || !s.tapis) return;
+  if (s.tapis.blocsAvant) { s.blocs = s.tapis.blocsAvant; oublierAdaptation(s); }
+  delete s.tapis;
+  tapisOuvert = null;
+  sauverEtat();
+  fermerModale();
+  rendreTout();
+  toast('Séance remise dehors, comme prévu.', 'succes');
 }
 
 /* ==================================================================================
@@ -5473,25 +5707,29 @@ function etapeMontre(e, seance, zones, but) {
   const allure = allureEtape(e, zones, seance);
   return {
     purpose: but,
-    goal: e.distanceM ? { type: 'distance', value: Math.round(e.distanceM), unit: 'meters' }
+    // Sur tapis, la distance de la montre est estimée : on compte au temps, et la vitesse se règle sur la machine
+    goal: e.distanceM && !seance.tapis ? { type: 'distance', value: Math.round(e.distanceM), unit: 'meters' }
+        : e.distanceM ? { type: 'time', value: Math.round(e.distanceM / 1000 * allure), unit: 'seconds' }
                       : { type: 'time', value: Math.round(e.dureeS || 0), unit: 'seconds' },
-    alert: e.nature === 'recup' ? null : {
+    alert: e.nature === 'recup' || seance.tapis ? null : {
       type: 'pace', unit: 'secondsPerKilometer',
       fastest: Math.round(allure * 0.97), slowest: Math.round(allure * 1.03),
       label: formaterAllure(allure * 0.97) + ' à ' + formaterAllure(allure * 1.03)
     },
-    note: texteEtape(e, zones, seance)
+    tapis: seance.tapis ? kmhAllure(allure) + (e.pente > 0 ? ', pente ' + Math.round(e.pente * 100) + '\u00a0%' : ', pente ' + TAPIS.pente + '\u00a0%') : null,
+    note: seance.tapis ? texteEtapeTapis(e, zones, seance) : texteEtape(e, zones, seance)
   };
 }
 
 /** Convertit une séance en entraînement personnalisé : échauffement, blocs répétés, retour au calme. */
 function seanceVersMontre(s) {
   const z = metriques().zones;
+  if (s.tapis) s = Object.assign({}, s, { blocs: blocsTapis(s.blocs) });
   const sortie = {
     format: 'rdd.workout.v1',
     compatibleAvec: 'WorkoutKit CustomWorkout (watchOS 10 et plus)',
     activity: 'running',
-    location: s.terrain === 'trail' ? 'outdoor-trail' : 'outdoor',
+    location: s.tapis ? 'indoor' : s.terrain === 'trail' ? 'outdoor-trail' : 'outdoor',
     displayName: s.titre,
     scheduledDate: s.date,
     warmup: null, blocks: [], cooldown: null
@@ -5519,7 +5757,7 @@ function ouvrirModaleMontre(id) {
       <span class="w-1.5 self-stretch rounded-full" style="background:${couleur}"></span>
       <div class="flex-1 min-w-0">
         <div class="text-[14px]">${st.goal.type === 'time' ? dureeLisible(st.goal.value) : distanceLisible(st.goal.value)}</div>
-        <div class="text-[12px] text-brume">${st.alert ? 'Alerte allure ' + st.alert.label + '/km' : 'Sans alerte'}</div>
+        <div class="text-[12px] text-brume">${st.tapis ? 'Tapis : ' + st.tapis : st.alert ? 'Alerte allure ' + st.alert.label + '/km' : 'Sans alerte'}</div>
       </div>
       <span class="text-[11px] text-brume">${{ warmup: 'Échauffement', work: 'Effort', recovery: 'Récup', cooldown: 'Retour au calme' }[st.purpose]}</span>
     </div>`;
@@ -5547,7 +5785,7 @@ function ouvrirModaleMontre(id) {
       </div>
     </div>
     <div class="rounded-2xl verre px-3 mb-3">${corps}</div>
-    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (Course en extérieur, bouton « … »), sur watchOS 10 et plus.</p>
+    <p class="text-[12px] text-brume leading-relaxed mb-3">Touche « Envoyer à l’Apple Watch » : dans la feuille de partage choisis ton raccourci « Ouvrir dans Exercice », ou « Enregistrer dans Fichiers » puis touche le fichier. La séance arrive dans l’app Exercice (${s.tapis ? 'Course en salle' : 'Course en extérieur'}, bouton « … »), sur watchOS 10 et plus.${s.tapis ? ' Sur tapis, les étapes sont au temps et sans alerte d’allure : c’est la machine qui tient la vitesse.' : ''}</p>
     <button data-act="workoutSeance" data-arg="${s.id}" class="w-full tapable h-11 rounded-xl bg-ocre text-white font-semibold text-[13.5px]"><i class="fa-brands fa-apple mr-1.5"></i>Envoyer à l’Apple Watch</button>`);
 }
 
@@ -6979,6 +7217,7 @@ function noteSeance(s, sem) {
   if (sem && sem.relache) contexte.push('Semaine allégée : le corps assimile le travail des semaines précédentes, garde de la fraîcheur.');
   if (s.ajuste === 'allégée') contexte.push('Séance allégée par le coach pour tenir compte de ta fatigue.');
   if (s.adaptee) contexte.push('Séance raccourcie à ' + dureeLisible(s.adaptee * 60) + ' pour tenir dans ton temps disponible : mêmes allures, l’endurance est coupée en premier pour garder le cœur de la séance.');
+  if (s.tapis) contexte.push('Séance faite sur tapis : mêmes allures converties en km/h, pente de 1 %' + (s.tapis.coupe ? ', sortie longue ramenée à ' + dureeLisible(s.tapis.coupe.apres.dureeS) : '') + '. Les séances clés restent dehors.');
   if (s.ajuste === 'renforcée') contexte.push('Séance renforcée d’environ 15 % : garde les mêmes allures, c’est la durée qui augmente. Au moindre signe de fatigue, reviens à la version normale.');
   return { pourquoi, contexte: contexte.join(' '), conseils: conseils.slice(0, 3) };
 }
@@ -7010,6 +7249,7 @@ function carteSeance(s, opts = {}) {
                  : s.ajuste ? `<span class="${PUCE} bg-violine/15 text-violine">${s.ajuste === 'allégée' ? 'Allégée' : 'Replacée ici'}</span>` : '') +
                  (s.deplacee && st !== 'fait' ? `<span class="${PUCE} bg-azur/15 text-azur">Déplacée</span>` : '') +
                  (s.adaptee ? `<span class="${PUCE} bg-azur/15 text-azur"><i class="fa-solid fa-hourglass-half mr-1"></i>Adaptée ${dureeLisible(s.adaptee * 60)}</span>` : '') +
+                 (s.tapis ? `<span class="${PUCE} bg-azur/15 text-azur"><i class="fa-solid fa-person-running mr-1"></i>Sur tapis</span>` : '') +
                  (s.manuelle ? `<span class="${PUCE} bg-granit text-brume">Ajoutée</span>` : '') +
                  (s.verrou && st !== 'fait' ? `<span class="${PUCE} bg-ocre/10 text-ocre"><i class="fa-solid fa-lock mr-1"></i>Verrouillée</span>` : '');
   // Plan : verrou (une séance réalisée l'est d'office) et suppression d'une séance non verrouillée
@@ -7021,7 +7261,7 @@ function carteSeance(s, opts = {}) {
       ${!verrouillee && s.type !== 'course' ? `<button data-act="supprimerSeance" data-arg="${s.id}" aria-label="Supprimer la séance" title="Supprimer"
         class="tapable w-8 h-8 rounded-lg grid place-items-center bg-granit text-brume"><i class="fa-regular fa-trash-can text-[12px]"></i></button>` : ''}
     </div>` : '';
-  const lignes = lignesSeance(s).map(l =>
+  const lignes = (s.tapis ? lignesTapis(s) : lignesSeance(s)).map(l =>
     `<li class="flex gap-2"><span class="mt-[7px] w-1 h-1 rounded-full bg-brume/60 shrink-0"></span><span>${esc(l)}</span></li>`).join('');
   const course = s.type === 'course';
   const rpe = st === 'fait' && s.realise && s.realise.rpe ? `<div class="text-[11.5px] text-brume mt-2">Ressenti ${s.realise.rpe}/10${s.realise.notes ? ', « ' + esc(s.realise.notes) + ' »' : ''}</div>` : '';
@@ -7036,8 +7276,12 @@ function carteSeance(s, opts = {}) {
   if (choix.length === 4) choix = choix.map(b => b.replace('h-9 rounded-xl', 'h-12 rounded-xl flex flex-col items-center justify-center gap-1 leading-none')
                                              .replace('text-[12.5px]', 'text-[11px]').replace(' mr-1"></i>', '"></i>'));
   // Pas le temps ? Lien discret pour raccourcir la séance à la durée disponible
-  const lienAdapter = !course && ['prevu', 'aujourdhui'].includes(st)
-    ? `<button data-act="adapterSeance" data-arg="${s.id}" class="tapable w-full mt-1.5 h-8 text-[12.5px] text-brume"><i class="fa-solid fa-hourglass-half mr-1.5"></i>${s.adaptee ? 'Adaptée à ' + dureeLisible(s.adaptee * 60) + ' · changer' : 'Pas le temps ? Adapter la durée'}</button>` : '';
+  // Froid, pluie, nuit ? La séance du jour (ou de demain) peut passer sur tapis, avec l'avis du coach
+  const tapisPossible = !course && (s.tapis ? ['prevu', 'aujourdhui'].includes(st) : st === 'aujourdhui' || (st === 'prevu' && ecartJours(new Date(), depuisCleJour(s.date)) === 1));
+  const lienTapis = tapisPossible ? `<button data-act="faireTapis" data-arg="${s.id}" class="tapable h-8 text-[12.5px] ${s.tapis ? 'text-azur' : 'text-brume'}"><i class="fa-solid ${s.tapis ? 'fa-sun' : 'fa-person-running'} mr-1.5"></i>${s.tapis ? 'Sur tapis · changer' : 'Faire sur tapis'}</button>` : '';
+  const lienDuree = !course && ['prevu', 'aujourdhui'].includes(st)
+    ? `<button data-act="adapterSeance" data-arg="${s.id}" class="tapable h-8 text-[12.5px] text-brume"><i class="fa-solid fa-hourglass-half mr-1.5"></i>${s.adaptee ? 'Adaptée à ' + dureeLisible(s.adaptee * 60) + ' · changer' : lienTapis ? 'Adapter la durée' : 'Pas le temps ? Adapter la durée'}</button>` : '';
+  const lienAdapter = lienDuree || lienTapis ? `<div class="grid ${lienDuree && lienTapis ? 'grid-cols-2' : 'grid-cols-1'} gap-2 mt-1.5">${lienDuree}${lienTapis}</div>` : '';
   const boutons = st === 'reporte' ? '' : `<div class="grid ${choix.length === 1 ? 'grid-cols-1' : choix.length === 2 ? 'grid-cols-2' : choix.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mt-3">${choix.join('')}</div>` + lienAdapter;
   return `<div data-seance="${s.id}" class="rounded-2xl ${opts.compact ? 'bg-nuit/40 border border-brume/10' : 'verre'} overflow-hidden ${st === 'reporte' ? 'opacity-60' : ''}">
     <div class="flex">
@@ -10169,7 +10413,7 @@ function fichierWorkoutApple(plan) {
   const vitesse = v => fOctets(1, quantite(1, v)).concat(fOctets(2, quantite(1, 1)));
   const alerte = a => fVarint(1, 1).concat(fVarint(2, 2), fOctets(4, fOctets(2, fOctets(1, vitesse(1000 / a.lente)).concat(fOctets(2, vitesse(1000 / a.rapide))))));
   const etape = e => fOctets(1, but(e.but)).concat(e.alerte ? fOctets(2, alerte(e.alerte)) : []);
-  let w = fVarint(1, 37).concat(fVarint(2, 3), fOctets(3, String(plan.nom || 'Séance').slice(0, 60)));   // course à pied, extérieur
+  let w = fVarint(1, 37).concat(fVarint(2, plan.interieur ? 2 : 3), fOctets(3, String(plan.nom || 'Séance').slice(0, 60)));   // course à pied, en salle (2) ou extérieur (3)
   if (plan.echauffement) w = w.concat(fOctets(4, etape(plan.echauffement)));
   plan.blocs.forEach(b => {
     const o = [].concat(...b.etapes.map(e => fOctets(1, fVarint(1, e.recup ? 2 : 1).concat(fOctets(2, etape(e))))));
@@ -10189,7 +10433,7 @@ function workoutSeance(s) {
   const w = seanceVersMontre(s);
   const conv = st => ({ recup: st.purpose === 'recovery', but: st.goal.type === 'distance' ? { m: st.goal.value } : st.goal.value > 0 ? { s: st.goal.value } : null,
                         alerte: st.alert ? { lente: st.alert.slowest, rapide: st.alert.fastest } : null });
-  return { nom: s.titre, echauffement: w.warmup && conv(w.warmup), retour: w.cooldown && conv(w.cooldown),
+  return { nom: s.titre, interieur: !!s.tapis, echauffement: w.warmup && conv(w.warmup), retour: w.cooldown && conv(w.cooldown),
            blocs: w.blocks.map(b => ({ fois: b.iterations, etapes: b.steps.map(conv) })) };
 }
 const nomFichierWorkout = t => (normaliser(t || 'seance').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'seance') + '.workout';
@@ -11504,6 +11748,9 @@ const ACTIONS = {
   deplacerSeance: id => ouvrirDeplacement(id),
   // Adapter une séance au temps disponible
   adapterSeance: id => ouvrirAdaptation(id),
+  faireTapis: id => ouvrirTapis(id),
+  confirmerTapis: () => appliquerTapis(),
+  annulerTapis: () => annulerTapis(),
   choisirDureeAdaptation: arg => { if (adaptation) { adaptation.minutes = +arg; rendreAdaptation(); } },
   confirmerAdaptation: () => appliquerAdaptation(),
   annulerAdaptation: () => annulerAdaptation(),
